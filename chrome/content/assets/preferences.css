@@ -1,6 +1,24 @@
 /* Todolist for Zotero - Preferences Panel Styling
- * Aligned with MetaFlow modern collapsible card & native Zotero 7/8 standards.
+ * Aligned with native Zotero 7/8 Crimson palette & MetaFlow collapsible card standard.
  */
+
+:root {
+  --zotero-primary: #c5282a;
+  --zotero-primary-hover: #a81c1e;
+  --zotero-primary-light: #fef2f2;
+  --zotero-primary-border: rgba(197, 40, 42, 0.25);
+  --zotero-focus-ring: rgba(197, 40, 42, 0.22);
+
+  --zotero-bg: var(--in-content-page-background, #f5f6f8);
+  --zotero-surface: var(--in-content-box-background, #ffffff);
+  --zotero-surface-card: #f8fafc;
+  --zotero-surface-hover: #f1f5f9;
+  --zotero-text: var(--in-content-text-color, #1f2328);
+  --zotero-text-secondary: #57606a;
+  --zotero-text-muted: #8c959f;
+  --zotero-border: var(--in-content-border-color, #e1e4e8);
+  --zotero-border-light: #eceef1;
+}
 
 .todolist-prefs-container {
   box-sizing: border-box;
@@ -8,7 +26,7 @@
   max-width: 820px;
   min-width: 0;
   padding: 8px 16px 36px 4px;
-  color: var(--text, #1e293b);
+  color: var(--zotero-text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
   line-height: 1.5;
 }
@@ -26,37 +44,37 @@
   gap: 14px;
   margin: 0 0 16px;
   padding-bottom: 12px;
-  border-bottom: 1px solid var(--border-color, #e2e8f0);
+  border-bottom: 1px solid var(--zotero-border);
 }
 
 .todolist-pref-header h1 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: inherit;
+  color: var(--zotero-text);
   letter-spacing: -0.01em;
 }
 
 .todolist-pref-status {
   margin: 0 0 16px;
-  color: var(--muted-text-color, #64748b);
+  color: var(--zotero-text-secondary);
   font-size: 12.5px;
   padding: 6px 12px;
-  background: var(--surface-subtle, #f8fafc);
+  background: var(--zotero-surface-card);
   border-radius: 6px;
-  border: 1px solid var(--border-color, #e2e8f0);
+  border: 1px solid var(--zotero-border);
 }
 
-/* Accordion Card Container (MetaFlow Style) */
+/* Accordion Card Container (Aligned with Zotero Preferences) */
 .todolist-pref-card {
   display: block;
   min-width: 0;
   margin: 0 0 12px;
-  border: 1px solid var(--border-color, #e2e8f0);
+  border: 1px solid var(--zotero-border);
   border-radius: 8px;
-  background: var(--surface-bg, #f8fafc);
+  background: var(--zotero-surface-card);
   overflow: hidden;
-  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.16s ease;
 }
 
 .todolist-pref-card:hover {
@@ -64,9 +82,9 @@
 }
 
 .todolist-pref-card[open] {
-  background: var(--surface-bg, #ffffff);
+  background: var(--zotero-surface);
   border-color: #cbd5e1;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 /* Card Header (Summary) */
@@ -80,8 +98,8 @@
   list-style: none;
   font-size: 13.5px;
   font-weight: 600;
-  color: inherit;
-  background: var(--surface-subtle, #f8fafc);
+  color: var(--zotero-text);
+  background: var(--zotero-surface-card);
   transition: background-color 0.15s ease;
 }
 
@@ -94,7 +112,7 @@
 }
 
 .todolist-card-header:hover {
-  background: var(--surface-hover, #f1f5f9);
+  background: var(--zotero-surface-hover);
 }
 
 .todolist-card-header::after {
@@ -102,20 +120,20 @@
   display: inline-block;
   font-size: 16px;
   font-weight: 600;
-  color: #94a3b8;
+  color: var(--zotero-text-muted);
   margin-left: 10px;
   transform: rotate(0deg);
   transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), color 0.15s ease;
 }
 
 .todolist-pref-card[open] > .todolist-card-header {
-  border-bottom: 1px solid var(--border-color, #e2e8f0);
-  background: var(--surface-header-open, #f8fafc);
+  border-bottom: 1px solid var(--zotero-border);
+  background: var(--zotero-surface-card);
 }
 
 .todolist-pref-card[open] > .todolist-card-header::after {
   transform: rotate(90deg);
-  color: #475569;
+  color: var(--zotero-text);
 }
 
 .todolist-card-title {
@@ -127,13 +145,13 @@
 /* Card Body */
 .todolist-card-body {
   padding: 14px 18px 18px;
-  background: #ffffff;
+  background: var(--zotero-surface);
 }
 
 .todolist-pref-desc {
   max-width: 100%;
   margin: 0 0 12px;
-  color: #64748b;
+  color: var(--zotero-text-secondary);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -168,14 +186,14 @@
   width: 16px;
   height: 16px;
   margin-top: 2px;
-  accent-color: #2563eb;
+  accent-color: var(--zotero-primary);
   cursor: pointer;
 }
 
 .todolist-check-row .todolist-control-label {
   font-size: 13px;
   font-weight: 450;
-  color: inherit;
+  color: var(--zotero-text);
   line-height: 1.45;
   cursor: pointer;
 }
@@ -198,7 +216,7 @@
 .todolist-control-label {
   font-size: 13px;
   font-weight: 500;
-  color: inherit;
+  color: var(--zotero-text);
 }
 
 .todolist-control {
@@ -206,9 +224,9 @@
   font-size: 12.5px;
   padding: 5px 10px;
   border-radius: 6px;
-  border: 1px solid var(--border-color, #cbd5e1);
-  background-color: #ffffff;
-  color: inherit;
+  border: 1px solid var(--zotero-border);
+  background-color: var(--zotero-surface);
+  color: var(--zotero-text);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -220,18 +238,18 @@ select.todolist-control {
 
 .todolist-control:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  border-color: var(--zotero-primary);
+  box-shadow: 0 0 0 2px var(--zotero-focus-ring);
 }
 
-/* Action Buttons & Pills */
+/* Action Buttons & Pills (Zotero-themed) */
 .todolist-pref-btn {
   font: inherit;
   padding: 6px 14px;
   border-radius: 6px;
-  border: 1px solid var(--border-color, #cbd5e1);
-  background-color: #ffffff;
-  color: inherit;
+  border: 1px solid var(--zotero-border);
+  background-color: var(--zotero-surface);
+  color: var(--zotero-text);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -240,7 +258,7 @@ select.todolist-control {
 }
 
 .todolist-pref-btn:hover {
-  background-color: #f8fafc;
+  background-color: var(--zotero-surface-hover);
   border-color: #94a3b8;
   transform: translateY(-1px);
 }
@@ -250,26 +268,26 @@ select.todolist-control {
 }
 
 .todolist-pref-btn-primary {
-  background-color: #eff6ff !important;
-  border-color: #3b82f6 !important;
-  color: #1d4ed8 !important;
+  background-color: var(--zotero-primary-light) !important;
+  border-color: var(--zotero-primary) !important;
+  color: #991b1b !important;
   font-weight: 600 !important;
 }
 
 .todolist-pref-btn-primary:hover {
-  background-color: #dbeafe !important;
-  border-color: #2563eb !important;
+  background-color: #fee2e2 !important;
+  border-color: var(--zotero-primary-hover) !important;
 }
 
 .todolist-pref-btn-danger {
   background-color: #fef2f2 !important;
-  border-color: #ef4444 !important;
+  border-color: #dc2626 !important;
   color: #dc2626 !important;
 }
 
 .todolist-pref-btn-danger:hover {
   background-color: #fee2e2 !important;
-  border-color: #dc2626 !important;
+  border-color: #b91c1c !important;
 }
 
 /* Custom Academic Tags Styling */
@@ -324,89 +342,82 @@ select.todolist-control {
 }
 
 .todolist-pref-color-dot.active {
-  border-color: #2563eb;
+  border-color: var(--zotero-primary);
   transform: scale(1.15);
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 0 0 2px var(--zotero-primary-border);
 }
 
-/* Dark Theme Support */
+/* Dark Theme Support (Native Zotero 7/8 Dark Palette) */
 @media (prefers-color-scheme: dark) {
-  .todolist-prefs-container {
-    color: #f1f5f9;
-  }
+  :root {
+    --zotero-primary: #df383a;
+    --zotero-primary-hover: #eb5e60;
+    --zotero-primary-light: rgba(223, 56, 58, 0.18);
+    --zotero-primary-border: rgba(223, 56, 58, 0.3);
+    --zotero-focus-ring: rgba(223, 56, 58, 0.28);
 
-  .todolist-pref-header {
-    border-bottom-color: rgba(255, 255, 255, 0.12);
-  }
-
-  .todolist-pref-status {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.1);
-    color: #94a3b8;
-  }
-
-  .todolist-pref-card {
-    border-color: rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.03);
-  }
-
-  .todolist-pref-card:hover {
-    border-color: rgba(255, 255, 255, 0.22);
-  }
-
-  .todolist-pref-card[open] {
-    background: rgba(255, 255, 255, 0.04);
-    border-color: rgba(255, 255, 255, 0.2);
-  }
-
-  .todolist-card-header {
-    background: rgba(255, 255, 255, 0.04);
-  }
-
-  .todolist-card-header:hover {
-    background: rgba(255, 255, 255, 0.08);
-  }
-
-  .todolist-pref-card[open] > .todolist-card-header {
-    border-bottom-color: rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.06);
+    --zotero-bg: #18181b;
+    --zotero-surface: #222225;
+    --zotero-surface-card: #29292e;
+    --zotero-surface-hover: #323238;
+    --zotero-text: #f4f4f6;
+    --zotero-text-secondary: #a1a1aa;
+    --zotero-text-muted: #71717a;
+    --zotero-border: #38383e;
+    --zotero-border-light: #2d2d33;
   }
 
   .todolist-card-body {
-    background: #181c24;
+    background: #1c1c1f;
   }
 
-  .todolist-pref-desc {
-    color: #94a3b8;
+  .todolist-card-header {
+    background: #26262b;
   }
 
-  .todolist-check-row:hover {
-    background: rgba(255, 255, 255, 0.04);
+  .todolist-card-header:hover {
+    background: #2e2e34;
   }
 
-  .todolist-control-row {
-    border-bottom-color: rgba(255, 255, 255, 0.06);
+  .todolist-pref-card[open] > .todolist-card-header {
+    border-bottom-color: #38383e;
+    background: #26262b;
+  }
+
+  .todolist-pref-card[open] {
+    background: #1c1c1f;
+    border-color: #4a4a52;
   }
 
   .todolist-control {
-    background-color: #1e2430;
-    border-color: rgba(255, 255, 255, 0.15);
-    color: #f1f5f9;
+    background-color: #29292e;
+    border-color: #38383e;
+    color: #f4f4f6;
   }
 
   select.todolist-control option {
-    background-color: #1e2430;
-    color: #f1f5f9;
+    background-color: #222225;
+    color: #f4f4f6;
   }
 
   .todolist-pref-btn {
-    background-color: #1e2430;
-    border-color: rgba(255, 255, 255, 0.15);
-    color: #f1f5f9;
+    background-color: #29292e;
+    border-color: #38383e;
+    color: #f4f4f6;
   }
 
   .todolist-pref-btn:hover {
-    background-color: #283040;
-    border-color: rgba(255, 255, 255, 0.25);
+    background-color: #323238;
+    border-color: #4a4a52;
+  }
+
+  .todolist-pref-btn-primary {
+    background-color: rgba(223, 56, 58, 0.18) !important;
+    border-color: #df383a !important;
+    color: #fca5a5 !important;
+  }
+
+  .todolist-pref-btn-primary:hover {
+    background-color: rgba(223, 56, 58, 0.28) !important;
   }
 }

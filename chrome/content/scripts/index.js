@@ -1898,7 +1898,7 @@
           Zotero.PreferencePanes.register({
             pluginID: ADDON_ID,
             src: prefSrc,
-            label: 'TaskFlow',
+            label: 'Zotero TaskFlow',
             image: prefIcon,
             scripts: [prefScript],
             stylesheets: [prefCss],
