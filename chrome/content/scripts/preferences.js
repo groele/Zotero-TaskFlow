@@ -1,6 +1,7 @@
 /* Zotero TaskFlow settings pane script for Zotero 10+ */
-window.Todolist_Preferences = (() => {
-  const PREFIX = 'extensions.todolist.';
+window.TaskFlow_Preferences = (() => {
+  const PREFIX = 'extensions.taskflow.';
+  const LEGACY_PREFIX = 'extensions.todolist.';
   const HTML = 'http://www.w3.org/1999/xhtml';
   // These preferences have no runtime consumer yet. Do not offer ineffective controls.
   const UNAVAILABLE_SETTINGS = new Set([
@@ -10,8 +11,9 @@ window.Todolist_Preferences = (() => {
   ]);
 
   function reportOperationError(zot, doc, action, error) {
-    zot?.logError?.('[Todolist] ' + action + ': ' + error);
-    Promise.resolve(zot?.Todolist?.recordDiagnostic?.({ action, message: String(error?.message || error), stack: error?.stack })).catch(() => {});
+    zot?.logError?.('[TaskFlow] ' + action + ': ' + error);
+    const host = zot?.TaskFlow || zot?.Todolist;
+    Promise.resolve(host?.recordDiagnostic?.({ action, message: String(error?.message || error), stack: error?.stack })).catch(() => {});
     const status = doc.getElementById('todolist-pref-status');
     if (status) status.textContent = `${action}失败：${String(error?.message || error)}`;
   }
@@ -183,16 +185,19 @@ window.Todolist_Preferences = (() => {
     if (typeof Zotero === 'undefined' || !Zotero.Prefs) return DEFAULTS[key];
     try {
       const fullKey = PREFIX + key;
+      const legacyKey = LEGACY_PREFIX + key;
       const type = typeof DEFAULTS[key];
+      let val = Zotero.Prefs.get(fullKey, true);
+      if (val === undefined) {
+        val = Zotero.Prefs.get(legacyKey, true);
+      }
       if (type === 'boolean') {
-        const val = Zotero.Prefs.get(fullKey, true);
         return typeof val === 'boolean' ? val : DEFAULTS[key];
       }
       if (type === 'number') {
-        const val = Zotero.Prefs.get(fullKey, true);
         return Number.isFinite(Number(val)) ? Number(val) : DEFAULTS[key];
       }
-      return Zotero.Prefs.get(fullKey, true) ?? DEFAULTS[key];
+      return val ?? DEFAULTS[key];
     } catch (_) {
       return DEFAULTS[key];
     }
@@ -207,16 +212,19 @@ window.Todolist_Preferences = (() => {
       try {
         for (const [key, val] of Object.entries(values)) {
           Zotero.Prefs.set(PREFIX + key, val, true);
+          try { Zotero.Prefs.set(LEGACY_PREFIX + key, val, true); } catch (_) {}
           changed.push(key);
         }
-        const saveSettings = Zotero.Todolist?.saveData;
+        const saveSettings = Zotero.TaskFlow?.saveData || Zotero.Todolist?.saveData;
         if (typeof saveSettings !== 'function') throw new Error('待办数据服务尚未就绪');
-        await saveSettings.call(Zotero.Todolist, { settings: values });
+        const host = Zotero.TaskFlow || Zotero.Todolist;
+        await saveSettings.call(host, { settings: values });
       } catch (error) {
         for (const key of changed) {
           try {
             if (Zotero.Prefs.get(PREFIX + key, true) === values[key]) Zotero.Prefs.set(PREFIX + key, previous[key], true);
-          } catch (rollbackError) { Zotero.logError?.('[Todolist] Failed to restore preference: ' + rollbackError); }
+            if (Zotero.Prefs.get(LEGACY_PREFIX + key, true) === values[key]) Zotero.Prefs.set(LEGACY_PREFIX + key, previous[key], true);
+          } catch (rollbackError) { Zotero.logError?.('[TaskFlow] Failed to restore preference: ' + rollbackError); }
         }
         throw error;
       }
@@ -638,13 +646,17 @@ window.Todolist_Preferences = (() => {
   };
 })();
 
+window.Todolist_Preferences = window.TaskFlow_Preferences;
+
 // Auto-init fallback if onload already fired in modern Gecko / Zotero 10+
 if (typeof window !== 'undefined' && window.document) {
   if (window.document.readyState === 'complete' || window.document.readyState === 'interactive') {
     setTimeout(() => {
-      const pane = window.document.getElementById('todolist-preferences-pane');
-      if (pane && !pane._todolistInited) {
-        window.Todolist_Preferences?.init?.(window);
+      const pane = window.document.getElementById('todolist-preferences-pane') || window.document.getElementById('taskflow-preferences-pane');
+      if (pane && !pane._todolistInited && !pane._taskflowInited) {
+        pane._todolistInited = true;
+        pane._taskflowInited = true;
+        window.TaskFlow_Preferences?.init?.(window);
       }
     }, 50);
   }

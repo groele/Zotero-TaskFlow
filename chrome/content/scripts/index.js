@@ -13,8 +13,10 @@
     return;
   }
 
-  const ADDON_ID = 'todolist@groele.org';
-  const CHROME_ROOT = 'chrome://todolist/content/';
+  const ADDON_ID = 'taskflow@groele.org';
+  const LEGACY_ADDON_ID = 'todolist@groele.org';
+  const CHROME_ROOT = 'chrome://taskflow/content/';
+  const LEGACY_CHROME_ROOT = 'chrome://todolist/content/';
 
   const escapeHtml = (value) => String(value ?? '')
     .replace(/&/g, '&amp;')
@@ -142,9 +144,10 @@
   const pendingWindowLoads = new Map();
   let windowListener = null;
 
-  Zotero.Todolist = {
+  Zotero.TaskFlow = {
     rootURI: typeof rootURI !== 'undefined' ? rootURI : '',
     addonId: ADDON_ID,
+    legacyAddonId: LEGACY_ADDON_ID,
     localizedDocs: new Set(),
     _cachedData: null,
     _dataListeners: new Set(),
@@ -159,10 +162,16 @@
         page: String(record?.page || '').slice(0, 300)
       };
       const run = async () => {
-        const file = PathUtils.join(Zotero.DataDirectory?.dir || PathUtils.profileDir, 'todolist-debug.json');
+        const file = PathUtils.join(Zotero.DataDirectory?.dir || PathUtils.profileDir, 'taskflow-debug.json');
         if (!this._diagnosticRecords) {
           try {
-            const existing = await IOUtils.exists(file) ? JSON.parse(await IOUtils.readUTF8(file)) : [];
+            const legacyFile = PathUtils.join(Zotero.DataDirectory?.dir || PathUtils.profileDir, 'todolist-debug.json');
+            let existing = null;
+            if (await IOUtils.exists(file)) {
+              existing = JSON.parse(await IOUtils.readUTF8(file));
+            } else if (await IOUtils.exists(legacyFile)) {
+              existing = JSON.parse(await IOUtils.readUTF8(legacyFile));
+            }
             this._diagnosticRecords = Array.isArray(existing) ? existing.slice(-49) : [];
           } catch (_) { this._diagnosticRecords = []; }
         }
@@ -171,21 +180,24 @@
         await IOUtils.writeUTF8(file, JSON.stringify(this._diagnosticRecords, null, 2), { tmpPath: file + '.tmp' });
       };
       const result = (this._diagnosticQueue || Promise.resolve()).then(run);
-      this._diagnosticQueue = result.catch(error => Zotero.logError?.('[Todolist] Diagnostic log write failed: ' + error));
+      this._diagnosticQueue = result.catch(error => Zotero.logError?.('[TaskFlow] Diagnostic log write failed: ' + error));
       return this._diagnosticQueue;
     },
 
     ensureLocalization(doc) {
       if (!doc || this.localizedDocs.has(doc)) return;
-      const existing = doc.querySelector('link[rel="localization"][href="todolist.ftl"]');
+      const existing = doc.querySelector('link[rel="localization"][href="taskflow.ftl"]') ||
+                       doc.querySelector('link[rel="localization"][href="todolist.ftl"]');
       if (existing) return;
       try {
+        doc.defaultView?.MozXULElement?.insertFTLIfNeeded('taskflow.ftl');
         doc.defaultView?.MozXULElement?.insertFTLIfNeeded('todolist.ftl');
-        if (doc.querySelector('link[rel="localization"][href="todolist.ftl"]')) {
+        if (doc.querySelector('link[rel="localization"][href="taskflow.ftl"]') ||
+            doc.querySelector('link[rel="localization"][href="todolist.ftl"]')) {
           this.localizedDocs.add(doc);
         }
       } catch (error) {
-        Zotero.logError?.('[Todolist] Could not load translations: ' + error);
+        Zotero.logError?.('[TaskFlow] Could not load translations: ' + error);
       }
     },
 
@@ -722,6 +734,11 @@
 
     getDataFilePath() {
       const baseDir = Zotero.DataDirectory?.dir || PathUtils.profileDir;
+      return PathUtils.join(baseDir, 'taskflow-data.json');
+    },
+
+    getLegacyDataFilePath() {
+      const baseDir = Zotero.DataDirectory?.dir || PathUtils.profileDir;
       return PathUtils.join(baseDir, 'todolist-data.json');
     },
 
@@ -742,13 +759,28 @@
 
     async readDataFile() {
       const filePath = this.getDataFilePath();
+      const legacyPath = this.getLegacyDataFilePath();
       try {
+        let loadedFromLegacy = false;
+        let data = null;
         if (await IOUtils.exists(filePath)) {
-          const data = JSON.parse(await IOUtils.readUTF8(filePath));
-          if (!data || !Array.isArray(data.tasks)) throw new Error('任务数据格式无效');
+          data = JSON.parse(await IOUtils.readUTF8(filePath));
+        } else if (legacyPath && await IOUtils.exists(legacyPath)) {
+          data = JSON.parse(await IOUtils.readUTF8(legacyPath));
+          loadedFromLegacy = true;
+        }
+        if (data) {
+          if (!Array.isArray(data.tasks)) throw new Error('任务数据格式无效');
           const seen = new Set();
           data.tasks = data.tasks.filter(t => t && t.id && !seen.has(t.id) && seen.add(t.id));
           this._cachedData = data;
+          if (loadedFromLegacy) {
+            try {
+              await IOUtils.writeUTF8(filePath, JSON.stringify(data, null, 2), { tmpPath: filePath + '.tmp' });
+            } catch (migErr) {
+              Zotero.logError?.('[TaskFlow] 自动迁移数据至 taskflow-data.json 失败: ' + migErr);
+            }
+          }
         } else {
           this._cachedData = { tasks: [], settings: { defaultView: 'list', showCompleted: true,
             sortOrder: 'dueDate', theme: this.getPref('theme', 'zotero'), defaultDueDays: this.getPref('defaultDueDays', 7),
@@ -756,7 +788,7 @@
         }
         return this._cachedData;
       } catch (error) {
-        Zotero.logError?.('[Todolist] 数据读取失败，保留原文件: ' + error);
+        Zotero.logError?.('[TaskFlow] 数据读取失败，保留原文件: ' + error);
         this.recordDiagnostic({ action: '读取待办数据', message: String(error?.message || error), stack: error?.stack });
         throw error;
       }
@@ -929,11 +961,22 @@
     getPref(key, defaultVal) {
       try {
         if (Zotero.Prefs) {
-          const val = Zotero.Prefs.get(`extensions.todolist.${key}`, true);
-          return val !== undefined ? val : defaultVal;
+          const tfVal = Zotero.Prefs.get(`extensions.taskflow.${key}`, true);
+          if (tfVal !== undefined) return tfVal;
+          const todoVal = Zotero.Prefs.get(`extensions.todolist.${key}`, true);
+          return todoVal !== undefined ? todoVal : defaultVal;
         }
       } catch (_) {}
       return defaultVal;
+    },
+
+    setPref(key, val) {
+      try {
+        if (Zotero.Prefs) {
+          Zotero.Prefs.set(`extensions.taskflow.${key}`, val, true);
+          try { Zotero.Prefs.set(`extensions.todolist.${key}`, val, true); } catch (_) {}
+        }
+      } catch (_) {}
     },
 
     showNotice(headline, description = '', timeout = 4000) {
@@ -1849,19 +1892,19 @@
             ? `${this.rootURI}chrome/content/assets/preferences.css`
             : `${CHROME_ROOT}assets/preferences.css`;
           const prefIcon = this.rootURI
-            ? `${this.rootURI}chrome/content/icons/todolist.svg`
-            : `${CHROME_ROOT}icons/todolist.svg`;
+            ? `${this.rootURI}chrome/content/icons/taskflow.svg`
+            : `${CHROME_ROOT}icons/taskflow.svg`;
 
           Zotero.PreferencePanes.register({
             pluginID: ADDON_ID,
             src: prefSrc,
-            label: 'Todolist',
+            label: 'TaskFlow',
             image: prefIcon,
             scripts: [prefScript],
             stylesheets: [prefCss],
           });
         } catch (prefErr) {
-          Zotero.log?.('[Todolist] PreferencePanes registration note: ' + prefErr);
+          Zotero.log?.('[TaskFlow] PreferencePanes registration note: ' + prefErr);
         }
       }
 
@@ -2791,7 +2834,7 @@
           if (sourceWin && sourceWin !== iframe?.contentWindow) {
             let sourceURL;
             try { sourceURL = String(sourceWin.location?.href || ''); } catch (_) { return; }
-            if (!/^chrome:\/\/todolist\/content\/(?:index|sidepanel)\.html(?:[?#]|$)/.test(sourceURL)) return;
+            if (!/^chrome:\/\/(?:taskflow|todolist)\/content\/(?:index|sidepanel)\.html(?:[?#]|$)/.test(sourceURL)) return;
           }
           if (!sourceWin && !iframe?.contentWindow) return;
 
@@ -3557,6 +3600,8 @@
     }
   };
 
+  Zotero.Todolist = Zotero.TaskFlow;
+
   // Run initialization
-  Zotero.Todolist.init();
+  Zotero.TaskFlow.init();
 })();

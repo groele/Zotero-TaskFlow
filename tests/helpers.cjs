@@ -47,12 +47,12 @@ function makeHost(seed = { tasks: [], settings: {}, customTags: [] }) {
   const context = vm.createContext({ console, setTimeout, clearTimeout, Promise,
     PathUtils: { join: (...parts) => parts.join('/'), profileDir: '/test' },
     IOUtils: { exists: async () => true,
-      readUTF8: async file => { if (file.endsWith('todolist-debug.json')) return JSON.stringify(diagnostics); if (readError) throw readError; return JSON.stringify(disk); },
+      readUTF8: async file => { if (file.endsWith('taskflow-debug.json') || file.endsWith('todolist-debug.json')) return JSON.stringify(diagnostics); if (readError) throw readError; return JSON.stringify(disk); },
       writeUTF8: async (file, text, options) => {
         if (!options?.tmpPath) throw new Error('atomic write required');
         await new Promise(resolve => setTimeout(resolve, 2));
         if (failWrite) throw new Error('simulated disk full');
-        if (file.endsWith('todolist-debug.json')) { diagnostics = JSON.parse(text); return; }
+        if (file.endsWith('taskflow-debug.json') || file.endsWith('todolist-debug.json')) { diagnostics = JSON.parse(text); return; }
         writes++; disk = JSON.parse(text);
       } },
     Zotero: { DataDirectory: { dir: '/test' }, logError: message => logs.push(String(message)),
@@ -61,9 +61,11 @@ function makeHost(seed = { tasks: [], settings: {}, customTags: [] }) {
       ItemPaneManager: { registerSection: options => { pane = options; return 'test-section'; } } } });
   vm.runInContext(read('chrome/content/js/taskRules.js'), context);
   vm.runInContext(read('chrome/content/js/literatureWorkflow.js'), context);
-  const runtime = read('chrome/content/scripts/index.js').replace('  Zotero.Todolist.init();', '  // init is supplied by the fixture');
+  const runtime = read('chrome/content/scripts/index.js')
+    .replace('  Zotero.TaskFlow.init();', '  // init is supplied by the fixture')
+    .replace('  Zotero.Todolist.init();', '  // init is supplied by the fixture');
   vm.runInContext(runtime, context);
-  const host = context.Zotero.Todolist;
+  const host = context.Zotero.TaskFlow || context.Zotero.Todolist;
   host.showNotice = () => {};
   return { host, context, disk: () => copy(disk), diagnostics: () => copy(diagnostics), logs, writes: () => writes,
     failWrites: value => { failWrite = value; }, failReads: value => { readError = value; },

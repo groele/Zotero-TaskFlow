@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Zotero TaskFlow - 面向科研文献的智能任务管理与研究计划工作台",
-  "version": "11.2.5",
+  "version": "12.0.0",
   "description": "Zotero TaskFlow: 面向科研文献的智能任务管理与研究计划工作台 (Organize Tasks. Track Progress. Advance Research.)",
   "homepage_url": "https://github.com/groele/Zotero-TaskFlow",
   "author": "groele",
@@ -11,7 +11,7 @@
   },
   "applications": {
     "zotero": {
-      "id": "todolist@groele.org",
+      "id": "taskflow@groele.org",
       "strict_min_version": "10.0.0",
       "strict_max_version": "15.*",
       "update_url": "https://raw.githubusercontent.com/groele/Zotero-TaskFlow/zotero/update.json"
@@ -19,7 +19,7 @@
   },
   "browser_specific_settings": {
     "zotero": {
-      "id": "todolist@groele.org",
+      "id": "taskflow@groele.org",
       "strict_min_version": "10.0.0",
       "strict_max_version": "15.*",
       "update_url": "https://raw.githubusercontent.com/groele/Zotero-TaskFlow/zotero/update.json"

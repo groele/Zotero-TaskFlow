@@ -111,6 +111,9 @@ async function startup({ id, version, resourceURI, rootURI }, reason) {
     );
     var manifestURI = Services.io.newURI(rootURI + 'manifest.json');
     chromeHandle = aomStartup.registerChrome(manifestURI, [
+      ['content', 'taskflow', rootURI + 'chrome/content/'],
+      ['locale', 'taskflow', 'en-US', rootURI + 'locale/en-US/'],
+      ['locale', 'taskflow', 'zh-CN', rootURI + 'locale/zh-CN/'],
       ['content', 'todolist', rootURI + 'chrome/content/'],
       ['locale', 'todolist', 'en-US', rootURI + 'locale/en-US/'],
       ['locale', 'todolist', 'zh-CN', rootURI + 'locale/zh-CN/'],
@@ -127,12 +130,12 @@ async function startup({ id, version, resourceURI, rootURI }, reason) {
     Services.scriptloader.loadSubScript(`${rootURI}chrome/content/js/literatureWorkflow.js`, ctx);
     Services.scriptloader.loadSubScript(`${rootURI}chrome/content/scripts/index.js`, ctx);
   } catch (error) {
-    Zotero?.logError?.('Failed to startup Todolist addon: ' + error);
+    Zotero?.logError?.('Failed to startup TaskFlow addon: ' + error);
     if (generation === startupGeneration && chromeHandle) {
       try {
         chromeHandle.destruct();
       } catch (cleanupError) {
-        Zotero?.logError?.('Failed to release Todolist chrome handle: ' + cleanupError);
+        Zotero?.logError?.('Failed to release TaskFlow chrome handle: ' + cleanupError);
       } finally {
         chromeHandle = null;
       }
@@ -155,15 +158,15 @@ async function shutdown({ id, version, resourceURI, rootURI }, reason) {
         Components.interfaces.nsISupports
       ).wrappedJSObject;
     }
-    await Zotero?.Todolist?.shutdown?.();
+    await (Zotero?.TaskFlow?.shutdown?.() || Zotero?.Todolist?.shutdown?.());
   } catch (error) {
-    Zotero?.logError?.('Error during Todolist shutdown: ' + error);
+    Zotero?.logError?.('Error during TaskFlow shutdown: ' + error);
   }
   if (chromeHandle) {
     try {
       chromeHandle.destruct();
     } catch (error) {
-      Zotero?.logError?.('Failed to release Todolist chrome: ' + error);
+      Zotero?.logError?.('Failed to release TaskFlow chrome: ' + error);
     } finally {
       chromeHandle = null;
     }

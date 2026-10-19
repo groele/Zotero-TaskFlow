@@ -1,6 +1,6 @@
 {
   "name": "zotero-taskflow",
-  "version": "11.2.5",
+  "version": "12.0.0",
   "description": "Zotero TaskFlow: 面向科研文献的智能任务管理与研究计划工作台",
   "private": true,
   "scripts": {
