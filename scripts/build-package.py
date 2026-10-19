@@ -45,9 +45,9 @@ def main() -> int:
     browser_zotero = manifest.get("browser_specific_settings", {}).get("zotero", {})
     if not addon_id or browser_zotero.get("id") != addon_id:
         raise ValueError("Zotero add-on IDs must match in both manifest sections")
-    expected_update_url = "https://raw.githubusercontent.com/groele/Zotero-TaskFlow/zotero/update.json"
+    expected_update_url = "https://raw.githubusercontent.com/groele/Zotero-TaskFlow/main/update.json"
     if update_url != expected_update_url or browser_zotero.get("update_url") != expected_update_url:
-        raise ValueError("Both manifest update URLs must point to the repository's zotero branch")
+        raise ValueError("Both manifest update URLs must point to the repository's main branch")
     update_entries = update_feed.get("addons", {}).get(addon_id, {}).get("updates", [])
     matching_update = next(
         (entry for entry in update_entries if entry.get("version") == version),
