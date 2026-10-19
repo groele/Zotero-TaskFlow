@@ -3,95 +3,58 @@
       id="todolist-preferences-pane" class="todolist-prefs-container"
       onload="Todolist_Preferences.init(window)">
   <html:header class="todolist-pref-header">
-    <html:div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; width: 100%;">
-      <html:h1 style="margin: 0; font-size: 18px; font-weight: 600; color: inherit;">Zotero TaskFlow</html:h1>
-      <html:div style="display: flex; gap: 8px; flex-wrap: wrap;">
+    <html:h1 style="margin: 0; font-size: 18px; font-weight: 600; color: inherit;">Zotero TaskFlow</html:h1>
+  </html:header>
+  <html:p id="todolist-pref-status" class="todolist-pref-status" role="status" aria-live="polite">正在加载设置项…</html:p>
+
+  <!-- 1. 常规与工作区视图 -->
+  <html:details id="todolist-group-view" class="todolist-pref-card" open="open">
+    <html:summary class="todolist-card-header">
+      <html:span class="todolist-card-title">常规与工作区视图</html:span>
+    </html:summary>
+    <html:div class="todolist-card-body">
+      <html:p class="todolist-pref-desc">配置工作区呈现形态、默认主视图、主题配色与专注提醒。</html:p>
+      
+      <html:div class="todolist-pref-subheading">窗口形态与多窗协同</html:div>
+      <html:div id="todolist-pref-window" class="todolist-pref-content" />
+      <html:div class="todolist-mode-quickbar">
+        <html:span style="font-size: 12px; color: var(--zotero-text-secondary);">快速打开测试：</html:span>
         <html:button id="todolist-btn-open-workspace" class="todolist-pref-btn" type="button" title="在 Zotero 内部选项卡中打开">📑 内部选项卡</html:button>
         <html:button id="todolist-btn-open-subwindow" class="todolist-pref-btn" type="button" title="打开 460×760 紧凑伴读子窗口，适合边读 PDF 边核对待办">🗗 伴读子窗口</html:button>
         <html:button id="todolist-btn-open-window" class="todolist-pref-btn" type="button" title="打开 1120×760 独立桌面全屏大窗口">⬚ 独立大窗口</html:button>
       </html:div>
-    </html:div>
-  </html:header>
-  <html:p id="todolist-pref-status" class="todolist-pref-status" role="status" aria-live="polite">正在加载设置项…</html:p>
 
-  <!-- 1. 窗口模式与多窗协同 -->
-  <html:details id="todolist-group-window" class="todolist-pref-card" open="open">
-    <html:summary class="todolist-card-header">
-      <html:span class="todolist-card-title">窗口模式与多窗协同</html:span>
-    </html:summary>
-    <html:div class="todolist-card-body">
-      <html:p class="todolist-pref-desc">配置默认工作区形态，支持内部选项卡、浮动伴读悬浮子窗口与独立全屏大窗口协同。</html:p>
-      <html:div id="todolist-pref-window" class="todolist-pref-content" />
-    </html:div>
-  </html:details>
-
-  <!-- 2. 界面显示与默认视图 -->
-  <html:details id="todolist-group-view" class="todolist-pref-card" open="open">
-    <html:summary class="todolist-card-header">
-      <html:span class="todolist-card-title">界面显示与默认视图</html:span>
-    </html:summary>
-    <html:div class="todolist-card-body">
-      <html:p class="todolist-pref-desc">自定义默认视图（列表/看板/日历/统计）、主题外观配色与任务排序规则。</html:p>
+      <html:div class="todolist-pref-subheading">界面配色与默认视图</html:div>
       <html:div id="todolist-pref-view" class="todolist-pref-content" />
-    </html:div>
-  </html:details>
 
-  <!-- 3. 文献侧边详情栏 (ItemPane) 与双向联动 -->
-  <html:details id="todolist-group-literature" class="todolist-pref-card">
-    <html:summary class="todolist-card-header">
-      <html:span class="todolist-card-title">文献侧边详情栏 (ItemPane) 与双向联动</html:span>
-    </html:summary>
-    <html:div class="todolist-card-body">
-      <html:p class="todolist-pref-desc">控制在 Zotero 文献条目右侧面板中展示任务进度与研读子清单。</html:p>
-      <html:div id="todolist-pref-literature" class="todolist-pref-content" />
-    </html:div>
-  </html:details>
-
-  <!-- 4. 文献子笔记云同步 -->
-  <html:details id="todolist-group-sync" class="todolist-pref-card">
-    <html:summary class="todolist-card-header">
-      <html:span class="todolist-card-title">文献子笔记多端云同步</html:span>
-    </html:summary>
-    <html:div class="todolist-card-body">
-      <html:p class="todolist-pref-desc">自动将研读任务与进度同步至文献子笔记，原生支持 iPad / Mac / PC 多端云协同。</html:p>
-      <html:div id="todolist-pref-sync" class="todolist-pref-content" />
-    </html:div>
-  </html:details>
-
-  <!-- 5. 文献研读状态自动打标 -->
-  <html:details id="todolist-group-tags" class="todolist-pref-card">
-    <html:summary class="todolist-card-header">
-      <html:span class="todolist-card-title">文献研读状态自动打标</html:span>
-    </html:summary>
-    <html:div class="todolist-card-body">
-      <html:p class="todolist-pref-desc">根据任务研读进度，自动为关联的文献条目添加或更新状态标签。</html:p>
-      <html:div id="todolist-pref-tags" class="todolist-pref-content" />
-    </html:div>
-  </html:details>
-
-  <!-- 6. 学术场景预设与阅读器自动化 -->
-  <html:details id="todolist-group-academic" class="todolist-pref-card">
-    <html:summary class="todolist-card-header">
-      <html:span class="todolist-card-title">学术场景预设与阅读器自动化</html:span>
-    </html:summary>
-    <html:div class="todolist-card-body">
-      <html:p class="todolist-pref-desc">配置默认学术场景类型（论文研读、写作、实验等）与阅读器批注快捷动作。</html:p>
-      <html:div id="todolist-pref-academic" class="todolist-pref-content" />
-    </html:div>
-  </html:details>
-
-  <!-- 7. 番茄钟专注冲刺与提醒 -->
-  <html:details id="todolist-group-focus" class="todolist-pref-card">
-    <html:summary class="todolist-card-header">
-      <html:span class="todolist-card-title">番茄钟专注冲刺与提醒</html:span>
-    </html:summary>
-    <html:div class="todolist-card-body">
-      <html:p class="todolist-pref-desc">设置专注时长、休息间隔与每日学术待办晨报提醒。</html:p>
+      <html:div class="todolist-pref-subheading">专注提醒与每日晨报</html:div>
       <html:div id="todolist-pref-focus" class="todolist-pref-content" />
     </html:div>
   </html:details>
 
-  <!-- 8. 自定义学术研读标签管理 -->
+  <!-- 2. 文献深度联动与自动化 -->
+  <html:details id="todolist-group-literature" class="todolist-pref-card">
+    <html:summary class="todolist-card-header">
+      <html:span class="todolist-card-title">文献深度联动与自动化</html:span>
+    </html:summary>
+    <html:div class="todolist-card-body">
+      <html:p class="todolist-pref-desc">配置 Zotero 文献详情侧栏 (ItemPane)、子笔记多端同步、状态自动打标与 PDF 阅读器快捷动作。</html:p>
+      
+      <html:div class="todolist-pref-subheading">文献详情侧栏 (ItemPane)</html:div>
+      <html:div id="todolist-pref-literature" class="todolist-pref-content" />
+
+      <html:div class="todolist-pref-subheading">文献子笔记多端云同步</html:div>
+      <html:div id="todolist-pref-sync" class="todolist-pref-content" />
+
+      <html:div class="todolist-pref-subheading">文献研读状态自动打标</html:div>
+      <html:div id="todolist-pref-tags" class="todolist-pref-content" />
+
+      <html:div class="todolist-pref-subheading">学术场景与阅读器自动化</html:div>
+      <html:div id="todolist-pref-academic" class="todolist-pref-content" />
+    </html:div>
+  </html:details>
+
+  <!-- 3. 自定义学术研读标签管理 -->
   <html:details id="todolist-group-custom-tags" class="todolist-pref-card">
     <html:summary class="todolist-card-header">
       <html:span class="todolist-card-title">自定义学术研读标签管理</html:span>
@@ -116,29 +79,23 @@
     </html:div>
   </html:details>
 
-  <!-- 9. 数据全量备份与跨格式导出 -->
-  <html:details id="todolist-group-export" class="todolist-pref-card">
+  <!-- 4. 数据备份、恢复与系统维护 -->
+  <html:details id="todolist-group-backup" class="todolist-pref-card todolist-pref-group-last">
     <html:summary class="todolist-card-header">
-      <html:span class="todolist-card-title">数据全量备份与跨格式导出</html:span>
+      <html:span class="todolist-card-title">数据备份、恢复与系统维护</html:span>
     </html:summary>
     <html:div class="todolist-card-body">
-      <html:p class="todolist-pref-desc">支持将待办、文献关联、研读笔记与子任务一键导出为各类通用格式：</html:p>
+      <html:p class="todolist-pref-desc">支持数据全量备份与跨格式导出、灾备恢复导入、学术清单打印、全局快捷键与重置偏好。</html:p>
+      
+      <html:div class="todolist-pref-subheading">数据全量备份与跨格式导出</html:div>
       <html:div class="todolist-export-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; margin-top: 8px;">
         <html:button id="todolist-btn-export-json" type="button" class="todolist-pref-btn">📑 导出 JSON 全量备份</html:button>
         <html:button id="todolist-btn-export-csv" type="button" class="todolist-pref-btn">📊 导出 CSV 表格 (Excel 兼容)</html:button>
         <html:button id="todolist-btn-export-markdown" type="button" class="todolist-pref-btn">📝 导出 Markdown 清单 (Obsidian/Notion)</html:button>
         <html:button id="todolist-btn-export-txt" type="button" class="todolist-pref-btn">📄 导出 TXT 纯文本</html:button>
       </html:div>
-    </html:div>
-  </html:details>
 
-  <!-- 10. 数据导入与灾备恢复 -->
-  <html:details id="todolist-group-import" class="todolist-pref-card">
-    <html:summary class="todolist-card-header">
-      <html:span class="todolist-card-title">数据导入与灾备恢复</html:span>
-    </html:summary>
-    <html:div class="todolist-card-body">
-      <html:p class="todolist-pref-desc">从 JSON 备份文件中导入恢复待办任务与自定义标签：</html:p>
+      <html:div class="todolist-pref-subheading" style="margin-top: 18px;">数据导入与灾备恢复</html:div>
       <html:div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
         <html:select id="todolist-import-mode" class="todolist-control" style="max-width: 220px;">
           <html:option value="merge">智能合并 (保留现有并补充导入)</html:option>
@@ -147,15 +104,8 @@
         <html:button id="todolist-btn-import-file" type="button" class="todolist-pref-btn todolist-pref-btn-primary">📂 选择 JSON 文件导入</html:button>
       </html:div>
       <html:p id="todolist-import-status" class="todolist-pref-desc" style="margin-top: 6px; font-size: 12px; color: #059669; font-weight: 500;"></html:p>
-    </html:div>
-  </html:details>
 
-  <!-- 11. 维护、诊断与默认重置 -->
-  <html:details id="todolist-group-backup" class="todolist-pref-card todolist-pref-group-last">
-    <html:summary class="todolist-card-header">
-      <html:span class="todolist-card-title">维护、诊断与快捷键</html:span>
-    </html:summary>
-    <html:div class="todolist-card-body">
+      <html:div class="todolist-pref-subheading" style="margin-top: 18px;">系统维护、诊断与快捷键</html:div>
       <html:div id="todolist-pref-maintenance" style="margin-bottom: 8px;" />
       <html:p class="todolist-pref-desc">
         <strong>全局快捷键支持：</strong><html:br/>
