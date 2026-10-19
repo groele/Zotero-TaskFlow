@@ -12,9 +12,9 @@ const Diagnostics = {
     };
     this.records.push(record);
     this.records = this.records.slice(-50);
-    console.error('[Todolist] ' + record.action, record.message, record.stack);
+    console.error('[TaskFlow] ' + record.action, record.message, record.stack);
     try {
-      const host = window.Zotero?.Todolist || window.parent?.Zotero?.Todolist;
+      const host = window.Zotero?.TaskFlow || window.Zotero?.Todolist || window.parent?.Zotero?.TaskFlow || window.parent?.Zotero?.Todolist;
       if (host?.recordDiagnostic) Promise.resolve(host.recordDiagnostic(record)).catch(() => {});
       else if (typeof ZoteroBridge !== 'undefined' && ZoteroBridge.isZotero) {
         ZoteroBridge.sendToHost({ type: 'TODOLIST_DIAGNOSTIC', record });
@@ -33,4 +33,5 @@ const Diagnostics = {
     catch (error) { this.showFailure(action, error); }
   }
 };
+window.TaskFlowDiagnostics = Diagnostics;
 window.TodolistDiagnostics = Diagnostics;

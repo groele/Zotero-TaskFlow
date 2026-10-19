@@ -81,7 +81,7 @@ def apply_icon(choice):
         if os.path.exists(src_svg):
             with open(src_svg, 'r', encoding='utf-8') as source:
                 svg_content = '\n'.join(line.rstrip() for line in source.read().splitlines()) + '\n'
-            for filename in ("icon.svg", "todolist.svg"):
+            for filename in ("icon.svg", "todolist.svg", "taskflow.svg"):
                 dest_svg = os.path.join(d, filename)
                 with open(dest_svg, 'w', encoding='utf-8', newline='\n') as output:
                     output.write(svg_content)

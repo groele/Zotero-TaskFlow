@@ -82,12 +82,12 @@
    - Windows：`%APPDATA%\Zotero\Zotero\Profiles\<profile>\extensions\`
    - macOS：`~/Library/Application Support/Zotero/Profiles/<profile>/extensions/`
    - Linux：`~/.zotero/zotero/<profile>/extensions/`
-2. 新建一个名为 `todolist@groele.org`、没有扩展名的文本文件。
+2. 新建一个名为 `taskflow@groele.org`（或旧版兼容别名 `todolist@groele.org`）、没有扩展名的文本文件。
 3. 将本项目目录的绝对路径写入文件并保存，然后启动 Zotero。
 
 ## 数据、同步与导出
 
-- 在 Zotero 中，插件任务数据保存在 Zotero 数据目录下的 `todolist-data.json`。建议在升级或迁移配置目录前先从插件设置页导出 JSON 备份。
+- 在 Zotero 中，插件任务数据保存在 Zotero 数据目录下的 `taskflow-data.json`（旧版 `todolist-data.json` 会在初次启动时自动无损迁移）。建议在升级或迁移配置目录前先从插件设置页导出 JSON 备份。
 - JSON 可用于完整备份和恢复；导入时可选择合并或替换。CSV、Markdown 和 TXT 用于查看、整理或分享导出内容，不用于导入恢复。
 - 与文献关联的 Zotero 子笔记和标签属于 Zotero 条目数据；它们是否跨设备同步取决于 Zotero 账户的同步设置。任务数据库文件不会因为创建了子笔记而自动同步。
 - 清空任务数据会移除插件本地待办数据，操作不可撤销；请先导出备份。

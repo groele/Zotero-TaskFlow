@@ -99,12 +99,12 @@ const Advanced = {
     ]);
 
     const csv = '﻿' + headers.join(',') + '\n' + rows.map(r => r.join(',')).join('\n');
-    this.downloadFile(csv, 'todolist-export.csv', 'text/csv;charset=utf-8');
+    this.downloadFile(csv, 'taskflow-export.csv', 'text/csv;charset=utf-8');
   },
 
   // Export tasks to Markdown
   exportToMarkdown(tasks) {
-    let md = '# Todolist 任务导出\n\n';
+    let md = '# TaskFlow 任务导出\n\n';
     md += `导出时间: ${new Date().toLocaleString('zh-CN')}\n\n`;
     md += `---\n\n`;
 
@@ -139,12 +139,12 @@ const Advanced = {
       });
     }
 
-    this.downloadFile(md, 'todolist-export.md', 'text/markdown;charset=utf-8');
+    this.downloadFile(md, 'taskflow-export.md', 'text/markdown;charset=utf-8');
   },
 
   // Export tasks to plain text
   exportToText(tasks) {
-    let text = 'Todolist 任务导出\n';
+    let text = 'TaskFlow 任务导出\n';
     text += '==================\n\n';
     text += `导出时间: ${new Date().toLocaleString('zh-CN')}\n\n`;
 
@@ -170,7 +170,7 @@ const Advanced = {
 
     text += `\n总计: ${tasks.length} 个任务 (待完成: ${incomplete.length}, 已完成: ${completed.length})`;
 
-    this.downloadFile(text, 'todolist-export.txt', 'text/plain;charset=utf-8');
+    this.downloadFile(text, 'taskflow-export.txt', 'text/plain;charset=utf-8');
   },
 
   // Download file helper
@@ -198,7 +198,7 @@ const Advanced = {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Todolist 打印</title>
+        <title>TaskFlow 打印</title>
         <style>
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 20px; }
           h1 { color: #6366f1; border-bottom: 2px solid #6366f1; padding-bottom: 10px; }
@@ -219,7 +219,7 @@ const Advanced = {
         </style>
       </head>
       <body>
-        <h1>📋 Todolist</h1>
+        <h1>📋 TaskFlow</h1>
         <p>打印时间: ${new Date().toLocaleString('zh-CN')}</p>
 
         <div class="no-print" style="margin: 20px 0;">

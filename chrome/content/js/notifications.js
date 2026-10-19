@@ -48,7 +48,7 @@ const Notifications = {
 
   // Show notification
   async show(title, body, options = {}) {
-    const host = Storage.getZoteroInstance()?.Todolist;
+    const host = Storage.getZoteroInstance()?.TaskFlow || Storage.getZoteroInstance()?.Todolist;
     if (host?.showNotice) { host.showNotice(title, body); return true; }
     if (Storage.isZotero()) {
       ZoteroBridge.sendToHost({ type: 'TODOLIST_NOTIFY', title, body });

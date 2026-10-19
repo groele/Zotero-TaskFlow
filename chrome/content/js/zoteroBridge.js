@@ -17,7 +17,7 @@ const ZoteroBridge = {
         this._readyTimer = setTimeout(() => reject(new Error('无法连接 Zotero 数据，请重新打开待办窗口')), 5000);
       });
       this._readyPromise.catch(() => {});
-      const host = Storage.getZoteroInstance()?.Todolist;
+      const host = Storage.getZoteroInstance()?.TaskFlow || Storage.getZoteroInstance()?.Todolist;
       if (host?.registerThemeListener) {
         const unsubscribe = host.registerThemeListener(theme => this.setHostTheme(theme));
         window.addEventListener('unload', () => unsubscribe?.(), { once: true });
@@ -29,7 +29,7 @@ const ZoteroBridge = {
       }
       document.documentElement.classList.add('zotero-env');
       this.sendToHost({ type: 'TODOLIST_READY' });
-      console.log('[Todolist] Running in Zotero environment');
+      console.log('[TaskFlow] Running in Zotero environment');
     }
 
     // Process initial options from window.arguments or window._todolistPending
@@ -125,8 +125,8 @@ const ZoteroBridge = {
         window.opener.postMessage(msg, '*');
         return;
       }
-      if (window.Zotero && window.Zotero.Todolist) {
-        const todolist = window.Zotero.Todolist;
+      if (window.Zotero && (window.Zotero.TaskFlow || window.Zotero.Todolist)) {
+        const todolist = window.Zotero.TaskFlow || window.Zotero.Todolist;
         const mainWin = window.Zotero.getMainWindow ? window.Zotero.getMainWindow() : null;
         switch (msg.type) {
           case 'TODOLIST_READY': {

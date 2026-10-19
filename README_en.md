@@ -82,12 +82,12 @@ Use it to organize paper reading, writing, experiments and code reproduction, su
    - Windows: `%APPDATA%\Zotero\Zotero\Profiles\<profile>\extensions\`
    - macOS: `~/Library/Application Support/Zotero/Profiles/<profile>/extensions/`
    - Linux: `~/.zotero/zotero/<profile>/extensions/`
-2. Create a plain-text file named `todolist@groele.org` with no file extension.
+2. Create a plain-text file named `taskflow@groele.org` (or legacy alias `todolist@groele.org`) with no file extension.
 3. Put the absolute path to this project directory in the file, save it, and start Zotero.
 
 ## Data, sync, and export
 
-- In Zotero, task data is stored in `todolist-data.json` in the Zotero data directory. Export a JSON backup from Preferences before upgrading or moving a profile.
+- In Zotero, task data is stored in `taskflow-data.json` in the Zotero data directory (legacy `todolist-data.json` is automatically and transparently migrated upon first launch). Export a JSON backup from Preferences before upgrading or moving a profile.
 - JSON supports backup and restore. Imports can merge with existing data or replace it. CSV, Markdown, and TXT are for reading, organizing, or sharing exported data; they cannot be imported for restoration.
 - Zotero child notes and item tags are Zotero item data. Their cross-device availability depends on your Zotero sync configuration. Creating a child note does not sync the add-on's task database.
 - Clearing task data removes the add-on's local tasks and cannot be undone. Export a backup first.

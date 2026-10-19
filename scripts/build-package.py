@@ -28,6 +28,7 @@ REQUIRED_FILES = (
     "locale/zh-CN/todolist.ftl",
     "locale/en-US/taskflow.ftl",
     "locale/zh-CN/taskflow.ftl",
+    "chrome/content/icons/taskflow.svg",
 )
 
 

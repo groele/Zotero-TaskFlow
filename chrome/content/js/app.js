@@ -47,7 +47,7 @@
       // Show first-time tips
       await showFirstTimeTips();
 
-      console.log('Todolist extension initialized successfully');
+      console.log('TaskFlow extension initialized successfully');
     } catch (error) {
       Diagnostics.report('初始化应用', error);
       showErrorUI('初始化失败：' + Utils.escapeHtml(String(error?.message || error).slice(0, 160)));

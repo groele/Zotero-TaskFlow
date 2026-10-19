@@ -30,7 +30,7 @@ const Storage = {
     }
   },
   async getAll() {
-    const host = this.getZoteroInstance()?.Todolist;
+    const host = this.getZoteroInstance()?.TaskFlow || this.getZoteroInstance()?.Todolist;
     let data;
     if (host?.loadData) data = await host.loadData();
     else if (this.isZotero()) {
@@ -52,7 +52,7 @@ const Storage = {
     const patch = this.clone(data);
     if (this.isZotero() && (patch.taskChanges || patch.tasks || patch.importRequest)) patch.syncLinkedItems = true;
     const run = async () => {
-      const host = this.getZoteroInstance()?.Todolist;
+      const host = this.getZoteroInstance()?.TaskFlow || this.getZoteroInstance()?.Todolist;
       let saved;
       if (host?.saveData) saved = await host.saveData(patch);
       else if (this.isZotero()) {
