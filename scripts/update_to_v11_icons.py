@@ -1,7 +1,7 @@
 import os
 import shutil
 
-src_root = 'Todolist-Zotero-Icons-v11.2.4'
+src_root = 'Zotero-TaskFlow-Icons-v11.2.4'
 png_dir = os.path.join(src_root, 'main-png-exports')
 sizes_dir = os.path.join(src_root, 'main-sizes')
 variants_dir = os.path.join(src_root, 'main-color-variants')

@@ -92,8 +92,8 @@ def apply_icon(choice):
     if os.path.exists(root_icon48):
         shutil.copyfile(root_icon48, 'icon.png')
     root_icon96 = os.path.join('icons', f"{target_style}-128.png")
-    if os.path.exists('Todolist-Zotero-Icons-v11.2.4/icon@2x.png') and target_style.startswith('icon-style7'):
-        shutil.copyfile('Todolist-Zotero-Icons-v11.2.4/icon@2x.png', 'icon@2x.png')
+    if os.path.exists('Zotero-TaskFlow-Icons-v11.2.4/icon@2x.png') and target_style.startswith('icon-style7'):
+        shutil.copyfile('Zotero-TaskFlow-Icons-v11.2.4/icon@2x.png', 'icon@2x.png')
     elif os.path.exists(root_icon96):
         shutil.copyfile(root_icon96, 'icon@2x.png')
 
