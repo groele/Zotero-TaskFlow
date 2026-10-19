@@ -13,8 +13,8 @@
     return;
   }
 
-  const ADDON_ID = 'taskflow@groele.org';
-  const LEGACY_ADDON_ID = 'todolist@groele.org';
+  const ADDON_ID = 'todolist@groele.org';
+  const LEGACY_ADDON_ID = 'taskflow@groele.org';
   const CHROME_ROOT = 'chrome://taskflow/content/';
   const LEGACY_CHROME_ROOT = 'chrome://todolist/content/';
 
@@ -2719,36 +2719,10 @@
         } catch (_) {}
       }
 
-      if (doc.getElementById('todolist-tools-menu')) return;
+      if (injectedElements.has(window)) return;
 
       const windowElements = [];
       this.ensureLocalization(doc);
-
-      // 1. Add to "Tools" (工具) Menu
-      const toolsPopup = doc.getElementById('menu_ToolsPopup');
-      if (toolsPopup) {
-        const toolsItem = this.createXULElement(doc, 'menuitem');
-        toolsItem.id = 'todolist-tools-menu';
-        toolsItem.setAttribute('label', 'TaskFlow 学术任务看板');
-        toolsItem.setAttribute('image', `${CHROME_ROOT}icons/todolist.svg`);
-        toolsItem.setAttribute('class', 'menuitem-iconic');
-        toolsItem.addEventListener('command', () => {
-          this.triggerTodolistOpen(window);
-        });
-        toolsPopup.appendChild(toolsItem);
-        windowElements.push(toolsItem);
-
-        const prefItem = this.createXULElement(doc, 'menuitem');
-        prefItem.id = 'todolist-tools-preferences';
-        prefItem.setAttribute('label', 'TaskFlow 偏好设置...');
-        prefItem.setAttribute('image', `${CHROME_ROOT}icons/todolist.svg`);
-        prefItem.setAttribute('class', 'menuitem-iconic');
-        prefItem.addEventListener('command', () => {
-          this.openPreferencesPane(window);
-        });
-        toolsPopup.appendChild(prefItem);
-        windowElements.push(prefItem);
-      }
 
       // 2. Add to Item Context Menu (文献右键菜单 - 仅保留“添加为待办”)
       // If MenuManager already registered natively (Zotero 8+), do not manually inject into #zotero-itemmenu

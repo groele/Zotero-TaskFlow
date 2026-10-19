@@ -4,11 +4,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { makeHost, read, root, JSDOM, waitFor } = require('./helpers.cjs');
 
-test('manifest.json and package.json declare v12.0.0 and taskflow@groele.org', () => {
+test('manifest.json and package.json declare v12.0.0 and todolist@groele.org', () => {
   const manifest = JSON.parse(read('manifest.json'));
   assert.equal(manifest.version, '12.0.0');
-  assert.equal(manifest.applications.zotero.id, 'taskflow@groele.org');
-  assert.equal(manifest.browser_specific_settings.zotero.id, 'taskflow@groele.org');
+  assert.equal(manifest.applications.zotero.id, 'todolist@groele.org');
+  assert.equal(manifest.browser_specific_settings.zotero.id, 'todolist@groele.org');
 
   const pkg = JSON.parse(read('package.json'));
   assert.equal(pkg.name, 'zotero-taskflow');
@@ -43,8 +43,8 @@ test('taskflow.ftl locale files exist and provide both taskflow and todolist key
 
 test('host runtime uses taskflow identifier system with transparent legacy fallback', async () => {
   const native = makeHost();
-  assert.equal(native.host.addonId, 'taskflow@groele.org');
-  assert.equal(native.host.legacyAddonId, 'todolist@groele.org');
+  assert.equal(native.host.addonId, 'todolist@groele.org');
+  assert.equal(native.host.legacyAddonId, 'taskflow@groele.org');
   assert(native.host.getDataFilePath().endsWith('taskflow-data.json'));
   assert(native.host.getLegacyDataFilePath().endsWith('todolist-data.json'));
 });

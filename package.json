@@ -1,7 +1,7 @@
 {
   "name": "zotero-taskflow",
   "version": "12.0.0",
-  "description": "Organize tasks, track progress, and advance research in Zotero.",
+  "description": "Organize Tasks. Track Progress. Advance Research.",
   "private": true,
   "scripts": {
     "test": "node --test tests/*.test.cjs",
