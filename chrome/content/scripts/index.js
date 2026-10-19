@@ -2704,8 +2704,10 @@
         } catch (_) {}
       }
 
-      // Always clean up any stale or previous context menu items first (guarantees "仅保留添加为待办")
+      // Always clean up any stale or previous menu items first (guarantees Tools menu and extra items are purged)
       const staleMenuIds = [
+        'todolist-tools-menu',
+        'todolist-tools-preferences',
         'todolist-itemmenu-separator',
         'todolist-itemmenu-create',
         'todolist-itemmenu-batch',

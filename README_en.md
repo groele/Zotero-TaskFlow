@@ -82,7 +82,7 @@ Use it to organize paper reading, writing, experiments and code reproduction, su
    - Windows: `%APPDATA%\Zotero\Zotero\Profiles\<profile>\extensions\`
    - macOS: `~/Library/Application Support/Zotero/Profiles/<profile>/extensions/`
    - Linux: `~/.zotero/zotero/<profile>/extensions/`
-2. Create a plain-text file named `taskflow@groele.org` (or legacy alias `todolist@groele.org`) with no file extension.
+2. Create a plain-text file named `todolist@groele.org` with no file extension (matching the add-on ID).
 3. Put the absolute path to this project directory in the file, save it, and start Zotero.
 
 ## Data, sync, and export

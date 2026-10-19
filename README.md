@@ -82,7 +82,7 @@
    - Windows：`%APPDATA%\Zotero\Zotero\Profiles\<profile>\extensions\`
    - macOS：`~/Library/Application Support/Zotero/Profiles/<profile>/extensions/`
    - Linux：`~/.zotero/zotero/<profile>/extensions/`
-2. 新建一个名为 `taskflow@groele.org`（或旧版兼容别名 `todolist@groele.org`）、没有扩展名的文本文件。
+2. 新建一个名为 `todolist@groele.org`、没有扩展名的文本文件（对应插件 ID）。
 3. 将本项目目录的绝对路径写入文件并保存，然后启动 Zotero。
 
 ## 数据、同步与导出
