@@ -1662,71 +1662,107 @@
   gap: 4px;
 }
 
+.academic-type-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  letter-spacing: 0.01em;
+}
+
 .academic-type-segmented {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
-  background: var(--bg);
-  padding: 3px;
-  border-radius: 6px;
+  gap: 6px;
+  background: var(--surface-subtle, var(--bg));
+  padding: 6px;
+  border-radius: var(--radius-md, 8px);
   border: 1px solid var(--border);
+  margin-bottom: 14px;
+}
+
+@media (max-width: 440px) {
+  .academic-type-segmented {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 .academic-seg-btn {
-  padding: 5px 6px;
-  font-size: 11.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 8px;
+  font-size: 12px;
   font-weight: 500;
-  border: 1px solid transparent;
-  background: transparent;
+  border: 1px solid var(--border-light, #eaedf1);
+  background: var(--surface);
   color: var(--text-secondary);
-  border-radius: 4px;
+  border-radius: var(--radius-sm, 6px);
   cursor: pointer;
   white-space: nowrap;
   text-align: center;
+  user-select: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
   transition: all var(--transition-fast, 0.15s);
 }
 
 .academic-seg-btn:hover {
-  background: var(--surface);
+  background: var(--surface-hover, #f1f5f9);
   color: var(--text);
-  border-color: var(--border-light);
+  border-color: var(--border);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .academic-seg-btn.active {
-  background: var(--surface);
   font-weight: 600;
-  border-color: var(--border);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
 }
 
 .academic-seg-btn[data-type="literature_reading"].active {
-  color: #059669;
-  background: rgba(5, 150, 105, 0.12);
+  color: #047857;
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  box-shadow: 0 1px 3px rgba(4, 120, 87, 0.15);
 }
 
 .academic-seg-btn[data-type="writing"].active {
-  color: #2563eb;
-  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  box-shadow: 0 1px 3px rgba(29, 78, 216, 0.15);
 }
 
 .academic-seg-btn[data-type="experiment"].active {
-  color: #7c3aed;
-  background: rgba(124, 58, 237, 0.12);
+  color: #6d28d9;
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+  box-shadow: 0 1px 3px rgba(109, 40, 217, 0.15);
 }
 
 .academic-seg-btn[data-type="submission"].active {
-  color: #dc2626;
-  background: rgba(220, 38, 38, 0.12);
+  color: #c2410c;
+  background: #fff7ed;
+  border-color: #fed7aa;
+  box-shadow: 0 1px 3px rgba(194, 65, 12, 0.15);
 }
 
 .academic-seg-btn[data-type="peer_review"].active {
-  color: #d97706;
-  background: rgba(217, 119, 6, 0.12);
+  color: #0e7490;
+  background: #ecfeff;
+  border-color: #a5f3fc;
+  box-shadow: 0 1px 3px rgba(14, 116, 144, 0.15);
 }
 
 .academic-seg-btn[data-type="general"].active {
-  color: #475569;
-  background: rgba(100, 116, 139, 0.12);
+  color: #334155;
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 3px rgba(51, 65, 85, 0.15);
 }
 
 /* Modal Literature Section & Native Zotero Card */
