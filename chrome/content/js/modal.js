@@ -92,6 +92,8 @@ const Modal = {
           added++;
         }
       });
+      const expandable = document.getElementById('subtasks-expandable');
+      if (expandable) expandable.open = true;
       this.renderSubtasks();
       if (typeof UI !== 'undefined' && UI.showToast) {
         UI.showToast(`已填入 ${added} 项学术精读里程碑`);
@@ -384,6 +386,8 @@ const Modal = {
     }
 
     // Render subtasks, tags and literature section
+    const expandable = document.getElementById('subtasks-expandable');
+    if (expandable) expandable.open = Boolean(prefill?.subtasks && prefill.subtasks.length > 0);
     this.renderSubtasks();
     this.renderTags();
     this.renderLiteratureSection();
@@ -475,6 +479,8 @@ const Modal = {
     }
 
     // Render subtasks, tags and literature section
+    const expandable = document.getElementById('subtasks-expandable');
+    if (expandable) expandable.open = Boolean(task.subtasks && task.subtasks.length > 0);
     this.renderSubtasks();
     this.renderTags();
     this.renderLiteratureSection();
@@ -489,6 +495,14 @@ const Modal = {
   // Render subtasks list
   renderSubtasks() {
     const container = document.getElementById('subtasks-list');
+    const countBadge = document.getElementById('subtasks-count-badge');
+    if (countBadge) {
+      countBadge.textContent = `${(this.currentSubtasks || []).length} 项`;
+    }
+    const expandable = document.getElementById('subtasks-expandable');
+    if (expandable && this.currentSubtasks && this.currentSubtasks.length > 0) {
+      expandable.open = true;
+    }
     if (!container) return;
 
     container.innerHTML = '';

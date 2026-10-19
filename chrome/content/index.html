@@ -1379,7 +1379,7 @@
       <div class="modal-body">
         <input type="hidden" id="task-id">
 
-      <!-- Academic Task Type Segmented Switcher -->
+      <!-- Academic Task Type Segmented Switcher (Compact single row of 6 types) -->
       <div class="academic-type-section zotero-only">
         <label class="academic-type-label">🎓 学术场景类型</label>
         <div class="academic-type-segmented" id="academic-type-segmented">
@@ -1393,84 +1393,144 @@
         <input type="hidden" id="task-academic-type" value="literature_reading">
       </div>
 
-      <div class="form-group">
-        <label for="task-title">任务标题 *</label>
-        <input type="text" id="task-title" required placeholder="准备做些什么？" autocomplete="off">
+      <!-- Compact Title & Description Block -->
+      <div class="task-input-stack">
+        <div class="form-group compact-group">
+          <input type="text" id="task-title" required placeholder="任务标题：准备做些什么？ *" autocomplete="off">
+        </div>
+        <div class="form-group compact-group">
+          <textarea id="task-description" rows="1" placeholder="任务细节或备注说明（可选）..."></textarea>
+        </div>
       </div>
 
-      <div class="form-group">
-        <label for="task-description">任务细节与描述</label>
-        <textarea id="task-description" rows="2" placeholder="添加备注或详细说明（可选）"></textarea>
-      </div>
-
-      <!-- Date & Time Section Card -->
-      <div class="date-time-card">
-        <div class="date-field-section">
-          <div class="field-header">
-            <label for="task-due-date" class="icon-label">📅 截止日期</label>
-            <button type="button" id="btn-clear-due-date" class="btn-text-action" title="清除日期">清除</button>
+      <!-- Two-Column Schedule & Attributes Grid -->
+      <div class="task-modal-grid">
+        <!-- Left: Date & Time Card -->
+        <div class="date-time-card compact-card">
+          <div class="date-field-section">
+            <div class="field-header">
+              <label for="task-due-date" class="icon-label">📅 截止日期</label>
+              <button type="button" id="btn-clear-due-date" class="btn-text-action" title="清除日期">清除</button>
+            </div>
+            <div class="date-input-row">
+              <input type="date" id="task-due-date" class="styled-datetime-input">
+              <div class="quick-date-pills">
+                <button type="button" class="date-pill" data-date="today">今天</button>
+                <button type="button" class="date-pill" data-date="tomorrow">明天</button>
+                <button type="button" class="date-pill" data-date="next-monday">周一</button>
+              </div>
+            </div>
           </div>
-          <div class="date-input-row">
-            <input type="date" id="task-due-date" class="styled-datetime-input">
-            <div class="quick-date-pills">
-              <button type="button" class="date-pill" data-date="today">今天</button>
-              <button type="button" class="date-pill" data-date="tomorrow">明天</button>
-              <button type="button" class="date-pill" data-date="next-monday">下周一</button>
+
+          <div class="time-field-section">
+            <input type="hidden" id="task-due-time">
+
+            <div id="time-trigger-bar" class="time-trigger-bar">
+              <button type="button" id="btn-toggle-time-picker" class="time-trigger-btn">
+                <span class="time-trigger-icon">⏰</span>
+                <span id="time-trigger-text">设置具体时间 (可选)</span>
+              </button>
+              <button type="button" id="btn-clear-due-time" class="btn-text-action hidden" title="清除时间">清除时间</button>
+            </div>
+
+            <div id="time-selection-strip" class="time-selection-strip hidden">
+              <div class="time-presets-toolbar">
+                <button type="button" class="time-pill" data-time="09:00">09:00</button>
+                <button type="button" class="time-pill" data-time="12:00">12:00</button>
+                <button type="button" class="time-pill" data-time="14:00">14:00</button>
+                <button type="button" class="time-pill" data-time="18:00">18:00</button>
+                <button type="button" class="time-pill" data-time="20:00">20:00</button>
+              </div>
+
+              <div class="time-custom-row">
+                <span class="custom-time-label">自定义:</span>
+                <select id="task-due-hour" class="styled-select-time">
+                  <option value="">-- 时 --</option>
+                  <option value="06">06 时</option>
+                  <option value="07">07 时</option>
+                  <option value="08">08 时</option>
+                  <option value="09">09 时</option>
+                  <option value="10">10 时</option>
+                  <option value="11">11 时</option>
+                  <option value="12">12 时</option>
+                  <option value="13">13 时</option>
+                  <option value="14">14 时</option>
+                  <option value="15">15 时</option>
+                  <option value="16">16 时</option>
+                  <option value="17">17 时</option>
+                  <option value="18">18 时</option>
+                  <option value="19">19 时</option>
+                  <option value="20">20 时</option>
+                  <option value="21">21 时</option>
+                  <option value="22">22 时</option>
+                  <option value="23">23 时</option>
+                </select>
+                <span class="time-colon">:</span>
+                <select id="task-due-minute" class="styled-select-time">
+                  <option value="00">00 分</option>
+                  <option value="15">15 分</option>
+                  <option value="30">30 分</option>
+                  <option value="45">45 分</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="time-field-section">
-          <input type="hidden" id="task-due-time">
-
-          <div id="time-trigger-bar" class="time-trigger-bar">
-            <button type="button" id="btn-toggle-time-picker" class="time-trigger-btn">
-              <span class="time-trigger-icon">⏰</span>
-              <span id="time-trigger-text">设置具体时间 (可选)</span>
-            </button>
-            <button type="button" id="btn-clear-due-time" class="btn-text-action hidden" title="清除时间">清除时间</button>
+        <!-- Right: Priority & Category & Repeat & Reminder Card -->
+        <div class="task-meta-card compact-card">
+          <div class="form-group compact-group">
+            <div class="meta-field-header">
+              <label class="icon-label">⚡ 优先级</label>
+            </div>
+            <div class="priority-options">
+              <label class="priority-option">
+                <input type="radio" name="priority" value="low">
+                <span class="priority-label low"><i class="dot low-dot"></i>低</span>
+              </label>
+              <label class="priority-option">
+                <input type="radio" name="priority" value="medium" checked>
+                <span class="priority-label medium"><i class="dot medium-dot"></i>中</span>
+              </label>
+              <label class="priority-option">
+                <input type="radio" name="priority" value="high">
+                <span class="priority-label high"><i class="dot high-dot"></i>高</span>
+              </label>
+            </div>
           </div>
 
-          <div id="time-selection-strip" class="time-selection-strip hidden">
-            <div class="time-presets-toolbar">
-              <button type="button" class="time-pill" data-time="09:00">🌅 09:00</button>
-              <button type="button" class="time-pill" data-time="12:00">☀️ 12:00</button>
-              <button type="button" class="time-pill" data-time="14:00">🍱 14:00</button>
-              <button type="button" class="time-pill" data-time="18:00">🌆 18:00</button>
-              <button type="button" class="time-pill" data-time="20:00">🌙 20:00</button>
+          <div class="form-row meta-row">
+            <div class="form-group flex-1 compact-group">
+              <label for="task-category" class="icon-label-sub">所属分类</label>
+              <input type="text" id="task-category" placeholder="分类..." list="category-list" autocomplete="off">
+              <datalist id="category-list"></datalist>
             </div>
+            <div class="form-group flex-1 compact-group">
+              <label for="task-repeat" class="icon-label-sub">重复周期</label>
+              <select id="task-repeat" class="repeat-select">
+                <option value="">不重复</option>
+                <option value="daily">每天</option>
+                <option value="weekly">每周</option>
+                <option value="biweekly">双周</option>
+                <option value="monthly">每月</option>
+                <option value="quarterly">每季</option>
+                <option value="yearly">每年</option>
+              </select>
+            </div>
+          </div>
 
-            <div class="time-custom-row">
-              <span class="custom-time-label">自定义:</span>
-              <select id="task-due-hour" class="styled-select-time">
-                <option value="">-- 时 --</option>
-                <option value="06">06 时</option>
-                <option value="07">07 时</option>
-                <option value="08">08 时</option>
-                <option value="09">09 时</option>
-                <option value="10">10 时</option>
-                <option value="11">11 时</option>
-                <option value="12">12 时</option>
-                <option value="13">13 时</option>
-                <option value="14">14 时</option>
-                <option value="15">15 时</option>
-                <option value="16">16 时</option>
-                <option value="17">17 时</option>
-                <option value="18">18 时</option>
-                <option value="19">19 时</option>
-                <option value="20">20 时</option>
-                <option value="21">21 时</option>
-                <option value="22">22 时</option>
-                <option value="23">23 时</option>
-              </select>
-              <span class="time-colon">:</span>
-              <select id="task-due-minute" class="styled-select-time">
-                <option value="00">00 分</option>
-                <option value="15">15 分</option>
-                <option value="30">30 分</option>
-                <option value="45">45 分</option>
-              </select>
-            </div>
+          <div class="reminder-inline-row">
+            <label class="checkbox-label" style="font-size: 11.5px; margin: 0; cursor: pointer;">
+              <input type="checkbox" id="task-reminder">
+              <span>🔔 定时提醒</span>
+            </label>
+            <select id="task-reminder-before" class="reminder-select" style="display:none;">
+              <option value="5">提前 5 分钟</option>
+              <option value="15" selected>提前 15 分钟</option>
+              <option value="30">提前 30 分钟</option>
+              <option value="60">提前 1 小时</option>
+              <option value="1440">提前 1 天</option>
+            </select>
           </div>
         </div>
       </div>
@@ -1478,80 +1538,28 @@
       <!-- Zotero Literature Association Card Section -->
       <div id="modal-literature-section" class="modal-literature-section"></div>
 
-      <div class="form-group">
-        <label>优先级</label>
-        <div class="priority-options">
-          <label class="priority-option">
-            <input type="radio" name="priority" value="low">
-            <span class="priority-label low"><i class="dot low-dot"></i>低</span>
-          </label>
-          <label class="priority-option">
-            <input type="radio" name="priority" value="medium" checked>
-            <span class="priority-label medium"><i class="dot medium-dot"></i>中</span>
-          </label>
-          <label class="priority-option">
-            <input type="radio" name="priority" value="high">
-            <span class="priority-label high"><i class="dot high-dot"></i>高</span>
-          </label>
+      <!-- Collapsible Subtasks & Milestones -->
+      <details class="subtasks-expandable-card" id="subtasks-expandable">
+        <summary class="subtasks-expandable-summary">
+          <span class="subtasks-summary-title">⚡ 子任务与精读里程碑</span>
+          <span class="subtasks-summary-count" id="subtasks-count-badge">0 项</span>
+        </summary>
+        <div class="subtasks-expandable-body">
+          <div class="subtask-header-row" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <select id="task-reading-profile" class="zotero-only" aria-label="精读清单模板"></select>
+            <button type="button" id="btn-inject-milestones" class="btn-text-action zotero-only" style="color:var(--primary,#059669);font-weight:600;display:inline-flex;align-items:center;gap:4px;" title="一键填入标准的 5 项论文研读里程碑">
+              ⚡ 填入 5 步精读清单
+            </button>
+          </div>
+          <div id="subtasks-list" class="subtask-list"></div>
+          <div class="subtask-input-group">
+            <input type="text" id="subtask-input" placeholder="+ 添加子任务步骤 (按 Enter 快速添加)..." autocomplete="off">
+            <button type="button" id="btn-add-subtask" class="subtask-add-btn">+ 添加</button>
+          </div>
         </div>
-      </div>
+      </details>
 
-      <div class="form-row">
-        <div class="form-group flex-1">
-          <label for="task-category">所属分类</label>
-          <input type="text" id="task-category" placeholder="工作、个人、学习..." list="category-list" autocomplete="off">
-          <datalist id="category-list"></datalist>
-        </div>
-        <div class="form-group flex-1">
-          <label for="task-repeat">重复周期</label>
-          <select id="task-repeat" class="repeat-select">
-            <option value="">不重复</option>
-            <option value="daily">🔄 每天</option>
-            <option value="weekly">📅 每周</option>
-            <option value="biweekly">📆 每两周</option>
-            <option value="monthly">🗓️ 每月</option>
-            <option value="quarterly">📊 每季度</option>
-            <option value="yearly">🎯 每年</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="form-group reminder-group">
-        <div class="reminder-toggle-row">
-          <label class="checkbox-label">
-            <input type="checkbox" id="task-reminder">
-            <span>🔔 开启定时提醒</span>
-          </label>
-        </div>
-        <select id="task-reminder-before" class="reminder-select" style="display:none; margin-top: 8px;">
-          <option value="5">提前 5 分钟</option>
-          <option value="15" selected>提前 15 分钟</option>
-          <option value="30">提前 30 分钟</option>
-          <option value="60">提前 1 小时</option>
-          <option value="1440">提前 1 天</option>
-        </select>
-      </div>
-
-      <div class="form-group subtasks-group">
-        <div class="subtask-header-row" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-          <label style="margin:0;">子任务与精读里程碑</label>
-          <select id="task-reading-profile" class="zotero-only" aria-label="精读清单模板"></select>
-          <button type="button" id="btn-inject-milestones" class="btn-text-action zotero-only" style="color:var(--primary,#059669);font-weight:600;display:inline-flex;align-items:center;gap:4px;" title="一键填入标准的 5 项论文研读里程碑">
-            ⚡ 填入 5 步精读清单
-          </button>
-        </div>
-        <div id="subtasks-list" class="subtask-list">
-          <!-- Subtasks will be rendered here -->
-        </div>
-        <div class="subtask-input-group">
-          <input type="text" id="subtask-input" placeholder="+ 添加子任务步骤 (按 Enter 快速添加)..." autocomplete="off">
-          <button type="button" id="btn-add-subtask" class="subtask-add-btn">+ 添加</button>
-        </div>
-      </div>
-
-      <div class="form-group" id="tags-container">
-        <!-- Tags will be rendered here -->
-      </div>
+      <div class="form-group" id="tags-container" style="margin: 0;"></div>
     </div>
 
     <div class="modal-actions">
