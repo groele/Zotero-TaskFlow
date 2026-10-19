@@ -42,7 +42,7 @@ def main() -> int:
     browser_zotero = manifest.get("browser_specific_settings", {}).get("zotero", {})
     if not addon_id or browser_zotero.get("id") != addon_id:
         raise ValueError("Zotero add-on IDs must match in both manifest sections")
-    expected_update_url = "https://raw.githubusercontent.com/groele/Todolist-Zotero/zotero/update.json"
+    expected_update_url = "https://raw.githubusercontent.com/groele/Zotero-TaskFlow/zotero/update.json"
     if update_url != expected_update_url or browser_zotero.get("update_url") != expected_update_url:
         raise ValueError("Both manifest update URLs must point to the repository's zotero branch")
     update_entries = update_feed.get("addons", {}).get(addon_id, {}).get("updates", [])
@@ -53,8 +53,8 @@ def main() -> int:
     if not matching_update:
         raise ValueError("update.json must contain an entry matching manifest.json version")
     expected_update_link = (
-        f"https://github.com/groele/Todolist-Zotero/releases/download/v{version}/"
-        f"todolist-zotero-{version}.xpi"
+        f"https://github.com/groele/Zotero-TaskFlow/releases/download/v{version}/"
+        f"zotero-taskflow-{version}.xpi"
     )
     if matching_update.get("update_link") != expected_update_link:
         raise ValueError("update.json update_link must match the versioned GitHub Release asset")
@@ -78,7 +78,7 @@ def main() -> int:
         files.extend(path for path in (ROOT / directory).rglob("*") if path.is_file())
     files = sorted(set(files), key=lambda path: path.relative_to(ROOT).as_posix())
 
-    target = ROOT / f"todolist-zotero-{version}.xpi"
+    target = ROOT / f"zotero-taskflow-{version}.xpi"
     temp_target = target.with_suffix(target.suffix + ".tmp")
     try:
         with zipfile.ZipFile(temp_target, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:

@@ -1,4 +1,4 @@
-// Todolist for Zotero - Default Preferences
+// Zotero TaskFlow - Default Preferences
 // Group 1: Window Modes & Multi-window Layout
 pref("extensions.todolist.windowMode", "tab");
 pref("extensions.todolist.subwindowAlwaysOnTop", false);
@@ -20,7 +20,7 @@ pref("extensions.todolist.dragDropFromLibrary", true);
 
 // Group 4: Child Note Cloud Sync (Multi-Device Sync)
 pref("extensions.todolist.autoSyncChildNote", true);
-pref("extensions.todolist.childNoteTitle", "📝 [Todolist] 研读清单与进度");
+pref("extensions.todolist.childNoteTitle", "📝 [TaskFlow] 研读清单与进度");
 pref("extensions.todolist.childNoteIncludeSubtasks", true);
 pref("extensions.todolist.childNoteIncludeQuotes", true);
 pref("extensions.todolist.childNoteAutoUpdateOnSubtask", true);

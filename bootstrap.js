@@ -1,5 +1,5 @@
 /**
- * Todolist for Zotero - Bootstrap Entry
+ * Zotero TaskFlow - Bootstrap Entry
  * Requires Zotero 10+ (Gecko bootstrap architecture)
  */
 

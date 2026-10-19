@@ -97,7 +97,7 @@ def apply_icon(choice):
     elif os.path.exists(root_icon96):
         shutil.copyfile(root_icon96, 'icon@2x.png')
 
-    print(f"\n[SUCCESS] Style '{target_style}' has been successfully applied to Todolist-Zotero!")
+    print(f"\n[SUCCESS] Style '{target_style}' has been successfully applied to Zotero TaskFlow!")
     return True
 
 if __name__ == '__main__':

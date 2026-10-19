@@ -1,13 +1,14 @@
-# Todolist for Zotero
+# Zotero TaskFlow
 
 <p align="center">
-  <img src="chrome/content/icons/icon128.png" width="96" height="96" alt="Todolist 图标" />
+  <img src="chrome/content/icons/icon128.png" width="96" height="96" alt="Zotero TaskFlow 图标" />
 </p>
 
-<p align="center"><strong>把待办、文献研读和 Zotero 阅读位置放在同一条工作流里</strong></p>
+<p align="center"><strong>面向科研文献的智能任务管理与研究计划工作台</strong></p>
+<p align="center"><em>Organize Tasks. Track Progress. Advance Research.</em></p>
 
 <p align="center">
-  <a href="https://github.com/groele/Todolist-Zotero/releases/latest"><img src="https://img.shields.io/github/v/release/groele/Todolist-Zotero?style=flat-square&color=6366f1" alt="最新版本" /></a>
+  <a href="https://github.com/groele/Zotero-TaskFlow/releases/latest"><img src="https://img.shields.io/github/v/release/groele/Zotero-TaskFlow?style=flat-square&color=6366f1" alt="最新版本" /></a>
   <img src="https://img.shields.io/badge/Zotero-10%2B-059669?style=flat-square" alt="Zotero 10+ (manifest support through 15.x)" />
   <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-blue?style=flat-square" alt="跨平台" />
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="MIT License" /></a>
@@ -19,7 +20,7 @@
 
 ## 简介
 
-**Todolist for Zotero** 是运行在 Zotero 桌面端中的任务与研读管理插件。它将任务关联到 Zotero 文献条目，并把 PDF 页码、摘录、子任务和研读进度带回日常任务流程。你可以用列表、看板、日历或统计视图规划工作，也可以在文献详情侧栏中直接查看和更新关联任务。
+**Zotero TaskFlow** 是专为 Zotero 10+ 打造的智能任务管理与研究计划工作台。它将任务深度关联到 Zotero 文献条目，并把 PDF 页码、摘录、子任务和研读进度带回日常科研任务流程。你可以用列表、看板、日历或统计视图规划研究工作，也可以在文献详情侧栏中直接查看和更新关联任务。
 
 适合用来管理论文阅读、论文写作、实验与代码复现、投稿截稿、同行评审，以及一般的学习和生活待办。插件不依赖单独的在线账户或第三方待办服务。
 
@@ -60,7 +61,7 @@
 
 ## 常用工作流
 
-1. 在 Zotero 文献列表中选择一篇或多篇文献，将其加入 Todolist。
+1. 在 Zotero 文献列表中选择一篇或多篇文献，将其加入 TaskFlow。
 2. 选择研读类型和清单模板，补充截止日期、优先级或个人备注。
 3. 阅读 PDF 时用 `Ctrl+Shift+T`（macOS：`Cmd+Shift+T`）把选中文本和当前页码转成待办。
 4. 在 ItemPane、列表或看板中推进任务并勾选子任务；需要时从任务跳回文献或 PDF 位置。
@@ -70,7 +71,7 @@
 
 ### 从 XPI 安装（推荐）
 
-1. 前往 [GitHub Releases](https://github.com/groele/Todolist-Zotero/releases/latest) 下载最新的 `.xpi` 文件。
+1. 前往 [GitHub Releases](https://github.com/groele/Zotero-TaskFlow/releases/latest) 下载最新的 `zotero-taskflow-<version>.xpi` 文件。
 2. 在 Zotero 中打开 **工具 → 插件**。
 3. 点击插件管理器中的齿轮菜单，选择 **从文件安装插件**。
 4. 选择下载的 XPI 并按提示确认安装；必要时重启 Zotero。
@@ -103,14 +104,14 @@
 
 | 快捷键 | 功能 | 位置 |
 | --- | --- | --- |
-| `Ctrl+Alt+T` / macOS `Cmd+Alt+T` | 打开或切换 Todolist 工作区 | Zotero |
+| `Ctrl+Alt+T` / macOS `Cmd+Alt+T` | 打开或切换 TaskFlow 工作台 | Zotero |
 | `Ctrl+Shift+T` / macOS `Cmd+Shift+T` | 将 PDF 阅读器选中文本和当前页转成研读待办 | Zotero PDF 阅读器 |
 
 设置页可选择 PDF 快捷键直接创建任务，或先打开编辑窗口。
 
 ## 项目信息
 
-- 最新发布版本：见 [GitHub Releases](https://github.com/groele/Todolist-Zotero/releases/latest)。
-- 问题反馈与功能建议：[GitHub Issues](https://github.com/groele/Todolist-Zotero/issues)。
+- 最新发布版本：见 [GitHub Releases](https://github.com/groele/Zotero-TaskFlow/releases/latest)。
+- 问题反馈与功能建议：[GitHub Issues](https://github.com/groele/Zotero-TaskFlow/issues)。
 - 开源协议：[MIT License](LICENSE)。
 - 项目源代码主要位于 `chrome/content/`；`scripts/build-package.py` 用于构建 ZIP 格式的 Zotero XPI 安装包。

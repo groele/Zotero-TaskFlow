@@ -192,7 +192,7 @@ test('secondary dialog panels (like 插件市场) never receive toolbar button a
 
   native.host.addToWindow(mainWin);
   assert(mainDoc.getElementById('todolist-toolbar-button'));
-  assert.equal(mainDoc.getElementById('todolist-toolbar-button').getAttribute('label'), 'Todolist');
+  assert.equal(mainDoc.getElementById('todolist-toolbar-button').getAttribute('label'), 'TaskFlow');
 });
 
 test('preference changes persist only their own key and log async host failures', async t => {

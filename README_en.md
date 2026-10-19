@@ -1,13 +1,14 @@
-# Todolist for Zotero
+# Zotero TaskFlow
 
 <p align="center">
-  <img src="chrome/content/icons/icon128.png" width="96" height="96" alt="Todolist icon" />
+  <img src="chrome/content/icons/icon128.png" width="96" height="96" alt="Zotero TaskFlow icon" />
 </p>
 
-<p align="center"><strong>Keep tasks, literature reading, and Zotero reading positions in one workflow</strong></p>
+<p align="center"><strong>Organize Tasks. Track Progress. Advance Research.</strong></p>
+<p align="center"><em>Intelligent task management and research planning workspace for scientific literature</em></p>
 
 <p align="center">
-  <a href="https://github.com/groele/Todolist-Zotero/releases/latest"><img src="https://img.shields.io/github/v/release/groele/Todolist-Zotero?style=flat-square&color=6366f1" alt="Latest release" /></a>
+  <a href="https://github.com/groele/Zotero-TaskFlow/releases/latest"><img src="https://img.shields.io/github/v/release/groele/Zotero-TaskFlow?style=flat-square&color=6366f1" alt="Latest release" /></a>
   <img src="https://img.shields.io/badge/Zotero-10%2B-059669?style=flat-square" alt="Zotero 10+ (manifest support through 15.x)" />
   <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-blue?style=flat-square" alt="Cross-platform" />
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="MIT License" /></a>
@@ -19,7 +20,7 @@
 
 ## Overview
 
-**Todolist for Zotero** is a task and reading-workflow add-on for the Zotero desktop application. It links tasks to Zotero library items and carries PDF page references, excerpts, subtasks, and reading progress into your day-to-day task workflow. Plan work in list, kanban, calendar, or statistics views, then review and update linked tasks from the Zotero item details pane.
+**Zotero TaskFlow** is an intelligent task management and research planning workspace for the Zotero desktop application. It links tasks directly to Zotero library items and carries PDF page references, excerpts, subtasks, and reading progress into your day-to-day research workflow. Plan work across list, kanban, calendar, or statistics views, and review linked tasks directly from the Zotero item details pane.
 
 Use it to organize paper reading, writing, experiments and code reproduction, submission deadlines, peer review, or general study and personal tasks. The add-on does not require a separate online account or third-party task service.
 
@@ -60,7 +61,7 @@ Use it to organize paper reading, writing, experiments and code reproduction, su
 
 ## A typical workflow
 
-1. Select one or more items in your Zotero library and add them to Todolist.
+1. Select one or more items in your Zotero library and add them to TaskFlow.
 2. Choose a reading type and checklist, then set a due date, priority, or note.
 3. While reading a PDF, press `Ctrl+Shift+T` (`Cmd+Shift+T` on macOS) to turn selected text and the current page into a task.
 4. Update tasks and check off subtasks in ItemPane, the list, or the kanban view. Open the linked item or PDF location when you need to return to the source.
@@ -70,7 +71,7 @@ Use it to organize paper reading, writing, experiments and code reproduction, su
 
 ### Install the XPI (recommended)
 
-1. Download the latest `.xpi` file from [GitHub Releases](https://github.com/groele/Todolist-Zotero/releases/latest).
+1. Download the latest `zotero-taskflow-<version>.xpi` file from [GitHub Releases](https://github.com/groele/Zotero-TaskFlow/releases/latest).
 2. In Zotero, open **Tools → Plugins**.
 3. Click the gear menu in the plugin manager and choose **Install Add-on From File**.
 4. Select the downloaded XPI and confirm. Restart Zotero if prompted.
@@ -103,14 +104,14 @@ Use it to organize paper reading, writing, experiments and code reproduction, su
 
 | Shortcut | Action | Context |
 | --- | --- | --- |
-| `Ctrl+Alt+T` / macOS `Cmd+Alt+T` | Open or toggle the Todolist workspace | Zotero |
+| `Ctrl+Alt+T` / macOS `Cmd+Alt+T` | Open or toggle the TaskFlow workspace | Zotero |
 | `Ctrl+Shift+T` / macOS `Cmd+Shift+T` | Turn selected PDF text and the current page into a reading task | Zotero PDF reader |
 
 Preferences let you choose whether the PDF shortcut creates a task immediately or opens the task editor first.
 
 ## Project information
 
-- Latest release: [GitHub Releases](https://github.com/groele/Todolist-Zotero/releases/latest).
-- Bug reports and feature requests: [GitHub Issues](https://github.com/groele/Todolist-Zotero/issues).
+- Latest release: [GitHub Releases](https://github.com/groele/Zotero-TaskFlow/releases/latest).
+- Bug reports and feature requests: [GitHub Issues](https://github.com/groele/Zotero-TaskFlow/issues).
 - License: [MIT](LICENSE).
 - Main application code lives under `chrome/content/`. `scripts/build-package.py` builds the Zotero XPI as a ZIP archive.

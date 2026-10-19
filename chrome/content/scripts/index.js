@@ -1065,13 +1065,13 @@
         const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
 
         // Construct formatted HTML note
-        let noteHtml = `<h1>${escapeHtml(this.getPref('childNoteTitle', '📝 [Todolist] 研读清单与进度'))}</h1>`;
+        let noteHtml = `<h1>${escapeHtml(this.getPref('childNoteTitle', '📝 [TaskFlow] 研读清单与进度'))}</h1>`;
         noteHtml += `<p><strong>文献：</strong>${escapeHtml(meta.title)} (${escapeHtml(meta.authors)} ${escapeHtml(meta.year)})</p>`;
         noteHtml += `<p><strong>研读进度：</strong>${completed}/${total} 已完成 (<strong>${percent}%</strong>) | 更新于：${new Date().toLocaleString()}</p>`;
         noteHtml += `<div style="background:#e2e8f0;border-radius:4px;height:10px;width:100%;margin:8px 0;overflow:hidden;"><div style="background:#059669;height:10px;width:${percent}%;"></div></div>`;
 
         if (total === 0) {
-          noteHtml += `<p><em>暂无关联待办事项。可通过 Todolist 插件或侧边栏添加研读计划。</em></p>`;
+          noteHtml += `<p><em>暂无关联待办事项。可通过 TaskFlow 插件或侧边栏添加研读计划。</em></p>`;
         } else {
           noteHtml += `<ul>`;
           for (const t of allTasks) {
@@ -1097,7 +1097,7 @@
           noteHtml += `</ul>`;
         }
 
-        noteHtml += `<hr/><p style="font-size:11px;color:#94a3b8;">由 Todolist for Zotero 自动生成并同步至 Zotero 云端笔记</p>`;
+        noteHtml += `<hr/><p style="font-size:11px;color:#94a3b8;">由 Zotero TaskFlow 自动生成并同步至 Zotero 云端笔记</p>`;
 
         // Find existing child note
         let targetNote = null;
@@ -1107,7 +1107,7 @@
             const noteItem = Zotero.Items.get(nid);
             if (noteItem && noteItem.isNote && noteItem.isNote()) {
               const content = noteItem.getNote();
-              if (content && (content.includes('[Todolist]') || content.includes('Todolist for Zotero'))) {
+              if (content && (content.includes('[TaskFlow]') || content.includes('[Todolist]') || content.includes('TaskFlow') || content.includes('Todolist for Zotero'))) {
                 targetNote = noteItem;
                 break;
               }
@@ -2516,7 +2516,7 @@
 
             const btnOpenBoard = createEl('button', 'td-action-btn', '📋 待办看板');
             btnOpenBoard.type = 'button';
-            btnOpenBoard.title = '在主标签页中打开 Todolist 学术看板';
+            btnOpenBoard.title = '在主标签页中打开 TaskFlow 任务看板';
             btnOpenBoard.addEventListener('click', () => {
               this.openTodolist({ mode: 'filter_item', itemKey: target.key }, Zotero.getMainWindow?.());
             });
@@ -2686,7 +2686,7 @@
       if (toolsPopup) {
         const toolsItem = this.createXULElement(doc, 'menuitem');
         toolsItem.id = 'todolist-tools-menu';
-        toolsItem.setAttribute('label', 'Todolist 学术待办看板');
+        toolsItem.setAttribute('label', 'TaskFlow 学术任务看板');
         toolsItem.setAttribute('image', `${CHROME_ROOT}icons/todolist.svg`);
         toolsItem.setAttribute('class', 'menuitem-iconic');
         toolsItem.addEventListener('command', () => {
@@ -2697,7 +2697,7 @@
 
         const prefItem = this.createXULElement(doc, 'menuitem');
         prefItem.id = 'todolist-tools-preferences';
-        prefItem.setAttribute('label', 'Todolist 偏好设置...');
+        prefItem.setAttribute('label', 'TaskFlow 偏好设置...');
         prefItem.setAttribute('image', `${CHROME_ROOT}icons/todolist.svg`);
         prefItem.setAttribute('class', 'menuitem-iconic');
         prefItem.addEventListener('command', () => {
@@ -3021,7 +3021,7 @@
 
       const isTodolistButton = (button) =>
         button.id === 'todolist-toolbar-button' ||
-        (button.getAttribute('label') === 'Todolist' &&
+        ((button.getAttribute('label') === 'TaskFlow' || button.getAttribute('label') === 'Todolist') &&
           String(button.getAttribute('image') || '').includes('/icons/todolist.svg'));
 
       // Clean up any stale or misplaced duplicate buttons
@@ -3037,8 +3037,8 @@
         btn = this.createXULElement(doc, 'toolbarbutton');
 
         btn.id = 'todolist-toolbar-button';
-        btn.setAttribute('label', 'Todolist');
-        btn.setAttribute('tooltiptext', '打开 Todolist 学术任务看板 (Ctrl+Alt+T)');
+        btn.setAttribute('label', 'TaskFlow');
+        btn.setAttribute('tooltiptext', '打开 TaskFlow 学术任务工作台 (Ctrl+Alt+T)');
         btn.setAttribute('image', `${CHROME_ROOT}icons/todolist.svg`);
         btn.setAttribute('class', 'zotero-tb-button toolbarbutton-1 chromeclass-toolbar-additional');
         btn.setAttribute(
@@ -3377,7 +3377,7 @@
           // Open as internal Tab
           const tabResult = tabs.add({
             type: 'todolist',
-            title: 'Todolist 学术待办',
+            title: 'TaskFlow 学术待办',
             select: true,
             data: options,
             onClose: () => {

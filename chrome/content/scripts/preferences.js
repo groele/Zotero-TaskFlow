@@ -1,4 +1,4 @@
-/* Todolist settings pane script for Zotero 10+ */
+/* Zotero TaskFlow settings pane script for Zotero 10+ */
 window.Todolist_Preferences = (() => {
   const PREFIX = 'extensions.todolist.';
   const HTML = 'http://www.w3.org/1999/xhtml';
@@ -38,7 +38,7 @@ window.Todolist_Preferences = (() => {
 
     // Child Note Sync
     autoSyncChildNote: true,
-    childNoteTitle: '📝 [Todolist] 研读清单与进度',
+    childNoteTitle: '📝 [TaskFlow] 研读清单与进度',
     childNoteIncludeSubtasks: true,
     childNoteIncludeQuotes: true,
     childNoteAutoUpdateOnSubtask: true,
@@ -614,7 +614,7 @@ window.Todolist_Preferences = (() => {
         const resetBtn = doc.getElementById('todolist-btn-reset-defaults');
         if (resetBtn) {
           resetBtn.addEventListener('click', () => runOperation('恢复默认设置', async () => {
-            if (resetBtn.disabled || !win.confirm('确定要恢复 Todolist 默认设置吗？')) return;
+            if (resetBtn.disabled || !win.confirm('确定要恢复 TaskFlow 默认设置吗？')) return;
             resetBtn.disabled = true;
             try {
               await setPrefs(DEFAULTS);
