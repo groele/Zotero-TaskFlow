@@ -5,25 +5,16 @@
   <html:header class="todolist-pref-header">
     <html:h1 style="margin: 0; font-size: 18px; font-weight: 600; color: inherit;">Zotero TaskFlow</html:h1>
   </html:header>
-  <html:nav class="todolist-pref-jump" aria-label="设置分区导航">
-    <html:label for="todolist-pref-jump-select">快速跳转</html:label>
-    <html:select id="todolist-pref-jump-select" class="todolist-control">
-      <html:option value="todolist-group-view">常规与工作区视图</html:option>
-      <html:option value="todolist-group-literature">文献联动与自动化</html:option>
-      <html:option value="todolist-group-custom-tags">自定义研读标签</html:option>
-      <html:option value="todolist-group-backup">数据与系统维护</html:option>
-    </html:select>
-  </html:nav>
   <html:p id="todolist-pref-status" class="todolist-pref-status" role="status" aria-live="polite">正在加载设置项…</html:p>
 
   <!-- 1. 常规与工作区视图 -->
-  <html:details id="todolist-group-view" class="todolist-pref-card" open="open">
-    <html:summary class="todolist-card-header">
+  <html:section id="todolist-group-view" class="todolist-pref-card">
+    <html:div class="todolist-card-header">
       <html:span class="todolist-card-title">常规与工作区视图</html:span>
-    </html:summary>
+    </html:div>
     <html:div class="todolist-card-body">
       <html:p class="todolist-pref-desc">配置工作区呈现形态、默认主视图、主题配色与专注提醒。</html:p>
-      
+
       <html:div class="todolist-pref-subheading">窗口形态与多窗协同</html:div>
       <html:div id="todolist-pref-window" class="todolist-pref-content" />
       <html:div class="todolist-mode-quickbar">
@@ -39,16 +30,16 @@
       <html:div class="todolist-pref-subheading">专注提醒与每日晨报</html:div>
       <html:div id="todolist-pref-focus" class="todolist-pref-content" />
     </html:div>
-  </html:details>
+  </html:section>
 
   <!-- 2. 文献深度联动与自动化 -->
-  <html:details id="todolist-group-literature" class="todolist-pref-card">
-    <html:summary class="todolist-card-header">
+  <html:section id="todolist-group-literature" class="todolist-pref-card">
+    <html:div class="todolist-card-header">
       <html:span class="todolist-card-title">文献深度联动与自动化</html:span>
-    </html:summary>
+    </html:div>
     <html:div class="todolist-card-body">
       <html:p class="todolist-pref-desc">配置 Zotero 文献详情侧栏 (ItemPane)、子笔记多端同步、状态自动打标与 PDF 阅读器快捷动作。</html:p>
-      
+
       <html:div class="todolist-pref-subheading">文献详情侧栏 (ItemPane)</html:div>
       <html:div id="todolist-pref-literature" class="todolist-pref-content" />
 
@@ -61,14 +52,15 @@
       <html:div class="todolist-pref-subheading">学术场景与阅读器自动化</html:div>
       <html:div id="todolist-pref-academic" class="todolist-pref-content" />
     </html:div>
-  </html:details>
+  </html:section>
 
-  <!-- 3. 自定义学术研读标签管理 -->
-  <html:details id="todolist-group-custom-tags" class="todolist-pref-card">
-    <html:summary class="todolist-card-header">
-      <html:span class="todolist-card-title">自定义学术研读标签管理</html:span>
-    </html:summary>
+  <!-- 3. 数据、标签与系统维护 -->
+  <html:section id="todolist-group-backup" class="todolist-pref-card todolist-pref-group-last">
+    <html:div class="todolist-card-header">
+      <html:span class="todolist-card-title">数据、标签与系统维护</html:span>
+    </html:div>
     <html:div class="todolist-card-body">
+      <html:div class="todolist-pref-subheading">自定义学术研读标签</html:div>
       <html:p class="todolist-pref-desc">在此添加与管理专属学术研读标签，并在任务编辑中即时调用：</html:p>
       <html:div id="todolist-pref-tags-list" class="todolist-pref-tags-container"></html:div>
       <html:div class="todolist-tag-creator-bar" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px;">
@@ -85,17 +77,9 @@
         </html:div>
         <html:button id="todolist-btn-add-tag" type="button" class="todolist-pref-btn todolist-pref-btn-primary">➕ 添加标签</html:button>
       </html:div>
-    </html:div>
-  </html:details>
 
-  <!-- 4. 数据备份、恢复与系统维护 -->
-  <html:details id="todolist-group-backup" class="todolist-pref-card todolist-pref-group-last">
-    <html:summary class="todolist-card-header">
-      <html:span class="todolist-card-title">数据备份、恢复与系统维护</html:span>
-    </html:summary>
-    <html:div class="todolist-card-body">
       <html:p class="todolist-pref-desc">支持数据全量备份与跨格式导出、灾备恢复导入、学术清单打印、全局快捷键与重置偏好。</html:p>
-      
+
       <html:div class="todolist-pref-subheading">数据全量备份与跨格式导出</html:div>
       <html:div class="todolist-export-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; margin-top: 8px;">
         <html:button id="todolist-btn-export-json" type="button" class="todolist-pref-btn">📑 导出 JSON 全量备份</html:button>
@@ -129,5 +113,5 @@
       </html:div>
       <html:p class="todolist-pref-desc" style="margin-top: 8px; font-size: 11px; color: var(--zotero-text-muted);">注：恢复默认偏好设置仅重置开关与选项，不会清空任何任务或文献数据；清空所有任务数据不可撤销，请谨慎操作。</html:p>
     </html:div>
-  </html:details>
+  </html:section>
 </vbox>

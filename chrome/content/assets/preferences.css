@@ -1,5 +1,5 @@
 /* Todolist for Zotero - Preferences Panel Styling
- * Aligned with native Zotero 7/8 Crimson palette & MetaFlow collapsible card standard.
+ * Aligned with native Zotero 7/8 Crimson palette and MetaFlow's compact card rhythm.
  */
 
 :root {
@@ -55,23 +55,6 @@
   letter-spacing: -0.01em;
 }
 
-.todolist-pref-jump {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px 12px;
-  margin: 0 0 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--zotero-border);
-  border-radius: 8px;
-  background: var(--zotero-surface-card);
-  color: var(--zotero-text-secondary);
-  font-size: 12px;
-}
-
-.todolist-pref-jump select { min-width: min(240px, 100%); }
-.todolist-pref-jump :focus-visible { outline: 2px solid var(--zotero-primary); outline-offset: 2px; }
-
 .todolist-pref-status {
   margin: 0 0 16px;
   color: var(--zotero-text-secondary);
@@ -82,7 +65,7 @@
   border: 1px solid var(--zotero-border);
 }
 
-/* Accordion Card Container (Aligned with Zotero Preferences) */
+/* Flat settings groups: keep the hierarchy visible without nested disclosure controls. */
 .todolist-pref-card {
   display: block;
   min-width: 0;
@@ -91,66 +74,32 @@
   border-radius: 8px;
   background: var(--zotero-surface-card);
   overflow: hidden;
-  transition: all 0.16s ease;
+  transition: border-color 0.16s ease;
 }
 
 .todolist-pref-card:hover {
   border-color: #cbd5e1;
 }
 
-.todolist-pref-card[open] {
+.todolist-pref-card {
   background: var(--zotero-surface);
   border-color: #cbd5e1;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
-/* Card Header (Summary) */
+/* Card header */
 .todolist-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  cursor: pointer;
   user-select: none;
-  list-style: none;
   font-size: 13.5px;
   font-weight: 600;
   color: var(--zotero-text);
   background: var(--zotero-surface-card);
-  transition: background-color 0.15s ease;
-}
-
-.todolist-card-header::-webkit-details-marker {
-  display: none;
-}
-
-.todolist-card-header::marker {
-  display: none;
-}
-
-.todolist-card-header:hover {
-  background: var(--zotero-surface-hover);
-}
-
-.todolist-card-header::after {
-  content: "›";
-  display: inline-block;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--zotero-text-muted);
-  margin-left: 10px;
-  transform: rotate(0deg);
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), color 0.15s ease;
-}
-
-.todolist-pref-card[open] > .todolist-card-header {
   border-bottom: 1px solid var(--zotero-border);
-  background: var(--zotero-surface-card);
-}
-
-.todolist-pref-card[open] > .todolist-card-header::after {
-  transform: rotate(90deg);
-  color: var(--zotero-text);
+  transition: background-color 0.15s ease;
 }
 
 .todolist-card-title {
@@ -447,12 +396,7 @@ select.todolist-control {
     background: #2e2e34;
   }
 
-  .todolist-pref-card[open] > .todolist-card-header {
-    border-bottom-color: #38383e;
-    background: #26262b;
-  }
-
-  .todolist-pref-card[open] {
+  .todolist-pref-card {
     background: #1c1c1f;
     border-color: #4a4a52;
   }
