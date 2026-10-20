@@ -1,6 +1,6 @@
 {
   "name": "zotero-taskflow",
-  "version": "12.3.0",
+  "version": "12.3.1",
   "description": "Organize Tasks. Track Progress. Advance Research.",
   "private": true,
   "scripts": {
