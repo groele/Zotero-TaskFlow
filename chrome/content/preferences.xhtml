@@ -5,6 +5,15 @@
   <html:header class="todolist-pref-header">
     <html:h1 style="margin: 0; font-size: 18px; font-weight: 600; color: inherit;">Zotero TaskFlow</html:h1>
   </html:header>
+  <html:nav class="todolist-pref-jump" aria-label="设置分区导航">
+    <html:label for="todolist-pref-jump-select">快速跳转</html:label>
+    <html:select id="todolist-pref-jump-select" class="todolist-control">
+      <html:option value="todolist-group-view">常规与工作区视图</html:option>
+      <html:option value="todolist-group-literature">文献联动与自动化</html:option>
+      <html:option value="todolist-group-custom-tags">自定义研读标签</html:option>
+      <html:option value="todolist-group-backup">数据与系统维护</html:option>
+    </html:select>
+  </html:nav>
   <html:p id="todolist-pref-status" class="todolist-pref-status" role="status" aria-live="polite">正在加载设置项…</html:p>
 
   <!-- 1. 常规与工作区视图 -->

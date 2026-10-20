@@ -442,6 +442,14 @@ window.TaskFlow_Preferences = (() => {
         pane._todolistInited = true;
       }
       const statusEl = doc.getElementById('todolist-pref-status');
+      const jumpSelect = doc.getElementById('todolist-pref-jump-select');
+      jumpSelect?.addEventListener('change', () => {
+        const section = doc.getElementById(jumpSelect.value);
+        if (!section) return;
+        section.open = true;
+        section.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+        section.querySelector('summary')?.focus();
+      });
       const runOperation = async (action, callback) => {
         try { return await callback(); }
         catch (error) { reportOperationError(win?.Zotero || window.Zotero, doc, action, error); }

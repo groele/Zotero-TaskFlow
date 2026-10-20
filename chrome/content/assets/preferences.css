@@ -55,6 +55,23 @@
   letter-spacing: -0.01em;
 }
 
+.todolist-pref-jump {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--zotero-border);
+  border-radius: 8px;
+  background: var(--zotero-surface-card);
+  color: var(--zotero-text-secondary);
+  font-size: 12px;
+}
+
+.todolist-pref-jump select { min-width: min(240px, 100%); }
+.todolist-pref-jump :focus-visible { outline: 2px solid var(--zotero-primary); outline-offset: 2px; }
+
 .todolist-pref-status {
   margin: 0 0 16px;
   color: var(--zotero-text-secondary);
