@@ -1,117 +1,134 @@
 # Zotero TaskFlow
 
-<p align="center">
-  <img src="chrome/content/icons/icon128.png" width="96" height="96" alt="Zotero TaskFlow 图标" />
-</p>
+**Zotero Flow Series · 任务推进**
 
-<p align="center"><strong>面向科研文献的智能任务管理与研究计划工作台</strong></p>
-<p align="center"><em>Organize Tasks. Track Progress. Advance Research.</em></p>
+将文献研读转化为可追踪的任务与计划。
 
-<p align="center">
-  <a href="https://github.com/groele/Zotero-TaskFlow/releases/latest"><img src="https://img.shields.io/github/v/release/groele/Zotero-TaskFlow?style=flat-square&color=6366f1" alt="最新版本" /></a>
-  <img src="https://img.shields.io/badge/Zotero-10%2B-059669?style=flat-square" alt="Zotero 10+ (manifest support through 15.x)" />
-  <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-blue?style=flat-square" alt="跨平台" />
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="MIT License" /></a>
-</p>
+[简体中文](README.md) · [English](README.en.md)
 
-<p align="center"><strong>简体中文</strong> | <a href="README_en.md">English</a></p>
+[![当前版本](https://img.shields.io/badge/version-12.3.3-245ac7?style=flat-square)](https://github.com/groele/Zotero-TaskFlow/releases/tag/v12.3.3) · [下载 XPI](https://github.com/groele/Zotero-TaskFlow/releases/download/v12.3.3/zotero-taskflow-12.3.3.xpi) · [问题反馈](https://github.com/groele/Zotero-TaskFlow/issues)
 
----
+[产品定位](#overview) · [安装与更新](#installation) · [快速开始](#quick-start) · [核心功能](#features) · [设置与使用](#settings) · [数据、同步与外部服务](#data) · [兼容性与验证范围](#compatibility) · [常见问题](#troubleshooting) · [开发与详细文档](#development) · [系列产品](#series) · [项目来源与许可](#license)
 
-## 简介
+<a id="overview"></a>
 
-**Zotero TaskFlow** 是专为 Zotero 10+ 打造的智能任务管理与研究计划工作台。它将任务深度关联到 Zotero 文献条目，并把 PDF 页码、摘录、子任务和研读进度带回日常科研任务流程。你可以用列表、看板、日历或统计视图规划研究工作，也可以在文献详情侧栏中直接查看和更新关联任务。
+## 产品定位
 
-适合用来管理论文阅读、论文写作、实验与代码复现、投稿截稿、同行评审，以及一般的学习和生活待办。插件不依赖单独的在线账户或第三方待办服务。
+面向需要安排阅读、写作和研究工作的用户，把待办、截止日期、子任务和研读进度关联到 Zotero 文献与 PDF 位置。
 
-## 功能一览
+本插件可以独立安装，按需与系列其他插件组合使用。
 
-### 任务管理
+<a id="installation"></a>
 
-- 创建、编辑、完成、删除和恢复任务；任务可包含标题、描述、截止日期与时间、优先级、分类、标签和子任务。
-- 设置每日、每周、双周、每月、每季度或每年的重复周期。完成重复任务后，插件按下一周期生成后续任务。
-- 使用内置的论文研读、写作、实验复现、投稿和审稿类型；自定义分类、标签和任务模板。
-- 按关键词、状态、日期、优先级、分类等查找和筛选任务，并按截止日期、优先级、创建时间或名称排序。
-- 在列表中查看逾期、今天、即将到期和已完成任务；可批量完成或删除任务。
+## 安装与更新
 
-### 四种任务视图
+1. 下载 [zotero-taskflow-12.3.3.xpi](https://github.com/groele/Zotero-TaskFlow/releases/download/v12.3.3/zotero-taskflow-12.3.3.xpi)（插件版本 **12.3.3**），不要安装 Source code ZIP。
+2. 在 Zotero 打开 **工具 → 插件／附加组件**，从齿轮菜单选择 **从文件安装插件**。
+3. 选择 XPI，完成安装；按提示重启 Zotero。
 
-- **列表**：按任务日期和状态浏览，可展开分组、查看子任务和处理任务。
-- **看板**：按待办、进行中、已完成等状态组织任务，支持拖放调整状态与顺序。
-- **日历**：以月视图查看截止日期和计划分布。
-- **统计**：查看任务总量、完成率、逾期与今日待办、近 7 天完成趋势，以及优先级和分类分布。
+后续可在插件管理器中检查更新。自动检查／安装取决于 Zotero 与该插件的更新设置和兼容范围。升级或迁移前备份重要数据。
 
-### Zotero 文献与 PDF 联动
+更新清单: [update.json](https://github.com/groele/Zotero-TaskFlow/blob/main/update.json) · 插件 ID: `todolist@groele.org`.
 
-- 从当前选中的 Zotero 文献创建单条或批量研读任务，并保存文献条目关联与可用的书目信息。
-- 从 PDF 阅读器选中文本后按快捷键创建任务；任务可记录摘录、PDF 页码和定位链接。
-- 从关联任务打开对应文献或 PDF；有页码或批注锚点时，可跳回相应阅读位置。
-- 在 Zotero 文献详情侧栏（ItemPane）中查看关联任务与研读进度；侧栏支持快速添加任务以及勾选子任务。
-- 按设置将研读任务、子任务和摘录同步到 Zotero 文献的子笔记。子笔记可通过 Zotero 自身的同步功能同步；**插件的任务数据库本身保存在本机 Zotero 数据目录，不会由本插件自动跨设备同步**。
-- 可选择从文献继承标签，并在研读任务创建或全部完成时维护相应的 Zotero 条目标签。
-- 关联文献任务提供简洁的作者、年份和标题引用文本复制；它不是 APA、IEEE 或 GB/T 7714 的完整格式化引文工具。
+<a id="quick-start"></a>
 
-### 研读清单与时间管理
+## 快速开始
 
-- 为一般论文、理论论文、实验论文、综述论文、算法与复现提供五类研读步骤模板，可按子任务逐项核对。
-- 通过任务计时器记录专注时段，并查看单项任务的累计时长和统计数据。
-- 为任务设置截止提醒；可启用每日任务摘要。在 Zotero 运行时由插件检查并发送提醒。
-- 提供 Zotero 内部标签页、紧凑伴读子窗口和独立窗口三种打开方式，便于边读 PDF 边查看任务。
-- 支持跟随 Zotero 外观、浅色、深色或系统主题。
+1. 选择文献并创建研读任务，补充截止日期和清单。
+2. 阅读 PDF 时使用 Ctrl/Cmd+Shift+T 将选区和可用页码转成任务。
+3. 在侧栏或任务视图推进进度，并定期导出 JSON 备份。
 
-## 常用工作流
+<a id="features"></a>
 
-1. 在 Zotero 文献列表中选择一篇或多篇文献，将其加入 TaskFlow。
-2. 选择研读类型和清单模板，补充截止日期、优先级或个人备注。
-3. 阅读 PDF 时用 `Ctrl+Shift+T`（macOS：`Cmd+Shift+T`）把选中文本和当前页码转成待办。
-4. 在 ItemPane、列表或看板中推进任务并勾选子任务；需要时从任务跳回文献或 PDF 位置。
-5. 如启用子笔记同步，将研读进度写入 Zotero 文献子笔记；也可从设置页导出备份或报告。
+## 核心功能
 
-## 安装
+| 功能 | 使用范围 |
+|---|---|
+| 任务与视图 | 管理优先级、截止日期、标签与子任务，使用列表、看板、日历和统计。 |
+| 文献联动 | 从选中文献或 PDF 选区创建任务，按已有锚点跳回阅读位置。 |
+| 研读步骤 | 选择研读模板、跟踪清单与专注时长。 |
+| 笔记与备份 | 按需写入 Zotero 子笔记，并导出本地任务备份。 |
 
-### 从 XPI 安装（推荐）
+<a id="settings"></a>
 
-1. 从 [Zotero TaskFlow v12.3.3 Release](https://github.com/groele/Zotero-TaskFlow/releases/tag/v12.3.3) 下载 `zotero-taskflow-12.3.3.xpi` 文件。
-2. 在 Zotero 中打开 **工具 → 插件**。
-3. 点击插件管理器中的齿轮菜单，选择 **从文件安装插件**。
-4. 选择下载的 XPI 并按提示确认安装；必要时重启 Zotero。
+## 设置与使用
 
-### 开发调试安装
+在 **Zotero → 设置 → Zotero TaskFlow** 中查看插件偏好页。
 
-1. 找到 Zotero 配置目录中的 `extensions/` 文件夹。
-   - Windows：`%APPDATA%\Zotero\Zotero\Profiles\<profile>\extensions\`
-   - macOS：`~/Library/Application Support/Zotero/Profiles/<profile>/extensions/`
-   - Linux：`~/.zotero/zotero/<profile>/extensions/`
-2. 新建一个名为 `todolist@groele.org`、没有扩展名的文本文件（对应插件 ID）。
-3. 将本项目目录的绝对路径写入文件并保存，然后启动 Zotero。
+配置窗口、默认视图、文献联动、提醒和数据维护。标为“尚未接入”的选项不可用；番茄钟倒计时、自动归档与声音提醒不作为当前已完成功能宣传。
 
-## 数据、同步与导出
+<a id="data"></a>
 
-- 在 Zotero 中，插件任务数据保存在 Zotero 数据目录下的 `taskflow-data.json`（旧版 `todolist-data.json` 会在初次启动时自动无损迁移）。建议在升级或迁移配置目录前先从插件设置页导出 JSON 备份。
-- JSON 可用于完整备份和恢复；导入时可选择合并或替换。CSV、Markdown 和 TXT 用于查看、整理或分享导出内容，不用于导入恢复。
-- 与文献关联的 Zotero 子笔记和标签属于 Zotero 条目数据；它们是否跨设备同步取决于 Zotero 账户的同步设置。任务数据库文件不会因为创建了子笔记而自动同步。
-- 清空任务数据会移除插件本地待办数据，操作不可撤销；请先导出备份。
+## 数据、同步与外部服务
 
-## 当前范围与限制
+- 任务数据库保存在 Zotero 数据目录中的 taskflow-data.json。它不会随 Zotero 条目自动跨设备同步。
+- 子笔记与标签的同步由 Zotero 控制；JSON 用于备份恢复，CSV/Markdown/TXT 用于阅读或分享。
+- 提醒依赖 Zotero 运行，不能替代操作系统或云端提醒。
 
-- 兼容范围以插件清单为准：Zotero **10.0 及以上，最高到 15.x**。在更新 Zotero 大版本后，请以最新发行版说明为准。
-- 番茄钟倒计时、自动归档和声音提醒尚未接入；设置页中未接入运行逻辑的选项会禁用或标明不可用。
-- 任务提醒和每日摘要依赖 Zotero 正在运行，不能替代操作系统日历或云端提醒服务。
-- PDF 跳页和批注定位取决于任务是否有关联的可用 PDF、页码或批注锚点。
-- 工具栏与 Zotero 原生菜单使用 SVG 图标；16、32、48、128 像素 PNG 是不同尺寸的栅格资源，不决定原生工具栏控件的显示大小。
+<a id="compatibility"></a>
 
-## 快捷键
+## 兼容性与验证范围
 
-| 快捷键 | 功能 | 位置 |
-| --- | --- | --- |
-| `Ctrl+Alt+T` / macOS `Cmd+Alt+T` | 打开或切换 TaskFlow 工作台 | Zotero |
-| `Ctrl+Shift+T` / macOS `Cmd+Shift+T` | 将 PDF 阅读器选中文本和当前页转成研读待办 | Zotero PDF 阅读器 |
+| 项目 | 范围 |
+|---|---|
+| 当前插件版本 | 12.3.3 |
+| 清单声明的 Zotero 范围 | `10.0.0` 至 `15.*` |
+| 当前说明 | 12.3.3 设置页已在 Windows Zotero 10.0.6 原生检查。清单声明的最高版本 15.* 不等于已验证 Zotero 15。 |
 
-设置页可选择 PDF 快捷键直接创建任务，或先打开编辑窗口。
+插件版本与 Zotero 版本分别管理。清单允许安装，不代表所有版本、操作系统和外部服务均已验证。本次品牌文档更新未重新执行业务功能测试。
 
-## 项目信息
+<a id="troubleshooting"></a>
 
-- 当前发布版本：[v12.3.3 Release](https://github.com/groele/Zotero-TaskFlow/releases/tag/v12.3.3)；后续版本见 [GitHub Releases](https://github.com/groele/Zotero-TaskFlow/releases)。
-- 问题反馈与功能建议：[GitHub Issues](https://github.com/groele/Zotero-TaskFlow/issues)。
-- 开源协议：[MIT License](LICENSE)。
-- 项目源代码主要位于 `chrome/content/`；`scripts/build-package.py` 用于构建 ZIP 格式的 Zotero XPI 安装包。
+## 常见问题
+
+换设备后任务未出现时，检查是否恢复了任务 JSON；子笔记同步不会自动还原整个任务库。PDF 跳转需要可用附件和已保存的定位信息。
+
+反馈时提供插件与 Zotero 版本、系统、操作步骤、预期／实际结果和脱敏错误。
+
+<a id="development"></a>
+
+## 开发与详细文档
+
+普通安装无需开发环境。以下为仓库已有开发入口，涉及原生测试时使用独立配置。
+
+```powershell
+npm ci
+npm test
+python scripts/build-package.py
+```
+
+- [版本说明 / Release notes](docs/releases/v12.3.3.md)
+- [产品简介 / Product profile](docs/brand/PRODUCT.md)
+- [品牌规范 / Brand guide](docs/brand/BRAND.md)
+- [README 模板 / README template](docs/brand/README-TEMPLATE.md)
+- [后续提升清单 / Improvement priorities](docs/brand/IMPROVEMENTS.md)
+- [原详细指南 · README.md](docs/reference/README.md)
+- [原详细指南 · README_en.md](docs/reference/README_en.md)
+
+原详细指南保留功能细节、快捷键、历史验证与完整致谢；其中版本和测试结果属于各自记录时间。
+
+<a id="series"></a>
+
+## 系列产品
+
+| 产品 | 定位 |
+|---|---|
+| [Zotero RefFlow](https://github.com/groele/Zotero-RefFlow) | 文献发现 · 检索参考文献、被引文献与相关研究。 |
+| [Zotero MetaFlow](https://github.com/groele/Zotero-MetaFlow) | 元数据整理 · 校验、规范并补全文献元数据。 |
+| [Zotero ViewFlow](https://github.com/groele/Zotero-ViewFlow) | 阅读预览 · 在 Zotero 侧栏预览并复制格式化引文。 |
+| [Zotero MindFlow](https://github.com/groele/Zotero-MindFlow) | 知识组织 · 将文献、批注与思路组织为可编辑导图。 |
+| [Zotero TaskFlow](https://github.com/groele/Zotero-TaskFlow) | 任务推进 · 将文献研读转化为可追踪的任务与计划。 |
+| [Zotero CiteFlow](https://github.com/groele/Zotero-CiteFlow) | 写作引用 · 追踪 Word 文档引用，并连接 Zotero 文献操作。 |
+| [Zotero PaperFlow](https://github.com/groele/Zotero-PaperFlow) | 投稿审稿 · 管理手稿、投稿轮次与审稿回复。 |
+
+各插件分别安装和更新；同属一个系列不意味着共享数据库或已自动联通所有流程。
+
+<a id="license"></a>
+
+## 项目来源与许可
+
+项目代码按 MIT 许可发布，保留 LICENSE 中的作者与版权声明。
+
+许可: [MIT](LICENSE).
+
+本系列独立维护，并非 Zotero 官方产品。Zotero 及第三方名称、商标与材料归各自权利人所有。
