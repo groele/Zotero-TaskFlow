@@ -1,731 +1,191 @@
-/* Todolist for Zotero - Preferences Panel Styling
- * Aligned with native Zotero 7/8 Crimson palette and MetaFlow's compact card rhythm.
+/* TaskFlow preferences: MetaFlow's compact native palette and controls.
+ * Keep every token scoped to this pane; preferences share a Zotero document.
  */
-
-:root {
-  --zotero-primary: #c5282a;
-  --zotero-primary-hover: #a81c1e;
-  --zotero-primary-light: #fef2f2;
-  --zotero-primary-border: rgba(197, 40, 42, 0.25);
-  --zotero-focus-ring: rgba(197, 40, 42, 0.22);
-
-  --zotero-bg: var(--in-content-page-background, #f5f6f8);
-  --zotero-surface: var(--in-content-box-background, #ffffff);
-  --zotero-surface-card: #f8fafc;
-  --zotero-surface-hover: #f1f5f9;
-  --zotero-text: var(--in-content-text-color, #1f2328);
-  --zotero-text-secondary: #57606a;
-  --zotero-text-muted: #8c959f;
-  --zotero-border: var(--in-content-border-color, #e1e4e8);
-  --zotero-border-light: #eceef1;
-}
-
 .todolist-prefs-container {
+  --flow-pref-text: var(--fill-primary, CanvasText);
+  --flow-pref-muted: var(--fill-secondary, color-mix(in srgb, var(--flow-pref-text) 68%, transparent));
+  --flow-pref-accent: var(--accent-blue, #4070f4);
+  --flow-pref-border: color-mix(in srgb, var(--flow-pref-text) 18%, transparent);
+  --flow-pref-divider: color-mix(in srgb, var(--flow-pref-text) 10%, transparent);
+  --flow-pref-surface: color-mix(in srgb, var(--flow-pref-text) 2%, transparent);
+  --flow-pref-hover: color-mix(in srgb, var(--flow-pref-text) 5%, transparent);
+  --flow-pref-danger: light-dark(#b42318, #ff9b90);
+  --flow-pref-warning: light-dark(#9a6700, #f6c760);
+  /* Existing inline preference descriptions use these local aliases. */
+  --zotero-text-secondary: var(--flow-pref-muted);
+  --zotero-text-muted: var(--flow-pref-muted);
   box-sizing: border-box;
   width: 100%;
   max-width: 780px;
   min-width: 0;
-  padding: 8px 16px 36px 4px;
-  color: var(--zotero-text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
-  line-height: 1.5;
-}
-
-/* Shared compact preference-pane layout */
-.todolist-prefs-container {
+  margin-inline: auto;
+  padding: 10px 14px 28px;
+  color: var(--flow-pref-text);
+  font: inherit;
   font-size: 13px;
   line-height: 1.5;
 }
 
 .todolist-prefs-container *,
 .todolist-prefs-container *::before,
-.todolist-prefs-container *::after {
-  box-sizing: border-box;
-}
+.todolist-prefs-container *::after { box-sizing: border-box; }
 
 .todolist-pref-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  margin: 0 0 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--zotero-border);
+  gap: 12px;
+  margin: 0 0 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--flow-pref-divider);
 }
-
-.todolist-pref-header h1 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--zotero-text);
-  letter-spacing: -0.01em;
-}
-
-.todolist-pref-status {
-  margin: 0 0 16px;
-  color: var(--zotero-text-secondary);
-  font-size: 12.5px;
-  padding: 6px 12px;
-  background: var(--zotero-surface-card);
-  border-radius: 6px;
-  border: 1px solid var(--zotero-border);
-}
-
-/* Flat settings groups: keep the hierarchy visible without nested disclosure controls. */
-.todolist-pref-card {
-  display: block;
-  min-width: 0;
-  margin: 0 0 12px;
-  border: 1px solid var(--zotero-border);
-  border-radius: 8px;
-  background: var(--zotero-surface-card);
-  overflow: hidden;
-  transition: border-color 0.16s ease;
-}
-
-.todolist-pref-card:hover {
-  border-color: #cbd5e1;
-}
-
-.todolist-pref-card {
-  background: var(--zotero-surface);
-  border-color: #cbd5e1;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-}
-
-/* Card header */
-.todolist-card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  user-select: none;
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--zotero-text);
-  background: var(--zotero-surface-card);
-  border-bottom: 1px solid var(--zotero-border);
-  transition: background-color 0.15s ease;
-}
-
-.todolist-card-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* Card Body */
-.todolist-card-body {
-  padding: 14px 18px 18px;
-  background: var(--zotero-surface);
-}
-
-.todolist-pref-desc {
-  max-width: 100%;
-  margin: 0 0 12px;
-  color: var(--zotero-text-secondary);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.todolist-pref-desc code {
-  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
-  font-size: 11.5px;
-  padding: 1.5px 5.5px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.05);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  color: var(--zotero-text);
-}
-
-/* Content layout inside card */
-.todolist-pref-content {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-
-/* Subheadings inside consolidated cards */
-.todolist-pref-subheading {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--zotero-text);
-  margin: 16px 0 6px;
-  padding-bottom: 5px;
-  border-bottom: 1px dashed var(--zotero-border-light);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.todolist-pref-subheading:first-child {
-  margin-top: 4px;
-}
-
-.todolist-mode-quickbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 8px 12px;
-  margin-top: 8px;
-  margin-bottom: 8px;
-  background: var(--zotero-surface-card);
-  border: 1px solid var(--zotero-border-light);
-  border-radius: 6px;
-}
-
-/* Form Checkbox Rows */
-.todolist-check-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 8px 4px;
-  min-width: 0;
-  cursor: pointer;
-  border-radius: 6px;
-  transition: background-color 0.12s ease;
-}
-
-.todolist-check-row:hover {
-  background: rgba(0, 0, 0, 0.02);
-}
-
-.todolist-check-row input[type="checkbox"],
-.todolist-check-row .todolist-control[type="checkbox"] {
-  flex: none;
-  width: 16px;
-  height: 16px;
-  margin-top: 2px;
-  accent-color: var(--zotero-primary);
-  cursor: pointer;
-}
-
-.todolist-check-row .todolist-control-label {
-  font-size: 13px;
-  font-weight: 450;
-  color: var(--zotero-text);
-  line-height: 1.45;
-  cursor: pointer;
-}
-
-/* Form Select / Text Rows */
-.todolist-control-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 9px 4px;
-  min-width: 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
-}
-
-.todolist-control-row:last-child {
-  border-bottom: none;
-}
-
-.todolist-control-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--zotero-text);
-}
-
-.todolist-control {
-  font: inherit;
-  font-size: 12.5px;
-  padding: 5px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--zotero-border);
-  background-color: var(--zotero-surface);
-  color: var(--zotero-text);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-select.todolist-control {
-  min-width: 200px;
-  max-width: 380px;
-  cursor: pointer;
-}
-
-.todolist-control:focus {
-  outline: none;
-  border-color: var(--zotero-primary);
-  box-shadow: 0 0 0 2px var(--zotero-focus-ring);
-}
-
-/* Action Buttons & Pills (Zotero-themed) */
-.todolist-pref-btn {
-  font: inherit;
-  padding: 6px 14px;
-  border-radius: 6px;
-  border: 1px solid var(--zotero-border);
-  background-color: var(--zotero-surface);
-  color: var(--zotero-text);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  user-select: none;
-}
-
-.todolist-pref-btn:hover {
-  background-color: var(--zotero-surface-hover);
-  border-color: #94a3b8;
-  transform: translateY(-1px);
-}
-
-.todolist-pref-btn:active {
-  transform: translateY(0);
-}
-
-.todolist-pref-btn-primary {
-  background-color: var(--zotero-primary-light) !important;
-  border-color: var(--zotero-primary) !important;
-  color: #991b1b !important;
-  font-weight: 600 !important;
-}
-
-.todolist-pref-btn-primary:hover {
-  background-color: #fee2e2 !important;
-  border-color: var(--zotero-primary-hover) !important;
-}
-
-.todolist-pref-btn-danger {
-  background-color: #fef2f2 !important;
-  border-color: #dc2626 !important;
-  color: #dc2626 !important;
-}
-
-.todolist-pref-btn-danger:hover {
-  background-color: #fee2e2 !important;
-  border-color: #b91c1c !important;
-}
-
-.todolist-pref-btn-warning {
-  background-color: #fef2f2 !important;
-  border-color: #ef4444 !important;
-  color: #b91c1c !important;
-}
-
-.todolist-pref-btn-warning:hover {
-  background-color: #fee2e2 !important;
-  border-color: #dc2626 !important;
-}
-
-/* Custom Academic Tags Styling */
-.todolist-pref-tags-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  min-height: 28px;
-  align-items: center;
-  margin-top: 4px;
-}
-
-.todolist-pref-tag-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 10px;
-  border-radius: 9999px;
-  font-size: 11.5px;
-  font-weight: 500;
-  border: 1px solid transparent;
-  transition: all 0.15s ease;
-}
-
-.todolist-pref-tag-delete {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-size: 13px;
-  line-height: 1;
-  padding: 0 2px;
-  color: inherit;
-  opacity: 0.65;
-}
-
-.todolist-pref-tag-delete:hover {
-  opacity: 1;
-}
-
-.todolist-pref-color-dot {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  cursor: pointer;
-  box-sizing: border-box;
-  border: 2px solid transparent;
-  transition: transform 0.15s ease, border-color 0.15s ease;
-}
-
-.todolist-pref-color-dot:hover {
-  transform: scale(1.15);
-}
-
-.todolist-pref-color-dot.active {
-  border-color: var(--zotero-primary);
-  transform: scale(1.15);
-  box-shadow: 0 0 0 2px var(--zotero-primary-border);
-}
-
-/* Accessible, first-level disclosure cards */
-.todolist-pref-card {
-  border-radius: 8px;
-  background: var(--zotero-surface);
-  border-color: var(--zotero-border);
-  box-shadow: none;
-}
-
-.todolist-card-header {
-  min-height: 42px;
-  padding: 9px 14px;
-  border: 0;
-  cursor: pointer;
-  list-style: none;
-  outline: none;
-}
-
-.todolist-card-header::-webkit-details-marker { display: none; }
-.todolist-card-header::marker { content: ""; }
-.todolist-card-header:hover { background: var(--zotero-surface-hover); }
-.todolist-card-header:focus-visible {
-  position: relative;
-  z-index: 1;
-  outline: 2px solid var(--zotero-primary);
-  outline-offset: -2px;
-}
-
-.todolist-pref-card[open] > .todolist-card-header {
-  border-bottom: 1px solid var(--zotero-border);
-}
-
-.todolist-card-chevron {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  margin: 0 3px 3px 12px;
-  border-right: 1.5px solid var(--zotero-text-secondary);
-  border-bottom: 1.5px solid var(--zotero-text-secondary);
-  transform: rotate(45deg);
-  transition: transform 0.16s ease;
-}
-
-.todolist-pref-card[open] > .todolist-card-header .todolist-card-chevron {
-  margin-bottom: -3px;
-  transform: rotate(225deg);
-}
-
-.todolist-card-body { padding: 12px 16px 16px; }
-.todolist-pref-desc { font-size: 12px; }
-.todolist-control-row { gap: 12px; padding: 7px 4px; }
-.todolist-check-row { padding: 6px 4px; }
-.todolist-control,
-.todolist-pref-btn { border-radius: 4px; }
-.todolist-control { padding: 4px 8px; }
-.todolist-pref-btn { padding: 5px 10px; }
-
-.todolist-pref-title-row {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-}
-
+.todolist-pref-title-row { display: flex; align-items: center; gap: 8px; }
 .todolist-pref-title-row h1 {
   margin: 0;
-  color: var(--zotero-text);
-  font-size: 18px;
+  color: var(--flow-pref-text);
+  font-size: 16px;
   font-weight: 600;
 }
-
-.todolist-pref-version {
-  padding: 1px 7px;
-  border: 1px solid var(--zotero-primary-border);
-  border-radius: 4px;
-  color: var(--zotero-primary);
-  background: var(--zotero-primary-light);
-  font-size: 11px;
-  line-height: 1.5;
-}
-
-.todolist-pref-release-info {
-  display: block;
-  margin: 16px 0 0;
-  padding: 12px 14px;
-  border: 1px solid var(--zotero-border);
-  border-radius: 8px;
-  background: var(--zotero-surface-card);
-  color: var(--zotero-text-secondary);
-  font-size: 12px;
-}
-
-.todolist-pref-release-title {
-  margin-bottom: 7px;
-  color: var(--zotero-text);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.todolist-pref-release-info dl { margin: 0; }
-.todolist-pref-release-info dl > div {
-  display: grid;
-  grid-template-columns: minmax(78px, 100px) minmax(0, 1fr);
-  gap: 8px;
-  padding: 3px 0;
-}
-.todolist-pref-release-info dt { color: var(--zotero-text-muted); }
-.todolist-pref-release-info dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
-.todolist-pref-release-info a { color: var(--zotero-primary); text-decoration: none; }
-.todolist-pref-release-info a:hover { text-decoration: underline; }
-
-@media (max-width: 560px) {
-  .todolist-prefs-container { padding: 8px 10px 24px 4px; }
-  .todolist-card-body { padding: 10px 12px 14px; }
-  .todolist-control-row { align-items: flex-start; flex-direction: column; gap: 5px; }
-  select.todolist-control { min-width: 0; width: 100%; max-width: none; }
-  .todolist-pref-release-info dl > div { grid-template-columns: 1fr; gap: 0; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .todolist-card-chevron { transition: none; }
-}
-
-/* Dark Theme Support (Native Zotero 7/8 Dark Palette) */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --zotero-primary: #df383a;
-    --zotero-primary-hover: #eb5e60;
-    --zotero-primary-light: rgba(223, 56, 58, 0.18);
-    --zotero-primary-border: rgba(223, 56, 58, 0.3);
-    --zotero-focus-ring: rgba(223, 56, 58, 0.28);
-
-    --zotero-bg: #18181b;
-    --zotero-surface: #222225;
-    --zotero-surface-card: #29292e;
-    --zotero-surface-hover: #323238;
-    --zotero-text: #f4f4f6;
-    --zotero-text-secondary: #a1a1aa;
-    --zotero-text-muted: #71717a;
-    --zotero-border: #38383e;
-    --zotero-border-light: #2d2d33;
-  }
-
-  .todolist-card-body { background: #1c1c1f; }
-
-  .todolist-card-header {
-    background: #26262b;
-  }
-
-  .todolist-card-header:hover { background: #2e2e34; }
-
-  .todolist-pref-card {
-    background: #1c1c1f;
-    border-color: #4a4a52;
-  }
-
-  .todolist-control {
-    background-color: #29292e;
-    border-color: #38383e;
-    color: #f4f4f6;
-  }
-
-  select.todolist-control option {
-    background-color: #222225;
-    color: #f4f4f6;
-  }
-
-  .todolist-pref-btn {
-    background-color: #29292e;
-    border-color: #38383e;
-    color: #f4f4f6;
-  }
-
-  .todolist-pref-btn:hover {
-    background-color: #323238;
-    border-color: #4a4a52;
-  }
-
-  .todolist-pref-desc code {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.12);
-    color: #f4f4f6;
-  }
-
-  .todolist-pref-btn-primary {
-    background-color: rgba(223, 56, 58, 0.18) !important;
-    border-color: #df383a !important;
-    color: #fca5a5 !important;
-  }
-
-  .todolist-pref-btn-primary:hover {
-    background-color: rgba(223, 56, 58, 0.28) !important;
-  }
-
-  .todolist-pref-btn-danger {
-    background-color: rgba(220, 38, 38, 0.16) !important;
-    border-color: rgba(220, 38, 38, 0.45) !important;
-    color: #fca5a5 !important;
-  }
-
-  .todolist-pref-btn-danger:hover {
-    background-color: rgba(220, 38, 38, 0.28) !important;
-    border-color: #ef4444 !important;
-  }
-
-  .todolist-pref-btn-warning {
-    background-color: rgba(239, 68, 68, 0.14) !important;
-    border-color: rgba(239, 68, 68, 0.4) !important;
-    color: #fca5a5 !important;
-  }
-
-  .todolist-pref-btn-warning:hover {
-    background-color: rgba(239, 68, 68, 0.24) !important;
-    border-color: #ef4444 !important;
-  }
-}
-
-/* Compact native preference layout, aligned with Zotero MetaFlow. */
-.todolist-prefs-container {
-  width: 100%;
-  max-width: none;
-  padding: 6px 10px 20px 4px;
-  color: inherit;
-  font-family: inherit;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.todolist-pref-header {
-  justify-content: flex-start;
-  margin-bottom: 10px;
-  padding-bottom: 8px;
-  border-color: color-mix(in srgb, currentColor 16%, transparent);
-}
-
-.todolist-pref-header h1,
-.todolist-pref-title-row h1 {
-  color: inherit;
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: normal;
-}
-
 .todolist-pref-version {
   padding: 1px 6px;
-  border-color: color-mix(in srgb, currentColor 24%, transparent);
+  border: 1px solid var(--flow-pref-border);
   border-radius: 4px;
-  color: inherit;
-  background: transparent;
+  background: var(--flow-pref-surface);
+  color: var(--flow-pref-muted);
   font-size: 11px;
   font-weight: 400;
-  opacity: 0.75;
+  line-height: 1.5;
+  white-space: nowrap;
 }
-
 .todolist-pref-status {
-  margin-bottom: 10px;
-  padding: 5px 9px;
-  color: inherit;
-  background: transparent;
-  border-color: color-mix(in srgb, currentColor 18%, transparent);
-  border-radius: 4px;
-  font-size: 0.9em;
+  margin: 0 0 12px;
+  color: var(--flow-pref-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
 }
+.todolist-pref-error { color: var(--flow-pref-danger); }
 
 .todolist-pref-card {
-  margin: 8px 0;
-  overflow: visible;
-  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
-  border-radius: 8px;
-  background: transparent;
-  box-shadow: none;
-  transition: none;
+  display: block;
+  min-width: 0;
+  margin: 0 0 10px;
+  padding: 0;
+  border: 1px solid var(--flow-pref-border);
+  border-radius: 9px;
+  background: var(--flow-pref-surface);
 }
-
-.todolist-pref-card:hover {
-  border-color: color-mix(in srgb, currentColor 24%, transparent);
-}
-
 .todolist-card-header {
-  min-height: 38px;
-  padding: 8px 12px;
-  color: inherit;
-  background: transparent;
-  border: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 11px 13px;
+  color: var(--flow-pref-text);
   font-size: 13px;
   font-weight: 600;
+  line-height: 1.5;
+  cursor: pointer;
+  list-style: none;
 }
-
-.todolist-card-header:hover {
-  background: color-mix(in srgb, currentColor 3%, transparent);
+.todolist-pref-card:last-of-type { margin-bottom: 0; }
+.todolist-card-header::-webkit-details-marker { display: none; }
+.todolist-card-header::marker { content: ""; }
+.todolist-card-header::after {
+  content: "›";
+  flex: 0 0 auto;
+  color: var(--flow-pref-muted);
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1;
 }
-
-.todolist-pref-card[open] > .todolist-card-header {
-  border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+.todolist-pref-card[open] > .todolist-card-header::after { transform: rotate(90deg); }
+.todolist-card-header:hover { background: var(--flow-pref-hover); }
+.todolist-card-header:focus-visible {
+  outline: 2px solid var(--flow-pref-accent);
+  outline-offset: -2px;
+  border-radius: 8px;
 }
-
-.todolist-card-title {
-  min-width: 0;
-  line-height: 1.4;
-}
-
-.todolist-card-chevron {
-  border-color: currentColor;
-  opacity: 0.7;
-}
-
+.todolist-card-title { min-width: 0; overflow-wrap: anywhere; }
+.todolist-card-chevron { display: none; }
 .todolist-card-body {
   min-width: 0;
-  padding: 9px 12px 12px;
-  background: transparent;
+  padding: 4px 13px 10px;
+  border-top: 1px solid var(--flow-pref-divider);
 }
-
+.todolist-pref-content { display: flex; flex-direction: column; min-width: 0; }
 .todolist-pref-desc {
-  max-width: 100%;
   margin: 0 0 8px;
-  color: inherit;
-  font-size: 0.88em;
-  line-height: 1.5;
-  opacity: 0.78;
+  color: var(--flow-pref-muted);
+  font-size: 12px;
+  line-height: 1.6;
 }
-
+.todolist-pref-desc code {
+  padding: 1px 4px;
+  border: 1px solid var(--flow-pref-divider);
+  border-radius: 3px;
+  background: var(--flow-pref-surface);
+  color: var(--flow-pref-text);
+  font: 11px/1.5 ui-monospace, Consolas, monospace;
+}
 .todolist-pref-subheading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 12px 0 5px;
   padding-bottom: 4px;
-  color: inherit;
-  border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+  border-bottom: 1px solid var(--flow-pref-divider);
+  color: var(--flow-pref-text);
   font-size: 13px;
   font-weight: 600;
 }
+.todolist-pref-subheading:first-child { margin-top: 4px; }
 
-.todolist-pref-content {
-  gap: 0;
-}
-
-/* Keep the native 16px checkbox at the left edge; text stays aligned and wraps naturally. */
-.todolist-prefs-container .todolist-check-row {
+.todolist-check-row {
   display: grid;
   grid-template-columns: 16px minmax(0, 1fr);
   align-items: start;
-  justify-items: start;
-  column-gap: 8px;
+  gap: 8px;
   min-width: 0;
   margin: 0;
   padding: 6px 0;
-  border-radius: 0;
-  text-align: left;
   cursor: pointer;
 }
-
-.todolist-prefs-container .todolist-check-row:hover {
-  background: transparent;
+.todolist-control-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(8em, 15em);
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--flow-pref-divider);
 }
-
-.todolist-prefs-container .todolist-check-row input[type="checkbox"],
-.todolist-prefs-container .todolist-check-row .todolist-control[type="checkbox"] {
+.todolist-control-row:last-child { border-bottom: 0; }
+.todolist-control-label {
+  min-width: 0;
+  color: var(--flow-pref-text);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.45;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+.todolist-control {
   appearance: auto;
-  display: block;
-  justify-self: start;
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 1px solid var(--flow-pref-border);
+  border-radius: 4px;
+  background: Field;
+  color: var(--flow-pref-text);
+  font: inherit;
+  font-size: 13px;
+}
+select.todolist-control { width: 100%; cursor: pointer; }
+.todolist-check-row input[type="checkbox"].todolist-control {
+  appearance: auto;
   flex: 0 0 16px;
   width: 16px;
   min-width: 16px;
@@ -738,175 +198,92 @@ select.todolist-control {
   border: initial;
   border-radius: initial;
   background: initial;
-  accent-color: AccentColor;
+  accent-color: var(--flow-pref-accent);
+  cursor: pointer;
 }
-
-.todolist-prefs-container .todolist-check-row .todolist-control-label {
-  min-width: 0;
-  color: inherit;
-  font-size: 13px;
-  font-weight: 400;
-  line-height: 1.45;
-  text-align: left;
-  overflow-wrap: anywhere;
-}
-
-.todolist-control-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(8em, 15em);
-  align-items: center;
-  justify-content: normal;
-  gap: 8px 12px;
-  min-width: 0;
-  padding: 6px 0;
-  border-bottom-color: color-mix(in srgb, currentColor 10%, transparent);
-}
-
-.todolist-control-row .todolist-control-label {
-  min-width: 0;
-  color: inherit;
-  font-size: 13px;
-  font-weight: 400;
-  overflow-wrap: anywhere;
-}
-
-.todolist-prefs-container .todolist-control {
-  box-sizing: border-box;
-  min-width: 0;
-  max-width: 100%;
-  padding: 4px 7px;
-  border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
-  border-radius: 4px;
-  color: inherit;
-  background: transparent;
-  font: inherit;
-  font-size: 13px;
-  box-shadow: none;
-  transition: none;
-}
-
-.todolist-prefs-container select.todolist-control {
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-}
-
-.todolist-prefs-container .todolist-control:focus {
-  outline: 2px solid Highlight;
-  outline-offset: 1px;
-  border-color: currentColor;
-  box-shadow: none;
-}
-
-.todolist-mode-quickbar {
-  justify-content: flex-start;
-  gap: 6px;
-  margin-block: 7px 9px;
-  padding: 7px 9px;
-  border-color: color-mix(in srgb, currentColor 14%, transparent);
-  border-radius: 5px;
-  background: transparent;
-}
-
-.todolist-mode-quickbar > span {
-  color: inherit !important;
-  font-size: 0.88em !important;
-  opacity: 0.78;
-}
-
-.todolist-prefs-container .todolist-pref-btn,
-.todolist-prefs-container .todolist-pref-btn-primary,
-.todolist-prefs-container .todolist-pref-btn-danger,
-.todolist-prefs-container .todolist-pref-btn-warning {
-  min-width: 0;
-  padding: 4px 8px;
-  border: 1px solid color-mix(in srgb, currentColor 22%, transparent) !important;
-  border-radius: 4px;
-  color: inherit !important;
-  background: transparent !important;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 400 !important;
-  box-shadow: none;
-  transform: none;
-  transition: none;
-}
-
-.todolist-prefs-container .todolist-pref-btn:hover,
-.todolist-prefs-container .todolist-pref-btn-primary:hover,
-.todolist-prefs-container .todolist-pref-btn-danger:hover,
-.todolist-prefs-container .todolist-pref-btn-warning:hover {
-  border-color: color-mix(in srgb, currentColor 36%, transparent) !important;
-  background: color-mix(in srgb, currentColor 4%, transparent) !important;
-  transform: none;
-}
-
-.todolist-prefs-container .todolist-pref-btn-primary {
-  color: AccentColor !important;
-  border-color: color-mix(in srgb, AccentColor 42%, transparent) !important;
-}
-
-.todolist-prefs-container .todolist-pref-btn-danger {
-  color: #b42318 !important;
-  border-color: color-mix(in srgb, #b42318 42%, transparent) !important;
-}
-
-.todolist-prefs-container .todolist-pref-btn-warning {
-  color: #9a6700 !important;
-  border-color: color-mix(in srgb, #9a6700 42%, transparent) !important;
-}
-
+.todolist-control:disabled { cursor: default; }
 .todolist-prefs-container :focus-visible {
-  outline: 2px solid Highlight;
+  outline: 2px solid var(--flow-pref-accent);
   outline-offset: 2px;
 }
 
+.todolist-mode-quickbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-block: 7px 9px;
+  padding: 7px 9px;
+  border: 1px solid var(--flow-pref-divider);
+  border-radius: 4px;
+  background: var(--flow-pref-surface);
+}
+.todolist-mode-quickbar > span { color: var(--flow-pref-muted); font-size: 12px; }
+.todolist-pref-btn {
+  min-width: 0;
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid var(--flow-pref-border);
+  border-radius: 4px;
+  background: Field;
+  color: var(--flow-pref-text);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  cursor: pointer;
+  user-select: none;
+}
+.todolist-pref-btn:hover { background: var(--flow-pref-hover); }
+.todolist-pref-btn-primary {
+  border-color: color-mix(in srgb, var(--flow-pref-accent) 42%, transparent);
+  background: color-mix(in srgb, var(--flow-pref-accent) 6%, transparent);
+  color: var(--flow-pref-accent);
+}
+.todolist-pref-btn-primary:hover { background: color-mix(in srgb, var(--flow-pref-accent) 12%, transparent); }
+.todolist-pref-btn-danger {
+  border-color: color-mix(in srgb, var(--flow-pref-danger) 42%, transparent);
+  color: var(--flow-pref-danger);
+}
+.todolist-pref-btn-warning {
+  border-color: color-mix(in srgb, var(--flow-pref-warning) 42%, transparent);
+  color: var(--flow-pref-warning);
+}
+
+.todolist-pref-tags-container { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 28px; margin-top: 4px; }
+.todolist-pref-tag-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  font-size: 12px;
+}
+.todolist-pref-tag-delete { padding: 0 2px; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; opacity: .7; }
+.todolist-pref-tag-delete:hover { opacity: 1; }
+.todolist-pref-color-dot { width: 18px; height: 18px; border: 2px solid transparent; border-radius: 50%; cursor: pointer; }
+.todolist-pref-color-dot.active { border-color: var(--flow-pref-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--flow-pref-accent) 26%, transparent); }
+
 .todolist-pref-release-info {
-  margin-top: 12px;
-  padding: 8px 0 0;
-  border: 0;
-  border-top: 1px solid color-mix(in srgb, currentColor 16%, transparent);
-  border-radius: 0;
-  color: inherit;
-  background: transparent;
-  font-size: 0.9em;
+  display: block;
+  margin-top: 14px;
+  padding: 10px 13px;
+  border: 1px solid var(--flow-pref-border);
+  border-radius: 9px;
+  background: var(--flow-pref-surface);
+  color: var(--flow-pref-text);
+  font-size: 12px;
+  line-height: 1.5;
 }
-
-.todolist-pref-release-title {
-  margin-bottom: 4px;
-  color: inherit;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.todolist-pref-release-info dl > div {
-  grid-template-columns: minmax(6em, 8em) minmax(0, 1fr);
-  gap: 8px;
-  padding-block: 3px;
-}
-
-.todolist-pref-release-info dt {
-  color: inherit;
-  opacity: 0.72;
-}
-
-.todolist-pref-release-info a {
-  color: LinkText;
-}
+.todolist-pref-release-title { margin-bottom: 4px; color: var(--flow-pref-text); font-size: 13px; font-weight: 600; }
+.todolist-pref-release-info dl { margin: 0; }
+.todolist-pref-release-info dl > div { display: grid; grid-template-columns: minmax(6em, 8em) minmax(0, 1fr); gap: 8px; padding-block: 3px; }
+.todolist-pref-release-info dt { color: var(--flow-pref-muted); font-weight: 500; }
+.todolist-pref-release-info dd { margin: 0; min-width: 0; color: var(--flow-pref-muted); overflow-wrap: anywhere; }
+.todolist-pref-release-info a { color: var(--flow-pref-accent); text-decoration: none; }
+.todolist-pref-release-info a:hover { text-decoration: underline; }
 
 @media (max-width: 560px) {
-  .todolist-prefs-container {
-    padding: 6px 4px 18px;
-  }
-
-  .todolist-control-row {
-    grid-template-columns: minmax(0, 1fr);
-    align-items: start;
-    gap: 4px;
-  }
-
-  .todolist-pref-release-info dl > div {
-    grid-template-columns: minmax(6em, 8em) minmax(0, 1fr);
-    gap: 8px;
-  }
+  .todolist-prefs-container { padding: 8px 8px 20px; }
+  .todolist-control-row { grid-template-columns: minmax(0, 1fr); align-items: start; gap: 4px; }
 }

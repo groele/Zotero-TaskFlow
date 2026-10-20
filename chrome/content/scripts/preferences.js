@@ -379,7 +379,7 @@ window.TaskFlow_Preferences = (() => {
     if (!zot?.Todolist?.loadData) {
       const emptySpan = doc.createElementNS(HTML, 'span');
       emptySpan.textContent = '暂无自定义标签 (Zotero 就绪后即可管理)';
-      emptySpan.style.color = '#94a3b8';
+      emptySpan.style.color = 'var(--flow-pref-muted)';
       emptySpan.style.fontSize = '12px';
       listEl.appendChild(emptySpan);
       return;
@@ -392,7 +392,7 @@ window.TaskFlow_Preferences = (() => {
       if (tags.length === 0) {
         const emptySpan = doc.createElementNS(HTML, 'span');
         emptySpan.textContent = '暂无自定义标签，可在下方输入名称并选择颜色创建。';
-        emptySpan.style.color = '#94a3b8';
+        emptySpan.style.color = 'var(--flow-pref-muted)';
         emptySpan.style.fontSize = '12px';
         listEl.appendChild(emptySpan);
         return;
@@ -579,7 +579,7 @@ window.TaskFlow_Preferences = (() => {
           const status = doc.getElementById('todolist-import-status');
           if (status) {
             status.textContent = '正在准备导入…';
-            status.style.color = '#059669';
+            status.style.color = 'var(--flow-pref-muted)';
           }
           const res = await Zotero?.Todolist?.importDataFile?.(mode, win);
           if (res?.success) {
@@ -588,7 +588,7 @@ window.TaskFlow_Preferences = (() => {
           } else if (res?.error) {
             if (status) {
               status.textContent = `❌ 导入失败：${res.error}`;
-              status.style.color = '#ef4444';
+              status.style.color = 'var(--flow-pref-danger)';
             }
           } else {
             if (status) status.textContent = '';

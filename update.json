@@ -3,8 +3,8 @@
     "todolist@groele.org": {
       "updates": [
         {
-          "version": "12.3.1",
-          "update_link": "https://github.com/groele/Zotero-TaskFlow/releases/download/v12.3.1/zotero-taskflow-12.3.1.xpi",
+          "version": "12.3.2",
+          "update_link": "https://github.com/groele/Zotero-TaskFlow/releases/download/v12.3.2/zotero-taskflow-12.3.2.xpi",
           "applications": {
             "zotero": {
               "strict_min_version": "10.0.0",
@@ -17,7 +17,7 @@
               "strict_max_version": "15.*"
             }
           },
-          "update_hash": "sha256:b3f475b80d5b3a11968f66838965e1887d6e7a76e6eeea460b47d0959400643e"
+          "update_hash": "sha256:7d6bbebc28bca4691aaf72a3f5fb73225802cfe65b27a8caa76345950cc269a9"
         }
       ]
     }
