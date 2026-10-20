@@ -380,7 +380,7 @@ window.TaskFlow_Preferences = (() => {
       const emptySpan = doc.createElementNS(HTML, 'span');
       emptySpan.textContent = '暂无自定义标签 (Zotero 就绪后即可管理)';
       emptySpan.style.color = 'var(--flow-pref-muted)';
-      emptySpan.style.fontSize = '12px';
+      emptySpan.style.fontSize = '13px';
       listEl.appendChild(emptySpan);
       return;
     }
@@ -393,7 +393,7 @@ window.TaskFlow_Preferences = (() => {
         const emptySpan = doc.createElementNS(HTML, 'span');
         emptySpan.textContent = '暂无自定义标签，可在下方输入名称并选择颜色创建。';
         emptySpan.style.color = 'var(--flow-pref-muted)';
-        emptySpan.style.fontSize = '12px';
+        emptySpan.style.fontSize = '13px';
         listEl.appendChild(emptySpan);
         return;
       }
@@ -402,7 +402,9 @@ window.TaskFlow_Preferences = (() => {
         const badge = doc.createElementNS(HTML, 'span');
         badge.className = 'todolist-pref-tag-badge';
         badge.style.backgroundColor = (tag.color || '#3b82f6') + '20';
-        badge.style.color = tag.color || '#3b82f6';
+        // Preserve the user's tag hue in the chip background and border while
+        // keeping its label readable against every custom color.
+        badge.style.color = 'var(--flow-pref-text)';
         badge.style.borderColor = (tag.color || '#3b82f6') + '40';
 
         const label = doc.createElementNS(HTML, 'span');

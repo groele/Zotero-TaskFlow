@@ -2,13 +2,13 @@
  * Keep every token scoped to this pane; preferences share a Zotero document.
  */
 .todolist-prefs-container {
-  --flow-pref-text: var(--fill-primary, CanvasText);
-  --flow-pref-muted: var(--fill-secondary, color-mix(in srgb, var(--flow-pref-text) 68%, transparent));
-  --flow-pref-accent: var(--accent-blue, #4070f4);
-  --flow-pref-border: color-mix(in srgb, var(--flow-pref-text) 18%, transparent);
-  --flow-pref-divider: color-mix(in srgb, var(--flow-pref-text) 10%, transparent);
-  --flow-pref-surface: color-mix(in srgb, var(--flow-pref-text) 2%, transparent);
-  --flow-pref-hover: color-mix(in srgb, var(--flow-pref-text) 5%, transparent);
+  --flow-pref-text: light-dark(#20242b, #f1f3f5);
+  --flow-pref-muted: light-dark(#505862, #c4c9d1);
+  --flow-pref-accent: light-dark(#245ac7, #9bbcff);
+  --flow-pref-border: light-dark(#c9cdd3, #646a73);
+  --flow-pref-divider: light-dark(#e2e5e9, #565c65);
+  --flow-pref-surface: light-dark(#ffffff, #35383d);
+  --flow-pref-hover: light-dark(#f3f6fc, #414751);
   --flow-pref-danger: light-dark(#b42318, #ff9b90);
   --flow-pref-warning: light-dark(#9a6700, #f6c760);
   /* Existing inline preference descriptions use these local aliases. */
@@ -21,9 +21,9 @@
   margin-inline: auto;
   padding: 10px 14px 28px;
   color: var(--flow-pref-text);
-  font: inherit;
-  font-size: 13px;
-  line-height: 1.5;
+  font-family: system-ui, 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 .todolist-prefs-container *,
@@ -42,8 +42,9 @@
 .todolist-pref-title-row h1 {
   margin: 0;
   color: var(--flow-pref-text);
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
+  line-height: 1.5;
 }
 .todolist-pref-version {
   padding: 1px 6px;
@@ -51,7 +52,7 @@
   border-radius: 4px;
   background: var(--flow-pref-surface);
   color: var(--flow-pref-muted);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 400;
   line-height: 1.5;
   white-space: nowrap;
@@ -59,7 +60,7 @@
 .todolist-pref-status {
   margin: 0 0 12px;
   color: var(--flow-pref-muted);
-  font-size: 12px;
+  font-size: 13px;
   overflow-wrap: anywhere;
 }
 .todolist-pref-error { color: var(--flow-pref-danger); }
@@ -81,9 +82,9 @@
   margin: 0;
   padding: 11px 13px;
   color: var(--flow-pref-text);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
-  line-height: 1.5;
+  line-height: 1.6;
   cursor: pointer;
   list-style: none;
 }
@@ -116,7 +117,7 @@
 .todolist-pref-desc {
   margin: 0 0 8px;
   color: var(--flow-pref-muted);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.6;
 }
 .todolist-pref-desc code {
@@ -125,7 +126,7 @@
   border-radius: 3px;
   background: var(--flow-pref-surface);
   color: var(--flow-pref-text);
-  font: 11px/1.5 ui-monospace, Consolas, monospace;
+  font: 13px/1.5 ui-monospace, Consolas, monospace;
 }
 .todolist-pref-subheading {
   display: flex;
@@ -135,8 +136,9 @@
   padding-bottom: 4px;
   border-bottom: 1px solid var(--flow-pref-divider);
   color: var(--flow-pref-text);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
+  line-height: 1.6;
 }
 .todolist-pref-subheading:first-child { margin-top: 4px; }
 
@@ -163,9 +165,9 @@
 .todolist-control-label {
   min-width: 0;
   color: var(--flow-pref-text);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 400;
-  line-height: 1.45;
+  line-height: 1.6;
   text-align: start;
   overflow-wrap: anywhere;
 }
@@ -174,14 +176,14 @@
   box-sizing: border-box;
   min-width: 0;
   max-width: 100%;
-  min-height: 30px;
-  padding: 4px 8px;
+  min-height: 32px;
+  padding: 5px 8px;
   border: 1px solid var(--flow-pref-border);
   border-radius: 4px;
   background: Field;
   color: var(--flow-pref-text);
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
 }
 select.todolist-control { width: 100%; cursor: pointer; }
 .todolist-check-row input[type="checkbox"].todolist-control {
@@ -218,18 +220,18 @@ select.todolist-control { width: 100%; cursor: pointer; }
   border-radius: 4px;
   background: var(--flow-pref-surface);
 }
-.todolist-mode-quickbar > span { color: var(--flow-pref-muted); font-size: 12px; }
+.todolist-mode-quickbar > span { color: var(--flow-pref-muted); font-size: 13px; }
 .todolist-pref-btn {
   min-width: 0;
-  min-height: 30px;
-  padding: 5px 9px;
+  min-height: 32px;
+  padding: 6px 10px;
   border: 1px solid var(--flow-pref-border);
   border-radius: 4px;
   background: Field;
   color: var(--flow-pref-text);
   font: inherit;
-  font-size: 12px;
-  line-height: 1.35;
+  font-size: 13px;
+  line-height: 1.5;
   cursor: pointer;
   user-select: none;
 }
@@ -257,7 +259,7 @@ select.todolist-control { width: 100%; cursor: pointer; }
   padding: 3px 10px;
   border: 1px solid transparent;
   border-radius: 9999px;
-  font-size: 12px;
+  font-size: 13px;
 }
 .todolist-pref-tag-delete { padding: 0 2px; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; opacity: .7; }
 .todolist-pref-tag-delete:hover { opacity: 1; }
@@ -272,18 +274,18 @@ select.todolist-control { width: 100%; cursor: pointer; }
   border-radius: 9px;
   background: var(--flow-pref-surface);
   color: var(--flow-pref-text);
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 1.6;
 }
-.todolist-pref-release-title { margin-bottom: 4px; color: var(--flow-pref-text); font-size: 13px; font-weight: 600; }
+.todolist-pref-release-title { margin-bottom: 4px; color: var(--flow-pref-text); font-size: 14px; font-weight: 600; }
 .todolist-pref-release-info dl { margin: 0; }
 .todolist-pref-release-info dl > div { display: grid; grid-template-columns: minmax(6em, 8em) minmax(0, 1fr); gap: 8px; padding-block: 3px; }
 .todolist-pref-release-info dt { color: var(--flow-pref-muted); font-weight: 500; }
-.todolist-pref-release-info dd { margin: 0; min-width: 0; color: var(--flow-pref-muted); overflow-wrap: anywhere; }
+.todolist-pref-release-info dd { margin: 0; min-width: 0; color: var(--flow-pref-muted); overflow-wrap: anywhere; font-size: 13px; }
 .todolist-pref-release-info a { color: var(--flow-pref-accent); text-decoration: none; }
 .todolist-pref-release-info a:hover { text-decoration: underline; }
 
 @media (max-width: 560px) {
-  .todolist-prefs-container { padding: 8px 8px 20px; }
+  .todolist-prefs-container { padding: 10px 14px 28px; }
   .todolist-control-row { grid-template-columns: minmax(0, 1fr); align-items: start; gap: 4px; }
 }

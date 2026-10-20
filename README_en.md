@@ -71,7 +71,7 @@ Use it to organize paper reading, writing, experiments and code reproduction, su
 
 ### Install the XPI (recommended)
 
-1. Download `zotero-taskflow-12.3.2.xpi` from the [Zotero TaskFlow v12.3.2 release](https://github.com/groele/Zotero-TaskFlow/releases/tag/v12.3.2).
+1. Download `zotero-taskflow-12.3.3.xpi` from the [Zotero TaskFlow v12.3.3 release](https://github.com/groele/Zotero-TaskFlow/releases/tag/v12.3.3).
 2. In Zotero, open **Tools → Plugins**.
 3. Click the gear menu in the plugin manager and choose **Install Add-on From File**.
 4. Select the downloaded XPI and confirm. Restart Zotero if prompted.
@@ -111,7 +111,7 @@ Preferences let you choose whether the PDF shortcut creates a task immediately o
 
 ## Project information
 
-- Current release: [v12.3.2](https://github.com/groele/Zotero-TaskFlow/releases/tag/v12.3.2); see [GitHub Releases](https://github.com/groele/Zotero-TaskFlow/releases) for later versions.
+- Current release: [v12.3.3](https://github.com/groele/Zotero-TaskFlow/releases/tag/v12.3.3); see [GitHub Releases](https://github.com/groele/Zotero-TaskFlow/releases) for later versions.
 - Bug reports and feature requests: [GitHub Issues](https://github.com/groele/Zotero-TaskFlow/issues).
 - License: [MIT](LICENSE).
 - Main application code lives under `chrome/content/`. `scripts/build-package.py` builds the Zotero XPI as a ZIP archive.

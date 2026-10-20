@@ -71,7 +71,7 @@
 
 ### 从 XPI 安装（推荐）
 
-1. 从 [Zotero TaskFlow v12.3.2 Release](https://github.com/groele/Zotero-TaskFlow/releases/tag/v12.3.2) 下载 `zotero-taskflow-12.3.2.xpi` 文件。
+1. 从 [Zotero TaskFlow v12.3.3 Release](https://github.com/groele/Zotero-TaskFlow/releases/tag/v12.3.3) 下载 `zotero-taskflow-12.3.3.xpi` 文件。
 2. 在 Zotero 中打开 **工具 → 插件**。
 3. 点击插件管理器中的齿轮菜单，选择 **从文件安装插件**。
 4. 选择下载的 XPI 并按提示确认安装；必要时重启 Zotero。
@@ -111,7 +111,7 @@
 
 ## 项目信息
 
-- 当前发布版本：[v12.3.2 Release](https://github.com/groele/Zotero-TaskFlow/releases/tag/v12.3.2)；后续版本见 [GitHub Releases](https://github.com/groele/Zotero-TaskFlow/releases)。
+- 当前发布版本：[v12.3.3 Release](https://github.com/groele/Zotero-TaskFlow/releases/tag/v12.3.3)；后续版本见 [GitHub Releases](https://github.com/groele/Zotero-TaskFlow/releases)。
 - 问题反馈与功能建议：[GitHub Issues](https://github.com/groele/Zotero-TaskFlow/issues)。
 - 开源协议：[MIT License](LICENSE)。
 - 项目源代码主要位于 `chrome/content/`；`scripts/build-package.py` 用于构建 ZIP 格式的 Zotero XPI 安装包。
