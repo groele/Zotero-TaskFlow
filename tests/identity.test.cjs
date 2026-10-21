@@ -4,23 +4,24 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { makeHost, read, root, JSDOM, waitFor } = require('./helpers.cjs');
 
-test('manifest.json and package.json declare v12.0.1 and todolist@groele.org', () => {
+test('manifest.json and package.json declare the same release version and todolist@groele.org', () => {
   const manifest = JSON.parse(read('manifest.json'));
-  assert.equal(manifest.version, '12.0.1');
+  assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
   assert.equal(manifest.applications.zotero.id, 'todolist@groele.org');
   assert.equal(manifest.browser_specific_settings.zotero.id, 'todolist@groele.org');
 
   const pkg = JSON.parse(read('package.json'));
   assert.equal(pkg.name, 'zotero-taskflow');
-  assert.equal(pkg.version, '12.0.1');
+  assert.equal(pkg.version, manifest.version);
 });
 
-test('update.json provides v12.0.1 for both taskflow and legacy todolist IDs', () => {
+test('update.json provides the current version for both taskflow and todolist IDs', () => {
   const update = JSON.parse(read('update.json'));
+  const version = JSON.parse(read('manifest.json')).version;
   assert(update.addons['taskflow@groele.org']);
-  assert.equal(update.addons['taskflow@groele.org'].updates[0].version, '12.0.1');
+  assert.equal(update.addons['taskflow@groele.org'].updates[0].version, version);
   assert(update.addons['todolist@groele.org']);
-  assert.equal(update.addons['todolist@groele.org'].updates[0].version, '12.0.1');
+  assert.equal(update.addons['todolist@groele.org'].updates[0].version, version);
 });
 
 test('chrome.manifest registers both taskflow and todolist namespaces', () => {
