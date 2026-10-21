@@ -1,11 +1,11 @@
-taskflow-menu-open = TaskFlow Academic Workspace
+taskflow-menu-open = Zotero TaskFlow Academic Workspace
 taskflow-item-menu-create = Add Reading Task for Selected Item
 taskflow-item-menu-milestones = Generate Structured Reading Milestones
 taskflow-item-menu-filter = View Associated Tasks for This Item
 taskflow-item-menu-sync-note = Sync Tasks to Item Child Note
 taskflow-collection-menu-create = Create Reading Plan for This Collection
 taskflow-collection-menu-plan = Batch Generate Reading Plan for All Papers in Collection
-taskflow-toolbar-tooltip = Open TaskFlow Academic Workspace (Ctrl+Alt+T)
+taskflow-toolbar-tooltip = Open Zotero TaskFlow Academic Workspace (Ctrl+Alt+T)
 taskflow-reader-add-task = Convert Selection/Annotation to Task (Ctrl+Shift+T)
 # This message targets the native collapsible-section. A value would erase its controls.
 taskflow-item-pane-header =
@@ -26,14 +26,14 @@ taskflow-item-pane-open-pdf = Open PDF Companion
 taskflow-item-pane-sync-note = 📝 Sync to Child Note
 
 # Compatibility aliases
-todolist-menu-open = TaskFlow Academic Workspace
+todolist-menu-open = Zotero TaskFlow Academic Workspace
 todolist-item-menu-create = Add Reading Task for Selected Item
 todolist-item-menu-milestones = Generate Structured Reading Milestones
 todolist-item-menu-filter = View Associated Tasks for This Item
 todolist-item-menu-sync-note = Sync Tasks to Item Child Note
 todolist-collection-menu-create = Create Reading Plan for This Collection
 todolist-collection-menu-plan = Batch Generate Reading Plan for All Papers in Collection
-todolist-toolbar-tooltip = Open TaskFlow Academic Workspace (Ctrl+Alt+T)
+todolist-toolbar-tooltip = Open Zotero TaskFlow Academic Workspace (Ctrl+Alt+T)
 todolist-reader-add-task = Convert Selection/Annotation to Task (Ctrl+Shift+T)
 todolist-item-pane-header =
     .label = Academic Tasks

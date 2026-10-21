@@ -2,6 +2,8 @@
 
 **Zotero Flow Series · 任务推进**
 
+*让研究的每一步衔接起来。 / Connect each step of research.*
+
 将文献研读转化为可追踪的任务与计划。
 
 [简体中文](README.md) · [English](README.en.md)

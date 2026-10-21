@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "Zotero TaskFlow",
   "version": "12.3.4",
-  "description": "Organize Tasks. Track Progress. Advance Research.",
+  "description": "Turn literature reading into trackable tasks and plans.",
   "homepage_url": "https://github.com/groele/Zotero-TaskFlow",
   "author": "groele",
   "icons": {
