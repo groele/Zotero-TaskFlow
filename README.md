@@ -6,7 +6,7 @@
 
 [简体中文](README.md) · [English](README.en.md)
 
-[![当前版本](https://img.shields.io/badge/version-12.3.3-245ac7?style=flat-square)](https://github.com/groele/Zotero-TaskFlow/releases/tag/v12.3.3) · [下载 XPI](https://github.com/groele/Zotero-TaskFlow/releases/download/v12.3.3/zotero-taskflow-12.3.3.xpi) · [问题反馈](https://github.com/groele/Zotero-TaskFlow/issues)
+[![当前版本](https://img.shields.io/badge/version-12.3.4-245ac7?style=flat-square)](https://github.com/groele/Zotero-TaskFlow/releases/tag/v12.3.4) · [下载 XPI](https://github.com/groele/Zotero-TaskFlow/releases/download/v12.3.4/zotero-taskflow-12.3.4.xpi) · [问题反馈](https://github.com/groele/Zotero-TaskFlow/issues)
 
 [产品定位](#overview) · [安装与更新](#installation) · [快速开始](#quick-start) · [核心功能](#features) · [设置与使用](#settings) · [数据、同步与外部服务](#data) · [兼容性与验证范围](#compatibility) · [常见问题](#troubleshooting) · [开发与详细文档](#development) · [系列产品](#series) · [项目来源与许可](#license)
 
@@ -22,7 +22,7 @@
 
 ## 安装与更新
 
-1. 下载 [zotero-taskflow-12.3.3.xpi](https://github.com/groele/Zotero-TaskFlow/releases/download/v12.3.3/zotero-taskflow-12.3.3.xpi)（插件版本 **12.3.3**），不要安装 Source code ZIP。
+1. 下载 [zotero-taskflow-12.3.4.xpi](https://github.com/groele/Zotero-TaskFlow/releases/download/v12.3.4/zotero-taskflow-12.3.4.xpi)（插件版本 **12.3.4**），不要安装 Source code ZIP。
 2. 在 Zotero 打开 **工具 → 插件／附加组件**，从齿轮菜单选择 **从文件安装插件**。
 3. 选择 XPI，完成安装；按提示重启 Zotero。
 
@@ -71,9 +71,9 @@
 
 | 项目 | 范围 |
 |---|---|
-| 当前插件版本 | 12.3.3 |
+| 当前插件版本 | 12.3.4 |
 | 清单声明的 Zotero 范围 | `10.0.0` 至 `15.*` |
-| 当前说明 | 12.3.3 设置页已在 Windows Zotero 10.0.6 原生检查。清单声明的最高版本 15.* 不等于已验证 Zotero 15。 |
+| 当前说明 | 12.3.4 设置页已在 Windows Zotero 10.0.6 原生检查（含同窗连续切换与 MetaFlow 卡片配色对照）。清单声明的最高版本 15.* 不等于已验证 Zotero 15。 |
 
 插件版本与 Zotero 版本分别管理。清单允许安装，不代表所有版本、操作系统和外部服务均已验证。本次品牌文档更新未重新执行业务功能测试。
 
@@ -97,7 +97,7 @@ npm test
 python scripts/build-package.py
 ```
 
-- [版本说明 / Release notes](docs/releases/v12.3.3.md)
+- [版本说明 / Release notes](docs/releases/v12.3.4.md)
 - [产品简介 / Product profile](docs/brand/PRODUCT.md)
 - [品牌规范 / Brand guide](docs/brand/BRAND.md)
 - [README 模板 / README template](docs/brand/README-TEMPLATE.md)
