@@ -1,5 +1,14 @@
 # Changelog
 
+## 12.6.1 - 2026-10-22
+
+### Fixed
+- Unify the Flow blue accent, remove the sidebar filter surface mismatch, and improve dark-theme filled-control contrast.
+- Keep narrow-drawer labels and actions readable without compact desktop style interference.
+
+### Verification
+- 128 automated tests and focused isolated Zotero 10.0.6 palette/layout acceptance. Existing data and preferences remain compatible.
+
 ## 12.6.0 - 2026-10-22
 
 ### Added
