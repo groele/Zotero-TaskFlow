@@ -3,15 +3,18 @@
  */
 
 :root {
+  color-scheme: light;
   /* ==========================================================================
-     1. Brand & Accent Colors (Zotero Crimson & Academic Accents)
+     1. Shared Flow Accent & Semantic Colors
      ========================================================================== */
-  --primary: #c5282a;
-  --primary-light: #df383a;
-  --primary-dark: #a81c1e;
-  --primary-bg: rgba(197, 40, 42, 0.08);
-  --primary-border: rgba(197, 40, 42, 0.22);
-  --focus-ring: rgba(197, 40, 42, 0.22);
+  --primary: #245ac7;
+  /* Filled controls keep white-label contrast independently of accent text. */
+  --primary-solid: #245ac7;
+  --primary-light: #3971e5;
+  --primary-dark: #1d49a2;
+  --primary-bg: rgba(36, 90, 199, 0.08);
+  --primary-border: rgba(36, 90, 199, 0.22);
+  --focus-ring: rgba(36, 90, 199, 0.22);
 
   /* Academic Palette */
   --academic-blue: #2563eb;
@@ -37,10 +40,10 @@
   --warning-bg: rgba(217, 119, 6, 0.09);
   --warning-border: rgba(217, 119, 6, 0.22);
 
-  --danger: #dc2626;
+  --danger: #b42318;
   --danger-light: #ef4444;
-  --danger-bg: rgba(220, 38, 38, 0.09);
-  --danger-border: rgba(220, 38, 38, 0.22);
+  --danger-bg: rgba(180, 35, 24, 0.09);
+  --danger-border: rgba(180, 35, 24, 0.22);
 
   /* ==========================================================================
      2. Light Theme - Neutral Foundation (Zotero Clean Workspace)
@@ -127,12 +130,13 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  --primary: #df383a;
-  --primary-light: #eb5e60;
-  --primary-dark: #b82224;
-  --primary-bg: rgba(223, 56, 58, 0.15);
-  --primary-border: rgba(223, 56, 58, 0.3);
-  --focus-ring: rgba(223, 56, 58, 0.28);
+  --primary: #9bbcff;
+  --primary-solid: #315fbf;
+  --primary-light: #b8d0ff;
+  --primary-dark: #244fa5;
+  --primary-bg: rgba(155, 188, 255, 0.15);
+  --primary-border: rgba(155, 188, 255, 0.3);
+  --focus-ring: rgba(155, 188, 255, 0.28);
 
   --bg: #18181b;
   --surface: #222225;
@@ -164,9 +168,9 @@
   --warning: #f59e0b;
   --warning-bg: rgba(245, 158, 11, 0.15);
   --warning-border: rgba(245, 158, 11, 0.3);
-  --danger: #ef4444;
-  --danger-bg: rgba(239, 68, 68, 0.15);
-  --danger-border: rgba(239, 68, 68, 0.3);
+  --danger: #ff9b90;
+  --danger-bg: rgba(255, 155, 144, 0.15);
+  --danger-border: rgba(255, 155, 144, 0.3);
 
   /* Subtle Dark Elevation */
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.25);
@@ -180,12 +184,13 @@
   :root[data-theme="auto"] {
     color-scheme: dark;
 
-    --primary: #df383a;
-    --primary-light: #eb5e60;
-    --primary-dark: #b82224;
-    --primary-bg: rgba(223, 56, 58, 0.15);
-    --primary-border: rgba(223, 56, 58, 0.3);
-    --focus-ring: rgba(223, 56, 58, 0.28);
+    --primary: #9bbcff;
+    --primary-solid: #315fbf;
+    --primary-light: #b8d0ff;
+    --primary-dark: #244fa5;
+    --primary-bg: rgba(155, 188, 255, 0.15);
+    --primary-border: rgba(155, 188, 255, 0.3);
+    --focus-ring: rgba(155, 188, 255, 0.28);
 
     --bg: #18181b;
     --surface: #222225;
@@ -215,9 +220,9 @@
     --warning: #f59e0b;
     --warning-bg: rgba(245, 158, 11, 0.15);
     --warning-border: rgba(245, 158, 11, 0.3);
-    --danger: #ef4444;
-    --danger-bg: rgba(239, 68, 68, 0.15);
-    --danger-border: rgba(239, 68, 68, 0.3);
+    --danger: #ff9b90;
+    --danger-bg: rgba(255, 155, 144, 0.15);
+    --danger-border: rgba(255, 155, 144, 0.3);
 
     --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.25);
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);

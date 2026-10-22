@@ -365,7 +365,7 @@
 }
 
 .subtask-add-btn:hover {
-  background-color: var(--primary);
+  background-color: var(--primary-solid);
   color: white;
 }
 
@@ -466,7 +466,7 @@
 }
 
 .theme-toggle.active {
-  background-color: var(--primary);
+  background-color: var(--primary-solid);
 }
 
 .theme-toggle::after {
@@ -533,7 +533,7 @@
 }
 
 .toggle-switch.active {
-  background-color: var(--primary);
+  background-color: var(--primary-solid);
 }
 
 .toggle-switch::after {

@@ -234,7 +234,7 @@
 }
 
 .quick-filter.active {
-  background: var(--primary);
+  background: var(--primary-solid);
   border-color: var(--primary);
   color: white;
 }

@@ -111,7 +111,7 @@
 
 .header-progress-fill {
   height: 100%;
-  background-color: var(--primary);
+  background-color: var(--primary-solid);
   border-radius: var(--radius-full);
   transition: width var(--transition-normal);
 }
@@ -595,7 +595,7 @@
 }
 
 .card-subtask-checkbox.checked {
-  background-color: var(--primary);
+  background-color: var(--primary-solid);
   border-color: var(--primary);
 }
 
@@ -1201,7 +1201,7 @@
   font-weight: 600;
   border: 1px solid transparent;
   border-radius: 4px;
-  background-color: var(--primary, #059669);
+  background-color: var(--primary-solid);
   color: #ffffff;
   cursor: pointer;
   transition: all var(--transition-fast, 0.15s);
@@ -1269,7 +1269,7 @@
 }
 
 .calendar-day.today {
-  background-color: var(--primary);
+  background-color: var(--primary-solid);
   color: white;
   font-weight: 600;
 }
@@ -1292,7 +1292,7 @@
   width: 4px;
   height: 4px;
   border-radius: var(--radius-full);
-  background-color: var(--primary);
+  background-color: var(--primary-solid);
 }
 
 .calendar-day.today.has-tasks::after {
@@ -1389,7 +1389,7 @@
 
 .subtask-progress-fill {
   height: 100%;
-  background-color: var(--primary);
+  background-color: var(--primary-solid);
   border-radius: var(--radius-full);
   transition: width var(--transition-fast);
 }
@@ -1415,7 +1415,7 @@
 }
 
 .task-card.selected .task-checkbox {
-  background-color: var(--primary);
+  background-color: var(--primary-solid);
   border-color: var(--primary);
 }
 
@@ -2196,7 +2196,7 @@
 }
 
 #task-modal .subtask-checkbox.checked {
-  background: var(--primary, #059669);
+  background: var(--primary-solid);
   border-color: var(--primary, #059669);
 }
 
@@ -2237,7 +2237,7 @@
 }
 
 #task-modal .subtask-add-btn:hover {
-  background: var(--primary, #059669);
+  background: var(--primary-solid);
   color: #ffffff;
   border-color: var(--primary, #059669);
 }

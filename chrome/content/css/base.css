@@ -154,7 +154,7 @@ textarea {
   justify-content: center;
   gap: var(--space-sm);
   padding: var(--space-sm) var(--space-lg);
-  background-color: var(--primary);
+  background-color: var(--primary-solid);
   color: white;
   border-radius: var(--radius-md);
   font-weight: 500;

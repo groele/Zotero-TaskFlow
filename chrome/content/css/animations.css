@@ -128,7 +128,7 @@
   position: fixed;
   width: 5px;
   height: 5px;
-  background-color: var(--primary);
+  background-color: var(--primary-solid);
   border-radius: 50%;
   pointer-events: none;
   z-index: 9999;
