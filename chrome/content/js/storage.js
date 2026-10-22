@@ -17,6 +17,13 @@ const Storage = {
     if (typeof window === 'undefined') return null;
     try { return window.Zotero || window.parent?.Zotero || null; } catch (_) { return null; }
   },
+  // Native preferences also cover older profiles whose JSON settings lack new keys.
+  getPreference(key, fallback) {
+    const zotero = this.getZoteroInstance();
+    const host = zotero?.TaskFlow || zotero?.Todolist;
+    const native = host?.getPref?.(key);
+    return native !== undefined ? native : (this._zoteroCache?.settings?.[key] ?? fallback);
+  },
   subscribe(listener) { this._listeners.add(listener); return () => this._listeners.delete(listener); },
   acceptData(data) {
     if (data.revision && this._zoteroCache?.revision > data.revision) return;

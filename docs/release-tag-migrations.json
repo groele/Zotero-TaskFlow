@@ -1,0 +1,16 @@
+{
+  "date": "2026-10-22",
+  "repository": "groele/Zotero-TaskFlow",
+  "migrations": [
+    {
+      "plugin": "TaskFlow",
+      "old": "zotero",
+      "new": null,
+      "commit": "ab295d86269badf17dda42381f031d4cd1f59abc",
+      "oldObject": "ab295d86269badf17dda42381f031d4cd1f59abc",
+      "action": "archive-unversioned-label",
+      "releaseIDs": [],
+      "releaseAssets": []
+    }
+  ]
+}

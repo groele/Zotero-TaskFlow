@@ -9,7 +9,7 @@ Turn literature reading into trackable tasks and plans.
 
 [简体中文](README.md) · [English](README.en.md)
 
-[![Release](https://img.shields.io/badge/version-12.5.1-245ac7?style=flat-square)](https://github.com/groele/Zotero-TaskFlow/releases/tag/v12.5.1) · [Download XPI](https://github.com/groele/Zotero-TaskFlow/releases/download/v12.5.1/zotero-taskflow-12.5.1.xpi) · [Report an issue](https://github.com/groele/Zotero-TaskFlow/issues)
+[![Release](https://img.shields.io/badge/version-12.6.0-245ac7?style=flat-square)](https://github.com/groele/Zotero-TaskFlow/releases/tag/v12.6.0) · [Download XPI](https://github.com/groele/Zotero-TaskFlow/releases/download/v12.6.0/zotero-taskflow-12.6.0.xpi) · [Report an issue](https://github.com/groele/Zotero-TaskFlow/issues)
 
 [Overview](#overview) · [Installation and updates](#installation) · [Quick start](#quick-start) · [Key features](#features) · [Settings](#settings) · [Data, sync, and services](#data) · [Compatibility and validation](#compatibility) · [Troubleshooting](#troubleshooting) · [Development and documentation](#development) · [The Flow series](#series) · [Origin and license](#license)
 
@@ -25,7 +25,7 @@ Install this add-on independently and combine it with other Flow products as nee
 
 ## Installation and updates
 
-1. Download [zotero-taskflow-12.5.1.xpi](https://github.com/groele/Zotero-TaskFlow/releases/download/v12.5.1/zotero-taskflow-12.5.1.xpi) (add-on version **12.5.1**), not the Source code ZIP.
+1. Download [zotero-taskflow-12.6.0.xpi](https://github.com/groele/Zotero-TaskFlow/releases/download/v12.6.0/zotero-taskflow-12.6.0.xpi) (add-on version **12.6.0**), not the Source code ZIP.
 2. In Zotero, open **Tools → Plugins/Add-ons**, then choose **Install Add-on From File** from the gear menu.
 3. Select the XPI, complete installation, and restart if requested.
 
@@ -60,6 +60,11 @@ Open the add-on preference page in **Zotero → Settings → Zotero TaskFlow**.
 
 Configure windows, default view, literature links, reminders, and data maintenance. Settings marked unavailable are not connected; Pomodoro countdown, automatic archiving, and sound reminders are not advertised as completed features.
 
+- Library drag and drop creates a batch from the actual dragged items. Child attachments resolve to their parent papers, and existing pending reading tasks are skipped. Disabling library drag and drop stops accepting these drops.
+- Click-to-locate opens the linked Zotero item from a task card or literature badge. Turning it off opens task editing instead. Explicit edit and locate buttons keep their respective actions.
+- PDF navigation uses the saved page or annotation when enabled. Turning it off opens the PDF without forcing a reading position.
+- Compact companion layout affects companion subwindows only. Turning it off restores the regular task layout without changing the saved sidebar expansion preference.
+
 <a id="data"></a>
 
 ## Data, sync, and services
@@ -74,7 +79,7 @@ Configure windows, default view, literature links, reminders, and data maintenan
 
 | Item | Scope |
 |---|---|
-| Current add-on version | 12.5.1 |
+| Current add-on version | 12.6.0 |
 | Declared Zotero range | `10.0.0` through `15.*` |
 | Evidence boundary | The 12.3.4 settings pane was checked in Windows Zotero 10.0.6, including sequential navigation and MetaFlow card palette comparison. A declared maximum of 15.* does not establish validation on Zotero 15. |
 
@@ -100,7 +105,7 @@ npm test
 python scripts/build-package.py
 ```
 
-- [版本说明 / Release notes](docs/releases/v12.5.1.md)
+- [版本说明 / Release notes](docs/releases/v12.6.0.md)
 - [产品简介 / Product profile](docs/brand/PRODUCT.md)
 - [品牌规范 / Brand guide](docs/brand/BRAND.md)
 - [README 模板 / README template](docs/brand/README-TEMPLATE.md)
@@ -135,3 +140,5 @@ Project code is distributed under MIT; retain the authorship and copyright notic
 License: [MIT](LICENSE).
 
 This series is independently maintained and is not an official Zotero product. Zotero and third-party names, trademarks, and materials belong to their respective rights holders.
+
+[Release/tag policy](docs/release-tag-policy.md)

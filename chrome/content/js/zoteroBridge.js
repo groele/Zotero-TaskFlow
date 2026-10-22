@@ -8,6 +8,7 @@ const ZoteroBridge = {
 
   init() {
     this.detectEnvironment();
+    this.applyWindowLayout();
     this.setupMessageListener();
 
     if (this.isZotero) {
@@ -44,10 +45,7 @@ const ZoteroBridge = {
       if (typeof window !== 'undefined') {
         const params = new URLSearchParams(window.location.search || '');
         const mode = params.get('mode');
-        if (mode === 'subwindow' || window.arguments?.[0]?.options?.currentWindowType === 'subwindow') {
-          document.documentElement.classList.add('subwindow-mode');
-          document.body?.classList?.add('subwindow-mode');
-        }
+        this._isSubwindow = mode === 'subwindow' || window.arguments?.[0]?.options?.currentWindowType === 'subwindow';
 
         if (window.arguments && window.arguments[0] && window.arguments[0].Zotero) {
           window.Zotero = window.arguments[0].Zotero;
@@ -202,6 +200,17 @@ const ZoteroBridge = {
             }
             break;
           }
+          case 'TODOLIST_ADD_DROPPED_ITEMS': {
+            this.runHostAction(msg, async () => {
+              const result = await todolist.addDroppedLiteratureTasks(msg.itemIDs);
+              const callback = this._requestCallbacks.get(msg.requestId);
+              if (callback) {
+                this._requestCallbacks.delete(msg.requestId);
+                callback({ success: true, result });
+              }
+            });
+            break;
+          }
           case 'TODOLIST_GET_ACTIVE_ITEM': {
             const activeItem = todolist.getCurrentActiveItem?.(mainWin || window);
             if (msg.requestId && this._requestCallbacks.has(msg.requestId)) {
@@ -343,6 +352,29 @@ const ZoteroBridge = {
 
   locateItem(key, libraryID) {
     this.sendToHost({ type: 'TODOLIST_LOCATE_ITEM', key, libraryID });
+  },
+
+  applyWindowLayout() {
+    const compact = Boolean(this._isSubwindow && Storage.getPreference('subwindowCompactMode', true));
+    document.documentElement.classList.toggle('subwindow-mode', compact);
+    document.body?.classList?.toggle('subwindow-mode', compact);
+  },
+
+  addDroppedItems(itemIDs) {
+    if (!this.isZotero) return Promise.reject(new Error('请在 Zotero 中拖入文献'));
+    return new Promise((resolve, reject) => {
+      const requestId = 'drop_' + (++this._pendingRequestId) + '_' + Date.now();
+      const timer = setTimeout(() => {
+        this._requestCallbacks.delete(requestId);
+        reject(new Error('创建研读待办确认超时，请检查任务列表后重试'));
+      }, 10000);
+      this._requestCallbacks.set(requestId, data => {
+        clearTimeout(timer);
+        if (data.success) resolve(data.result);
+        else reject(new Error(data.error || '创建研读待办失败'));
+      });
+      this.sendToHost({ type: 'TODOLIST_ADD_DROPPED_ITEMS', itemIDs, requestId });
+    });
   },
 
   setHostTheme(theme) {

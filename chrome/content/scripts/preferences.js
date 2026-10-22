@@ -5,8 +5,7 @@ window.TaskFlow_Preferences = (() => {
   const HTML = 'http://www.w3.org/1999/xhtml';
   // These preferences have no runtime consumer yet. Do not offer ineffective controls.
   const UNAVAILABLE_SETTINGS = new Set([
-    'subwindowCompactMode', 'locateOnTaskClick', 'dragDropFromLibrary', 'academicPresets',
-    'pdfReaderJumpPage', 'enableSound', 'pomodoroFocus', 'pomodoroShortBreak',
+    'academicPresets', 'enableSound', 'pomodoroFocus', 'pomodoroShortBreak',
     'pomodoroLongBreak', 'autoArchiveDays'
   ]);
 

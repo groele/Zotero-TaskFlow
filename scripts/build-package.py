@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import argparse
 import sys
 import zipfile
 from pathlib import Path
@@ -33,6 +34,9 @@ REQUIRED_FILES = (
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--output', type=Path, help='Write a candidate XPI without replacing the repository release asset')
+    args = parser.parse_args()
     manifest_path = ROOT / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     version = manifest.get("version")
@@ -81,7 +85,8 @@ def main() -> int:
         files.extend(path for path in (ROOT / directory).rglob("*") if path.is_file())
     files = sorted(set(files), key=lambda path: path.relative_to(ROOT).as_posix())
 
-    target = ROOT / f"zotero-taskflow-{version}.xpi"
+    target = args.output.resolve() if args.output else ROOT / f"zotero-taskflow-{version}.xpi"
+    target.parent.mkdir(parents=True, exist_ok=True)
     temp_target = target.with_suffix(target.suffix + ".tmp")
     try:
         with zipfile.ZipFile(temp_target, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:

@@ -190,8 +190,9 @@
                        doc.querySelector('link[rel="localization"][href="todolist.ftl"]');
       if (existing) return;
       try {
+        // Both files contain the same message IDs (including legacy aliases).
+        // Loading both produces a Fluent override error for every shared message.
         doc.defaultView?.MozXULElement?.insertFTLIfNeeded('taskflow.ftl');
-        doc.defaultView?.MozXULElement?.insertFTLIfNeeded('todolist.ftl');
         if (doc.querySelector('link[rel="localization"][href="taskflow.ftl"]') ||
             doc.querySelector('link[rel="localization"][href="todolist.ftl"]')) {
           this.localizedDocs.add(doc);
@@ -1039,6 +1040,7 @@
     async openTaskPdf(task) {
       const item = resolveItemReference(task.zoteroPdfUri || task.zoteroItemKey, task.zoteroLibraryID);
       if (!item) { this.showNotice('无法打开 PDF', '关联的文献或附件已删除。'); return false; }
+      if (!this.getPref('pdfReaderJumpPage', true)) return this.openPdfAttachment(item);
       let annotationKey = task.zoteroAnnotationKey || null;
       if (annotationKey) {
         const annotation = resolveItemReference(annotationKey, task.zoteroLibraryID);
@@ -1965,6 +1967,23 @@
     async addSelectedLiteratureTasks(window = null) {
       const selected = this.getSelectedRegularItems(window || Zotero.getMainWindow?.()).filter(item => !item.deleted);
       if (!selected.length) { this.showNotice('请先选中文献', '可在文献列表中多选后批量加入。'); return { added: 0, skipped: 0 }; }
+      return this.addLiteratureTasks(selected);
+    },
+
+    async addDroppedLiteratureTasks(itemIDs) {
+      if (!this.getPref('dragDropFromLibrary', true)) throw new Error('已关闭从文献库拖入待办');
+      if (!Array.isArray(itemIDs) || !itemIDs.length || itemIDs.length > 1000 ||
+          itemIDs.some(id => !Number.isSafeInteger(id) || id <= 0)) throw new Error('无效的 Zotero 拖拽条目');
+      const seen = new Set();
+      const selected = itemIDs.map(id => Zotero.Items.get(id)).filter(item => item && !item.deleted)
+        .map(item => getLiteratureItem(item))
+        .filter(item => item && !item.deleted && !seen.has(item.id) && seen.add(item.id));
+      if (!selected.length) throw new Error('拖入的文献已删除或不包含可研读的文献条目');
+      const result = await this.addLiteratureTasks(selected);
+      return { ...result, ignored: itemIDs.length - selected.length };
+    },
+
+    async addLiteratureTasks(selected) {
       const data = await this.loadData();
       const candidates = selected.map((item, index) => ({ ...this.buildLiteratureTask(item),
         order: Math.max(-1, ...(data.tasks || []).map(task => task.order || 0)) + 1 + index }));
@@ -2902,6 +2921,17 @@
               requestId: data.requestId,
               item: activeItem ? serializeLiteratureItem(activeItem) : null
             });
+            return;
+          }
+
+          if (data.type === 'TODOLIST_ADD_DROPPED_ITEMS') {
+            try {
+              const result = await this.addDroppedLiteratureTasks(data.itemIDs);
+              replyResult({ type: 'TODOLIST_ADD_DROPPED_ITEMS_RESULT', requestId: data.requestId, success: true, result });
+            } catch (error) {
+              replyResult({ type: 'TODOLIST_ADD_DROPPED_ITEMS_RESULT', requestId: data.requestId,
+                success: false, error: String(error?.message || error) });
+            }
             return;
           }
 

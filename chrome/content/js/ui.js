@@ -13,6 +13,7 @@ const UI = {
     // Load theme preference
     const settings = await Storage.getSettings();
     this._settings = settings;
+    ZoteroBridge.applyWindowLayout();
     this.currentSortOrder = settings.sortOrder || 'dueDate';
     this.showCompleted = settings.showCompleted !== false;
     this.currentTheme = settings.theme || 'light';
@@ -42,6 +43,7 @@ const UI = {
         if (sortSelect) sortSelect.value = this.currentSortOrder;
         const viewChanged = data.settings.defaultView !== this._settings.defaultView;
         this._settings = data.settings;
+        ZoteroBridge.applyWindowLayout();
         if (viewChanged) this.switchView(data.settings.defaultView);
       }
       this.render();
@@ -233,6 +235,9 @@ const UI = {
     if (viewsContainer) {
       let dragCounter = 0;
       let dropCueEl = null;
+      const acceptsLiterature = event => typeof ZoteroBridge !== 'undefined' && ZoteroBridge.isZotero &&
+        Storage.getPreference('dragDropFromLibrary', true) &&
+        Array.from(event.dataTransfer?.types || []).includes('zotero/item');
 
       const showDropCue = () => {
         if (!dropCueEl) {
@@ -260,7 +265,7 @@ const UI = {
         if (typeof DragDrop !== 'undefined' && (DragDrop.draggedTaskId || DragDrop.draggedElement)) {
           return;
         }
-        if (typeof ZoteroBridge !== 'undefined' && ZoteroBridge.isZotero) {
+        if (acceptsLiterature(e)) {
           dragCounter++;
           if (dragCounter === 1) {
             viewsContainer.classList.add('drag-over-zotero');
@@ -273,7 +278,7 @@ const UI = {
         if (typeof DragDrop !== 'undefined' && (DragDrop.draggedTaskId || DragDrop.draggedElement)) {
           return;
         }
-        if (typeof ZoteroBridge !== 'undefined' && ZoteroBridge.isZotero) {
+        if (acceptsLiterature(e)) {
           e.preventDefault();
           e.dataTransfer.dropEffect = 'copy';
           if (!viewsContainer.classList.contains('drag-over-zotero')) {
@@ -298,26 +303,14 @@ const UI = {
         if (typeof DragDrop !== 'undefined' && (DragDrop.draggedTaskId || DragDrop.draggedElement)) {
           return;
         }
-        if (typeof ZoteroBridge !== 'undefined' && ZoteroBridge.isZotero) {
+        if (acceptsLiterature(e)) {
           e.preventDefault();
-          const activeItem = await ZoteroBridge.getActiveItem();
-          if (activeItem) {
-            await TaskManager.createTask({
-              title: `📖 研读：${activeItem.title}`,
-              category: '论文研读',
-              priority: 'medium',
-              academicType: 'literature_reading',
-              zoteroItemKey: activeItem.key,
-              zoteroItemTitle: activeItem.title,
-              zoteroAuthors: activeItem.authors || '',
-              zoteroLibraryID: activeItem.libraryID,
-              zoteroYear: activeItem.year || null,
-              zoteroPublication: activeItem.publication || '',
-              zoteroPdfUri: activeItem.pdfUri || ''
-            });
-            this.render();
-            this.showToast(`已为《${activeItem.title.slice(0, 20)}...》创建研读待办`);
-          }
+          // Read synchronously: native drag data becomes unavailable after the event returns.
+          const payload = e.dataTransfer.getData('zotero/item').trim();
+          if (!/^\d+(?:,\d+)*$/.test(payload)) throw new Error('无法读取拖入的 Zotero 文献');
+          const result = await ZoteroBridge.addDroppedItems(payload.split(',').map(Number));
+          this.showToast(`新增 ${result.added} 篇研读待办，跳过已有待办 ${result.skipped} 篇` +
+            (result.ignored ? `；忽略 ${result.ignored} 个无效或重复拖入项` : ''));
         }
       }));
 
@@ -813,14 +806,23 @@ const UI = {
     if (e.target.closest('.task-action.zotero-locate') || e.target.closest('.task-zotero-badge-main') || e.target.closest('.task-zotero-badge')) {
       e.stopPropagation();
       const task = TaskManager.getTaskById(taskId);
-      if (typeof ZoteroBridge !== 'undefined' && task?.zoteroItemKey) {
+      if (!e.target.closest('.task-action.zotero-locate') && !Storage.getPreference('locateOnTaskClick', true)) {
+        Modal.openEdit(taskId);
+      } else if (typeof ZoteroBridge !== 'undefined' && task?.zoteroItemKey) {
         ZoteroBridge.locateItem(task.zoteroUri || task.zoteroItemKey, task.zoteroLibraryID);
       }
       return;
     }
 
     // Card click (not on action buttons)
-    Modal.openEdit(taskId);
+    this.openTaskCard(taskId);
+  },
+
+  openTaskCard(taskId) {
+    const task = TaskManager.getTaskById(taskId);
+    if (ZoteroBridge.isZotero && task?.zoteroItemKey && Storage.getPreference('locateOnTaskClick', true)) {
+      ZoteroBridge.locateItem(task.zoteroUri || task.zoteroItemKey, task.zoteroLibraryID);
+    } else Modal.openEdit(taskId);
   },
 
   // Handle timer toggle
@@ -900,10 +902,7 @@ const UI = {
       e.stopPropagation();
       const taskCard = badge.closest('.kanban-task');
       const taskId = taskCard?.dataset.taskId;
-      const task = TaskManager.getTaskById(taskId);
-      if (typeof ZoteroBridge !== 'undefined' && task?.zoteroItemKey) {
-        ZoteroBridge.locateItem(task.zoteroUri || task.zoteroItemKey, task.zoteroLibraryID);
-      }
+      this.openTaskCard(taskId);
       return;
     }
 
@@ -911,7 +910,7 @@ const UI = {
     const kanbanTask = e.target.closest('.kanban-task');
     if (kanbanTask) {
       const taskId = kanbanTask.dataset.taskId;
-      Modal.openEdit(taskId);
+      this.openTaskCard(taskId);
     }
   },
 

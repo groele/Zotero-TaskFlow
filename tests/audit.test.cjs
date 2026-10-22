@@ -220,11 +220,13 @@ test('settings without runtime consumers are visibly unavailable and controls ha
   win.Zotero = makeHost().context.Zotero;
   win.eval(read('chrome/content/scripts/preferences.js'));
   win.Todolist_Preferences.init(win);
-  for (const key of ['subwindowCompactMode', 'locateOnTaskClick', 'dragDropFromLibrary', 'academicPresets',
-    'pdfReaderJumpPage', 'enableSound', 'pomodoroFocus', 'pomodoroShortBreak', 'pomodoroLongBreak', 'autoArchiveDays']) {
+  for (const key of ['academicPresets', 'enableSound', 'pomodoroFocus', 'pomodoroShortBreak', 'pomodoroLongBreak', 'autoArchiveDays']) {
     const control = win.document.getElementById(`pref-${key}`);
     assert.equal(control.disabled, true, key);
     assert.match(control.labels[0].textContent, /此设置尚未接入/);
+  }
+  for (const key of ['subwindowCompactMode', 'locateOnTaskClick', 'dragDropFromLibrary', 'pdfReaderJumpPage']) {
+    assert.equal(win.document.getElementById(`pref-${key}`).disabled, false, key);
   }
   assert.equal(win.document.getElementById('pref-defaultView').disabled, false);
   for (const control of win.document.querySelectorAll('input, select')) assert(control.labels.length > 0, control.id);

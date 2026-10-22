@@ -9,7 +9,7 @@
 
 [简体中文](README.md) · [English](README.en.md)
 
-[![当前版本](https://img.shields.io/badge/version-12.5.1-245ac7?style=flat-square)](https://github.com/groele/Zotero-TaskFlow/releases/tag/v12.5.1) · [下载 XPI](https://github.com/groele/Zotero-TaskFlow/releases/download/v12.5.1/zotero-taskflow-12.5.1.xpi) · [问题反馈](https://github.com/groele/Zotero-TaskFlow/issues)
+[![当前版本](https://img.shields.io/badge/version-12.6.0-245ac7?style=flat-square)](https://github.com/groele/Zotero-TaskFlow/releases/tag/v12.6.0) · [下载 XPI](https://github.com/groele/Zotero-TaskFlow/releases/download/v12.6.0/zotero-taskflow-12.6.0.xpi) · [问题反馈](https://github.com/groele/Zotero-TaskFlow/issues)
 
 [产品定位](#overview) · [安装与更新](#installation) · [快速开始](#quick-start) · [核心功能](#features) · [设置与使用](#settings) · [数据、同步与外部服务](#data) · [兼容性与验证范围](#compatibility) · [常见问题](#troubleshooting) · [开发与详细文档](#development) · [系列产品](#series) · [项目来源与许可](#license)
 
@@ -25,7 +25,7 @@
 
 ## 安装与更新
 
-1. 下载 [zotero-taskflow-12.5.1.xpi](https://github.com/groele/Zotero-TaskFlow/releases/download/v12.5.1/zotero-taskflow-12.5.1.xpi)（插件版本 **12.5.1**），不要安装 Source code ZIP。
+1. 下载 [zotero-taskflow-12.6.0.xpi](https://github.com/groele/Zotero-TaskFlow/releases/download/v12.6.0/zotero-taskflow-12.6.0.xpi)（插件版本 **12.6.0**），不要安装 Source code ZIP。
 2. 在 Zotero 打开 **工具 → 插件／附加组件**，从齿轮菜单选择 **从文件安装插件**。
 3. 选择 XPI，完成安装；按提示重启 Zotero。
 
@@ -60,6 +60,11 @@
 
 配置窗口、默认视图、文献联动、提醒和数据维护。标为“尚未接入”的选项不可用；番茄钟倒计时、自动归档与声音提醒不作为当前已完成功能宣传。
 
+- 文献拖入：将 Zotero 文献列表中的条目拖到任务区，按实际拖入的文献批量创建研读任务；附件关联到父文献，已有未完成研读任务会跳过。关闭“从文献库拖拽”后不接收文献拖入。
+- 点击定位：开启后，点击关联任务卡片或文献徽标会定位 Zotero 条目；关闭后打开任务编辑。明确的编辑与“定位文献”按钮始终保留各自操作。
+- PDF 跳页：开启后按已保存的页码或批注定位；关闭后仅打开 PDF，不强制切换阅读位置。
+- 紧凑伴读：仅控制伴读子窗口布局，关闭后恢复普通任务布局，不改变已保存的侧边栏展开偏好。
+
 <a id="data"></a>
 
 ## 数据、同步与外部服务
@@ -74,7 +79,7 @@
 
 | 项目 | 范围 |
 |---|---|
-| 当前插件版本 | 12.5.1 |
+| 当前插件版本 | 12.6.0 |
 | 清单声明的 Zotero 范围 | `10.0.0` 至 `15.*` |
 | 当前说明 | 12.3.4 设置页已在 Windows Zotero 10.0.6 原生检查（含同窗连续切换与 MetaFlow 卡片配色对照）。清单声明的最高版本 15.* 不等于已验证 Zotero 15。 |
 
@@ -100,7 +105,7 @@ npm test
 python scripts/build-package.py
 ```
 
-- [版本说明 / Release notes](docs/releases/v12.5.1.md)
+- [版本说明 / Release notes](docs/releases/v12.6.0.md)
 - [产品简介 / Product profile](docs/brand/PRODUCT.md)
 - [品牌规范 / Brand guide](docs/brand/BRAND.md)
 - [README 模板 / README template](docs/brand/README-TEMPLATE.md)
@@ -135,3 +140,5 @@ python scripts/build-package.py
 许可: [MIT](LICENSE).
 
 本系列独立维护，并非 Zotero 官方产品。Zotero 及第三方名称、商标与材料归各自权利人所有。
+
+[Release/tag policy](docs/release-tag-policy.md)
