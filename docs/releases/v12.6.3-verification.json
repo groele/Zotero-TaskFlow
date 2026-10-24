@@ -1,0 +1,28 @@
+{
+  "product": "Zotero TaskFlow",
+  "version": "12.6.3",
+  "addonID": "todolist@groele.org",
+  "file": "zotero-taskflow-12.6.3.xpi",
+  "bytes": 483853,
+  "sha256": "d4319daaa74cd736ae6ade93351fb93b104e78e37d031ffe04fa9fbd2b8b210b",
+  "sha512": "7d480b4f4e5ec30ed42bff8a561514366d047013053b6150c7089b610983c707ad165fdf81ca23e8f33a00fe02543c3e27251840b0251f3cbf943f2ecfffc6ea",
+  "entries": 131,
+  "sourcePayloadVerified": true,
+  "updateFeedsVerified": [
+    "update.json"
+  ],
+  "sourceBaseCommit": "707f7789906be18b33ad48712fe5b1234038a7aa",
+  "automatedTests": {
+    "passed": 137,
+    "failed": 0
+  },
+  "nativeZotero": {
+    "version": "10.0.6",
+    "profile": "isolated",
+    "initial": 9,
+    "restart": 9,
+    "boundary": "Four production plugins. Controlled reminder/AI/column checks plus real loopback Gecko HTTP via MetaFlow helper. Not paid AI, live metadata providers, Word insertion or full visual QA."
+  },
+  "mainProfileInstalled": false,
+  "automaticUpdateInstallation": "not performed"
+}

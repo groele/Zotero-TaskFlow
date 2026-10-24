@@ -1,5 +1,13 @@
 # Changelog
 
+## 12.6.3 - 2026-10-25
+
+### Fixed
+- Revalidate reminder ownership, live task state and daily-summary settings immediately before delivery; use current task titles.
+
+### Verification
+- 137 automated tests and isolated Zotero 10.0.6 initial/restart controlled acceptance. No main-profile installation or full visual regression.
+
 ## 12.6.1 - 2026-10-22
 
 ### Fixed

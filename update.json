@@ -3,8 +3,8 @@
     "todolist@groele.org": {
       "updates": [
         {
-          "version": "12.6.2",
-          "update_link": "https://github.com/groele/Zotero-TaskFlow/releases/download/v12.6.2/zotero-taskflow-12.6.2.xpi",
+          "version": "12.6.3",
+          "update_link": "https://github.com/groele/Zotero-TaskFlow/releases/download/v12.6.3/zotero-taskflow-12.6.3.xpi",
           "applications": {
             "zotero": {
               "strict_min_version": "10.0.0",
@@ -17,15 +17,15 @@
               "strict_max_version": "15.*"
             }
           },
-          "update_hash": "sha256:c5ac19e58959d7dc5cfaaf2831e7b6b74f2fb2c0c693d3b8bb84b2c8ce71d640"
+          "update_hash": "sha256:d4319daaa74cd736ae6ade93351fb93b104e78e37d031ffe04fa9fbd2b8b210b"
         }
       ]
     },
     "taskflow@groele.org": {
       "updates": [
         {
-          "version": "12.6.2",
-          "update_link": "https://github.com/groele/Zotero-TaskFlow/releases/download/v12.6.2/zotero-taskflow-12.6.2.xpi",
+          "version": "12.6.3",
+          "update_link": "https://github.com/groele/Zotero-TaskFlow/releases/download/v12.6.3/zotero-taskflow-12.6.3.xpi",
           "applications": {
             "zotero": {
               "strict_min_version": "10.0.0",
@@ -38,7 +38,7 @@
               "strict_max_version": "15.*"
             }
           },
-          "update_hash": "sha256:c5ac19e58959d7dc5cfaaf2831e7b6b74f2fb2c0c693d3b8bb84b2c8ce71d640"
+          "update_hash": "sha256:d4319daaa74cd736ae6ade93351fb93b104e78e37d031ffe04fa9fbd2b8b210b"
         }
       ]
     }

@@ -9,7 +9,7 @@ Turn literature reading into trackable tasks and plans.
 
 [简体中文](README.md) · [English](README.en.md)
 
-[![Release](https://img.shields.io/badge/version-12.6.2-245ac7?style=flat-square)](https://github.com/groele/Zotero-TaskFlow/releases/tag/v12.6.2) · [Download XPI](https://github.com/groele/Zotero-TaskFlow/releases/download/v12.6.2/zotero-taskflow-12.6.2.xpi) · [Report an issue](https://github.com/groele/Zotero-TaskFlow/issues)
+[![Release](https://img.shields.io/badge/version-12.6.3-245ac7?style=flat-square)](https://github.com/groele/Zotero-TaskFlow/releases/tag/v12.6.3) · [Download XPI](https://github.com/groele/Zotero-TaskFlow/releases/download/v12.6.3/zotero-taskflow-12.6.3.xpi) · [Report an issue](https://github.com/groele/Zotero-TaskFlow/issues)
 
 [Overview](#overview) · [Installation and updates](#installation) · [Quick start](#quick-start) · [Key features](#features) · [Settings](#settings) · [Data, sync, and services](#data) · [Compatibility and validation](#compatibility) · [Troubleshooting](#troubleshooting) · [Development and documentation](#development) · [The Flow series](#series) · [Origin and license](#license)
 
@@ -25,7 +25,7 @@ Install this add-on independently and combine it with other Flow products as nee
 
 ## Installation and updates
 
-1. Download [zotero-taskflow-12.6.2.xpi](https://github.com/groele/Zotero-TaskFlow/releases/download/v12.6.2/zotero-taskflow-12.6.2.xpi) (add-on version **12.6.2**), not the Source code ZIP.
+1. Download [zotero-taskflow-12.6.3.xpi](https://github.com/groele/Zotero-TaskFlow/releases/download/v12.6.3/zotero-taskflow-12.6.3.xpi) (add-on version **12.6.3**), not the Source code ZIP.
 2. In Zotero, open **Tools → Plugins/Add-ons**, then choose **Install Add-on From File** from the gear menu.
 3. Select the XPI, complete installation, and restart if requested.
 
@@ -79,9 +79,9 @@ Configure windows, default view, literature links, reminders, and data maintenan
 
 | Item | Scope |
 |---|---|
-| Current add-on version | 12.6.2 |
+| Current add-on version | 12.6.3 |
 | Declared Zotero range | `10.0.0` through `15.*` |
-| Evidence boundary | 12.6.2 passed 133 automated tests and isolated Zotero 10.0.6 native timer persistence, editing and restart checks. Full visual regression was not repeated; a 15.* ceiling is not validation on Zotero 15. |
+| Evidence boundary | 12.6.3 passed 137 automated tests, including live reminder state, current titles, reservation ownership and summary settings. See the release report for native acceptance. Full visual regression was not repeated; a 15.* ceiling is not validation on Zotero 15. |
 
 Add-on and Zotero versions are separate. Manifest compatibility does not establish testing on every host, operating system, or service. This patch does not repeat the full native task workflow or main-profile installation acceptance.
 
@@ -105,7 +105,7 @@ npm test
 python scripts/build-package.py
 ```
 
-- [版本说明 / Release notes](docs/releases/v12.6.2.md)
+- [版本说明 / Release notes](docs/releases/v12.6.3.md)
 - [产品简介 / Product profile](docs/brand/PRODUCT.md)
 - [品牌规范 / Brand guide](docs/brand/BRAND.md)
 - [README 模板 / README template](docs/brand/README-TEMPLATE.md)

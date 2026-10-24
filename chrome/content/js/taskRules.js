@@ -35,11 +35,18 @@ var TaskRules = {
     return JSON.stringify([task.dueDate, task.dueTime || '23:59', task.reminder?.enabled,
       task.reminder?.before ?? 15]);
   },
+  reminderIsDue(task, now) {
+    if (!task || task.completed || !task.reminder?.enabled || task.reminder.notified || !task.dueDate) return false;
+    const due = new Date(task.dueDate + 'T' + (task.dueTime || '23:59')).getTime();
+    const before = Number(task.reminder.before ?? 15);
+    return Number.isFinite(due) && Number.isFinite(before) && before >= 0 &&
+      now >= due - before * 60000 && now <= due + 86400000;
+  },
   // Reserve notification delivery in the same queue as task writes. Leases recover after a crashed window.
   applyNotificationAction(data, action) {
     if (!action) return null;
     const { type, kind, token, now, key } = action;
-    if (!['claim', 'ack', 'release'].includes(type) || !['reminders', 'summary'].includes(kind) ||
+    if (!['claim', 'validate', 'ack', 'release'].includes(type) || !['reminders', 'summary'].includes(kind) ||
         typeof token !== 'string' || !token || !Number.isFinite(now)) throw new Error('提醒请求无效');
     const leases = data.notificationLeases = { ...data.notificationLeases };
     const result = { tasks: [], summary: false };
@@ -47,6 +54,21 @@ var TaskRules = {
     if (type !== 'claim') {
       const lease = leases[key];
       if (!lease || lease.token !== token) return result;
+      if (type === 'validate') {
+        const date = new Date(now);
+        const today = [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'),
+          String(date.getDate()).padStart(2, '0')].join('-');
+        const task = kind === 'reminders' ? data.tasks.find(t => 'task:' + t.id === key) : null;
+        const valid = lease.expiresAt > now && (kind === 'summary'
+          ? key === 'summary:' + today && lease.date === today && data.settings?.dailySummary &&
+            (data.settings.summaryTime || '09:00') === lease.time && data.lastSummaryDate !== today
+          : this.reminderIsDue(task, now) && this.reminderFingerprint(task) === lease.fingerprint);
+        if (!valid) { delete leases[key]; return result; }
+        lease.expiresAt = now + 60000;
+        if (kind === 'summary') { result.summary = true; result.key = key; }
+        else result.tasks.push({ task: JSON.parse(JSON.stringify(task)), key });
+        return result;
+      }
       if (type === 'ack') {
         if (kind === 'summary') data.lastSummaryDate = lease.date;
         else {
@@ -67,18 +89,14 @@ var TaskRules = {
       const leaseKey = 'summary:' + today;
       if (data.settings?.dailySummary && (data.settings.summaryTime || '09:00') === time &&
           data.lastSummaryDate !== today && !leases[leaseKey]) {
-        leases[leaseKey] = { token, date: today, expiresAt: now + 60000 };
+        leases[leaseKey] = { token, date: today, time, expiresAt: now + 60000 };
         result.summary = true;
         result.key = leaseKey;
       }
       return result;
     }
     for (const task of data.tasks) {
-      if (task.completed || !task.reminder?.enabled || task.reminder.notified || !task.dueDate) continue;
-      const due = new Date(task.dueDate + 'T' + (task.dueTime || '23:59')).getTime();
-      const before = Number(task.reminder.before ?? 15);
-      if (!Number.isFinite(due) || !Number.isFinite(before) || before < 0 || now < due - before * 60000 ||
-          now > due + 86400000) continue;
+      if (!this.reminderIsDue(task, now)) continue;
       const leaseKey = 'task:' + task.id;
       const fingerprint = this.reminderFingerprint(task);
       if (leases[leaseKey]?.fingerprint === fingerprint) continue;

@@ -85,18 +85,24 @@ const Notifications = {
     const data = await Storage.getAll();
     if (!TaskRules.applyNotificationAction(Storage.clone(data), action).tasks.length) return;
     const saved = await Storage.saveAll({ notificationAction: action });
-    for (const { task, key } of saved.notificationResult.tasks) {
-      const due = new Date(task.dueDate + 'T' + (task.dueTime || '23:59'));
-      const minutes = Math.round((due - now) / 60000);
-      const body = minutes <= 0 ? '任务 "' + task.title + '" 已到期！' :
-        '任务 "' + task.title + '" 将在 ' + (minutes < 60 ? minutes + ' 分钟' : Math.round(minutes / 60) + ' 小时') + '后到期';
-      await this.deliverClaim(action, key, () => this.show('📋 任务提醒', body, { requireInteraction: true, priority: 2 }));
+    for (const { key } of saved.notificationResult.tasks) {
+      await this.deliverClaim(action, key, task => {
+        const due = new Date(task.dueDate + 'T' + (task.dueTime || '23:59'));
+        const minutes = Math.round((due - Date.now()) / 60000);
+        const body = minutes <= 0 ? '任务 "' + task.title + '" 已到期！' :
+          '任务 "' + task.title + '" 将在 ' + (minutes < 60 ? minutes + ' 分钟' : Math.round(minutes / 60) + ' 小时') + '后到期';
+        return this.show('📋 任务提醒', body, { requireInteraction: true, priority: 2 });
+      });
     }
   },
 
   async deliverClaim(action, key, deliver) {
+    // Recheck ownership and current data in the write queue immediately before sending.
+    const saved = await Storage.saveAll({ notificationAction: { ...action, type: 'validate', key, now: Date.now() } });
+    const result = saved.notificationResult;
+    if (action.kind === 'summary' ? !result.summary : !result.tasks.length) return;
     try {
-      if ((await deliver()) === false) throw new Error('提醒未能发送');
+      if ((await deliver(result.tasks[0]?.task, saved)) === false) throw new Error('提醒未能发送');
     } catch (error) {
       await Storage.saveAll({ notificationAction: { ...action, type: 'release', key } });
       throw error;
@@ -111,7 +117,7 @@ const Notifications = {
     if (!TaskRules.applyNotificationAction(Storage.clone(data), action).summary) return;
     const saved = await Storage.saveAll({ notificationAction: action });
     if (!saved.notificationResult.summary) return;
-    await this.deliverClaim(action, saved.notificationResult.key, () => this.sendDailySummary());
+    await this.deliverClaim(action, saved.notificationResult.key, (_task, current) => this.sendDailySummary(current.tasks));
   },
 
   checkScheduled() {
@@ -134,9 +140,8 @@ const Notifications = {
   },
 
   // Send daily summary
-  async sendDailySummary() {
-    const tasks = (await Storage.getAll()).tasks;
-    const today = Utils.getTodayISO();
+  async sendDailySummary(tasks = null) {
+    if (!tasks) tasks = (await Storage.getAll()).tasks;
 
     const todayTasks = tasks.filter(t => !t.completed && Utils.isToday(t.dueDate));
     const overdueTasks = tasks.filter(t => !t.completed && Utils.isOverdue(t.dueDate));
