@@ -1,0 +1,28 @@
+{
+  "product": "Zotero TaskFlow",
+  "version": "12.6.2",
+  "addonID": "todolist@groele.org",
+  "file": "zotero-taskflow-12.6.2.xpi",
+  "bytes": 483538,
+  "sha256": "c5ac19e58959d7dc5cfaaf2831e7b6b74f2fb2c0c693d3b8bb84b2c8ce71d640",
+  "sha512": "7a1a98d279f6758f95ba1d4d41eabc59d22d68e120813ba4ba3c4a97894c4a418e202ae053145cad2b7d77a79c1ea25aa3edc657e00995fe5669faa897f4d37c",
+  "entries": 131,
+  "sourcePayloadVerified": true,
+  "updateFeedsVerified": [
+    "update.json"
+  ],
+  "sourceBaseCommit": "4e67bc4cc984f91c381e11e67b1d6a7878c8cb37",
+  "automatedTests": {
+    "passed": 133,
+    "failed": 0
+  },
+  "nativeZotero": {
+    "version": "10.0.6",
+    "profile": "isolated",
+    "initial": 11,
+    "restart": 11,
+    "boundary": "Combined five-plugin controlled checks. RefFlow/MetaFlow lifetime helpers bundled from maintained sources. Not a full workflow or visual audit."
+  },
+  "mainProfileInstalled": false,
+  "automaticUpdateInstallation": "not performed"
+}

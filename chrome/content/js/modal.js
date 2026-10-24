@@ -458,7 +458,8 @@ const Modal = {
     this.updateTimePickerUI(task.dueTime || '');
 
     // Set priority radio
-    const radio = this.form.querySelector(`input[name="priority"][value="${task.priority}"]`);
+    const radios = [...this.form.querySelectorAll('input[name="priority"]')];
+    const radio = radios.find(el => el.value === task.priority) || radios.find(el => el.value === 'medium');
     if (radio) radio.checked = true;
 
     // Set reminder checkbox

@@ -93,7 +93,7 @@ var TaskRules = {
     const { type, taskId, timer, startTime, stoppedAt, sessionId } = action;
     if (!['start', 'stop'].includes(type)) throw new Error('计时操作无效');
     const task = data.tasks.find(t => t.id === taskId);
-    data.activeTimers = { ...data.activeTimers };
+    data.activeTimers = Object.assign(Object.create(null), data.activeTimers);
     if (type === 'start') {
       if (!timer || !Number.isFinite(timer.startTime)) throw new Error('计时数据无效');
       if (task && !data.activeTimers[taskId]) data.activeTimers[taskId] = timer;
