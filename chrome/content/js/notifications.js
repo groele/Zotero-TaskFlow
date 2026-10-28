@@ -49,10 +49,9 @@ const Notifications = {
   // Show notification
   async show(title, body, options = {}) {
     const host = Storage.getZoteroInstance()?.TaskFlow || Storage.getZoteroInstance()?.Todolist;
-    if (host?.showNotice) { host.showNotice(title, body); return true; }
+    if (host?.showNotice) return (await host.showNotice(title, body)) !== false;
     if (Storage.isZotero()) {
-      ZoteroBridge.sendToHost({ type: 'TODOLIST_NOTIFY', title, body });
-      return true;
+      return ZoteroBridge.notify(title, body);
     }
     if (options.playSound !== false) {
       this.playChime();
@@ -76,6 +75,7 @@ const Notifications = {
         ...options
       });
     } else if (typeof UI !== 'undefined') UI.showToast(title + '：' + body);
+    else return false;
     return true;
   },
 
@@ -180,7 +180,7 @@ const Notifications = {
       summary = '✨ 太棒了！没有待办任务';
     }
 
-    await this.show('☀️ 今日摘要', summary.trim(), {
+    return this.show('☀️ 今日摘要', summary.trim(), {
       priority: 0
     });
   },

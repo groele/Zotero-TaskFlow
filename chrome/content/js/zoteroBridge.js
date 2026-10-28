@@ -177,6 +177,14 @@ const ZoteroBridge = {
           case 'TODOLIST_PRINT':
             this.runHostAction(msg, () => todolist.printTasks?.(mainWin || window));
             break;
+          case 'TODOLIST_NOTIFY': {
+            this.runHostAction(msg, async () => {
+              const success = Boolean(todolist.showNotice) && (await todolist.showNotice(msg.title, msg.body)) !== false;
+              const callback = this._requestCallbacks.get(msg.requestId);
+              if (callback) { this._requestCallbacks.delete(msg.requestId); callback({ success }); }
+            });
+            break;
+          }
           case 'TODOLIST_SYNC_NOTE': {
             const item = todolist.resolveItemReference?.(msg.key, msg.libraryID);
             if (item) {
@@ -246,6 +254,23 @@ const ZoteroBridge = {
   },
 
   whenReady() { return this._readyPromise || Promise.resolve(); },
+
+  notify(title, body) {
+    if (!this.isZotero) return Promise.resolve(false);
+    return new Promise((resolve, reject) => {
+      const requestId = 'notify_' + (++this._pendingRequestId) + '_' + Date.now();
+      const timer = setTimeout(() => {
+        this._requestCallbacks.delete(requestId);
+        reject(new Error('提醒未能发送'));
+      }, 5000);
+      this._requestCallbacks.set(requestId, data => {
+        clearTimeout(timer);
+        if (data.success) resolve(true);
+        else reject(new Error(data.error || '提醒未能发送'));
+      });
+      this.sendToHost({ type: 'TODOLIST_NOTIFY', title, body, requestId });
+    });
+  },
 
   saveStorage(payload) {
     return new Promise((resolve, reject) => {

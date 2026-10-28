@@ -1,3 +1,5 @@
+> Local development candidate: **12.6.4** (not published). Stable download links below still refer to **12.6.3**. Reminders and summaries await delivery confirmation; failures release leases for retry, including bridged delivery. [Candidate notes](docs/releases/v12.6.4.md).
+
 # Zotero TaskFlow
 
 
@@ -45,12 +47,14 @@ Update feed: [update.json](https://github.com/groele/Zotero-TaskFlow/blob/main/u
 
 ## Key features
 
-| Feature | Scope |
-|---|---|
-| Tasks and views | Manage priorities, deadlines, tags, and subtasks in list, board, calendar, and statistics views. |
-| Literature links | Create tasks from selected papers or PDF text and return to available reading anchors. |
-| Reading steps | Choose reading templates and track checklists and focus time. |
-| Notes and backup | Optionally write Zotero child notes and export local task backups. |
+| Differentiator | What it does | Boundary |
+|---|---|---|
+| Full research-task structure | Manages title, description, due date, priority, category, tags, subtasks, and recurring schedules, with bulk actions, filtering, and sorting. | The task database is local to the Zotero data directory; installing the add-on does not automatically synchronize it across devices. |
+| List, board, calendar, and statistics | Advances work in a list, changes status/order on a board, schedules deadlines in a calendar, and displays completion, overdue, and trend data. | Statistics reflect current local task data; they do not replace lab records, calendars, or time audits. |
+| Paper, PDF, and reading-location links | Creates tasks from selected items or PDF text and retains available excerpts, pages, and annotation anchors; a task can return to its item or PDF location. | Return navigation depends on the original PDF, page, or anchor still being available; it is not a permanent copy of PDF content. |
+| Five reading checklists and focus timing | Supplies editable templates for general, theoretical, experimental, review, and algorithm/reproduction papers, with step tracking and focus-time records. | Templates are a working framework, not an automated judgment of research quality or task completion. |
+| Native item pane and optional child notes | Shows linked tasks/progress in Zotero’s ItemPane, with quick create/check actions, and can write reading details into Zotero child notes. | Child notes follow Zotero’s own sync; the TaskFlow task store and child notes are separate layers. |
+| Reliable reminders, backup, and recovery | Checks reminders/daily summaries while Zotero runs, finalizes after delivery confirmation, releases failed leases for retry, and exports/imports local backups. | Reminders require a running Zotero and host notification support; a backup is recovery material, not automatic cloud sync. |
 
 <a id="settings"></a>
 
@@ -135,7 +139,7 @@ Each add-on installs and updates separately. A shared brand does not imply a sha
 
 ## Origin and license
 
-Project code is distributed under MIT; retain the authorship and copyright notice in LICENSE.
+**Development-origin notice:** The maintained repository’s README, package metadata, and license do not declare a third-party Zotero add-on as TaskFlow’s derivative base; it is released as an independently maintained Zotero Flow add-on. The MIT license and the authorship/copyright notice in LICENSE remain required.
 
 License: [MIT](LICENSE).
 

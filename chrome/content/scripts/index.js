@@ -987,8 +987,10 @@
         if (description) progress.addDescription(description);
         progress.show();
         progress.startCloseTimer(timeout);
+        return true;
       } catch (e) {
         Zotero.log?.(`[Todolist] Notice: ${headline} - ${description}`);
+        return false;
       }
     },
 
@@ -2890,7 +2892,8 @@
           }
 
           if (data.type === 'TODOLIST_NOTIFY') {
-            this.showNotice(data.title || '任务提醒', data.body || '');
+            const success = (await this.showNotice(data.title || '任务提醒', data.body || '')) !== false;
+            replyResult({ type: 'TODOLIST_NOTIFY_RESULT', requestId: data.requestId, success });
             return;
           }
 

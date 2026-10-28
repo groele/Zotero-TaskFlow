@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { makeHost, read, root, JSDOM, waitFor } = require('./helpers.cjs');
 
-test('manifest.json and package.json declare the same release version and todolist@groele.org', () => {
+test('manifest.json and package.json declare the same candidate version and todolist@groele.org', () => {
   const manifest = JSON.parse(read('manifest.json'));
   assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
   assert.equal(manifest.applications.zotero.id, 'todolist@groele.org');
@@ -15,13 +15,17 @@ test('manifest.json and package.json declare the same release version and todoli
   assert.equal(pkg.version, manifest.version);
 });
 
-test('update.json provides the current version for both taskflow and todolist IDs', () => {
+test('published update.json remains separate from an unpublished local candidate', () => {
   const update = JSON.parse(read('update.json'));
   const version = JSON.parse(read('manifest.json')).version;
+  const product = JSON.parse(read('docs/brand/product.json'));
+  const isLocalCandidate = product.releaseStatus === 'candidate' && product.version === version;
   assert(update.addons['taskflow@groele.org']);
-  assert.equal(update.addons['taskflow@groele.org'].updates[0].version, version);
+  const taskflowVersion = update.addons['taskflow@groele.org'].updates[0].version;
+  if (isLocalCandidate) assert.notEqual(taskflowVersion, version);
+  else assert.equal(taskflowVersion, version);
   assert(update.addons['todolist@groele.org']);
-  assert.equal(update.addons['todolist@groele.org'].updates[0].version, version);
+  assert.equal(update.addons['todolist@groele.org'].updates[0].version, taskflowVersion);
 });
 
 test('chrome.manifest registers both taskflow and todolist namespaces', () => {

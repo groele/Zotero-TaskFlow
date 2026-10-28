@@ -2,6 +2,64 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { page, makeHost } = require('./helpers.cjs');
 
+test('failed native delivery is released for retry and never acknowledged as sent', async t => {
+  const native = makeHost(), p = await page('index.html', null, native.host); t.after(p.close);
+  const due = new Date(Date.now() + 5 * 60000);
+  const task = await p.TaskManager.addTask({ title: 'Retry delivery', dueDate: p.Utils.toDateISO(due),
+    dueTime: due.toTimeString().slice(0, 5), reminder: { enabled: true, before: 10, notified: false } });
+  native.host.showNotice = async () => false;
+  await assert.rejects(p.Notifications.checkReminders(), /提醒未能发送/);
+  assert.equal((await p.Storage.getTaskById(task.id)).reminder.notified, false);
+  assert.equal(Object.keys((await p.Storage.getAll()).notificationLeases).length, 0);
+  native.host.showNotice = async () => true;
+  await p.Notifications.checkReminders();
+  assert.equal((await p.Storage.getTaskById(task.id)).reminder.notified, true);
+});
+
+test('daily summary propagates a failed delivery instead of recording a successful day', async t => {
+  const native = makeHost(), p = await page('index.html', null, native.host); t.after(p.close);
+  const now = new Date();
+  await p.Storage.saveAll({ settings: { dailySummary: true, summaryTime: now.toTimeString().slice(0, 5) } });
+  native.host.showNotice = async () => false;
+  await assert.rejects(p.Notifications.checkDailySummary(now), /提醒未能发送/);
+  assert.equal((await p.Storage.getAll()).lastSummaryDate || '', '');
+  assert.equal(Object.keys((await p.Storage.getAll()).notificationLeases).length, 0);
+  native.host.showNotice = async () => true;
+  await p.Notifications.checkDailySummary(now);
+  assert.equal((await p.Storage.getAll()).lastSummaryDate, p.Utils.toDateISO(now));
+});
+
+test('direct notification bridge waits for delivery and propagates an asynchronous failure', async t => {
+  const native = makeHost(), p = await page('index.html', null, native.host); t.after(p.close);
+  let release, finished = false;
+  native.host.showNotice = () => new Promise(resolve => { release = resolve; });
+  const pending = p.ZoteroBridge.notify('Reminder', 'Body').finally(() => { finished = true; });
+  const failure = assert.rejects(pending, /提醒未能发送/);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(finished, false);
+  release(false); await failure;
+  native.host.showNotice = async () => true;
+  assert.equal(await p.ZoteroBridge.notify('Reminder', 'Body'), true);
+  assert.equal(p.ZoteroBridge._requestCallbacks.size, 0);
+});
+
+test('posted notification bridge acknowledges only a matching host response', async t => {
+  const native = makeHost(), p = await page('index.html', null, native.host); t.after(p.close);
+  let message, finished = false;
+  p.ZoteroBridge.sendToHost = value => { message = value; };
+  const pending = p.ZoteroBridge.notify('Reminder', 'Body').then(result => { finished = true; return result; });
+  await Promise.resolve(); assert.equal(finished, false);
+  p.win.dispatchEvent(new p.win.MessageEvent('message', { source: p.win, data: {
+    type: 'TODOLIST_NOTIFY_RESULT', requestId: 'unrelated', success: true
+  } }));
+  await Promise.resolve(); assert.equal(finished, false);
+  p.win.dispatchEvent(new p.win.MessageEvent('message', { source: p.win, data: {
+    type: 'TODOLIST_NOTIFY_RESULT', requestId: message.requestId, success: true
+  } }));
+  assert.equal(await pending, true);
+  assert.equal(p.ZoteroBridge._requestCallbacks.size, 0);
+});
+
 for (const hostMode of [false, true]) {
   test(`${hostMode ? 'host' : 'local'}: queued reminders respect completion, deletion, rescheduling and current titles`, async t => {
     const native = hostMode ? makeHost() : null;
