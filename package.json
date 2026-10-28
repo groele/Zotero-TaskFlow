@@ -1,10 +1,10 @@
 {
   "name": "zotero-taskflow",
-  "version": "12.6.4",
+  "version": "12.6.5",
   "description": "Turn literature reading into trackable tasks and plans.",
   "private": true,
   "scripts": {
-    "test": "node --test tests/*.test.cjs",
+    "test": "node --test tests/*.test.cjs && python -B -m unittest discover -s tests -p test_build_package.py",
     "build": "python scripts/build-package.py"
   },
   "devDependencies": {

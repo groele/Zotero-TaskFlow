@@ -1,5 +1,14 @@
 # Changelog
 
+## 12.6.5 - 2026-10-28
+
+### Fixed
+- Allow explicit candidate builds without publishing an unreleased version in the automatic update feed; validate release XPI checksums and cover both paths with regression tests.
+- Keep in-app version, release date, download link, and release documentation aligned.
+
+### Verification
+- 141 Node.js tests and 5 Python build-policy tests passed. The production package and feed checksum match. No main-profile installation is claimed.
+
 ## 12.6.3 - 2026-10-25
 
 ### Fixed

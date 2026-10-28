@@ -1,0 +1,29 @@
+{
+  "product": "Zotero TaskFlow",
+  "version": "12.6.5",
+  "addonID": "todolist@groele.org",
+  "file": "zotero-taskflow-12.6.5.xpi",
+  "bytes": 483991,
+  "sha256": "38be8930cf57dd3708311257b166e44d3ae8285dc93faaeb3d2073e05c416e2b",
+  "sha512": "7d43c5063190fb614e48697b05543f89f5df4eda8b63cf781282b4e04402121e7f9acea470deef311b03c54a51d5cba675e80e86af2531fa51fb2cf83abe58f8",
+  "entries": 131,
+  "sourcePayloadVerified": true,
+  "updateFeedsVerified": [
+    "update.json"
+  ],
+  "sourceBaseCommit": "a2a0526cd3eea79693cd8e58bd3fd218a3992edd",
+  "automatedTests": {
+    "nodePassed": 141,
+    "nodeFailed": 0,
+    "pythonPassed": 5,
+    "pythonFailed": 0
+  },
+  "nativeZotero": {
+    "performed": false,
+    "version": null,
+    "profile": null,
+    "boundary": "No isolated Zotero acceptance or main-profile installation was performed in this release run."
+  },
+  "mainProfileInstalled": false,
+  "automaticUpdateInstallation": "not performed"
+}
