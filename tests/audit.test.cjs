@@ -212,8 +212,10 @@ test('the item-pane and welcome switches and default academic type affect their 
 });
 
 test('settings without runtime consumers are visibly unavailable and controls have labels', t => {
-  const groups = ['window', 'view', 'literature', 'sync', 'tags', 'academic', 'focus', 'maintenance'];
-  const dom = new JSDOM('<body><div id="todolist-preferences-pane"></div>' +
+  const groups = ['window', 'view', 'literature', 'sync', 'tags', 'academic', 'reader', 'focus', 'maintenance'];
+  const dom = new JSDOM('<body><div id="todolist-preferences-pane"></div><div id="todolist-tag-color-palette">' +
+    '<button class="todolist-pref-color-dot active" data-color="#ef4444" aria-pressed="true"></button>' +
+    '<button class="todolist-pref-color-dot" data-color="#eab308" aria-pressed="false"></button></div>' +
     groups.map(group => `<div id="todolist-pref-${group}"></div>`).join('') + '</body>', { runScripts: 'outside-only' });
   t.after(() => dom.window.close());
   const win = dom.window;
@@ -229,6 +231,11 @@ test('settings without runtime consumers are visibly unavailable and controls ha
     assert.equal(win.document.getElementById(`pref-${key}`).disabled, false, key);
   }
   assert.equal(win.document.getElementById('pref-defaultView').disabled, false);
+  assert.equal(win.document.getElementById('pref-readerSelectionQuickAdd').checked, false);
+  const colors = win.document.querySelectorAll('.todolist-pref-color-dot');
+  colors[1].click();
+  assert.equal(colors[0].getAttribute('aria-pressed'), 'false');
+  assert.equal(colors[1].getAttribute('aria-pressed'), 'true');
   for (const control of win.document.querySelectorAll('input, select')) assert(control.labels.length > 0, control.id);
 });
 

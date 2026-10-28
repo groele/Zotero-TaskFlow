@@ -5,7 +5,7 @@
   <html:header class="todolist-pref-header">
     <html:div class="todolist-pref-title-row">
       <html:h1>Zotero TaskFlow</html:h1>
-      <html:span class="todolist-pref-version">v12.6.5</html:span>
+      <html:span class="todolist-pref-version">v12.6.6</html:span>
     </html:div>
   </html:header>
   <html:p id="todolist-pref-status" class="todolist-pref-status" role="status" aria-live="polite">正在加载设置项…</html:p>
@@ -17,9 +17,9 @@
       <html:span class="todolist-card-chevron" aria-hidden="true"></html:span>
     </html:summary>
     <html:div class="todolist-card-body">
-      <html:p class="todolist-pref-desc">配置工作区呈现形态、默认主视图、主题配色与专注提醒。</html:p>
+      <html:p class="todolist-pref-desc">设置工作区打开方式、任务视图和提醒。按需展开分区，修改会自动保存。</html:p>
 
-      <html:div class="todolist-pref-subheading">窗口形态与多窗协同</html:div>
+      <html:div class="todolist-pref-subheading">默认工作区与窗口</html:div>
       <html:div id="todolist-pref-window" class="todolist-pref-content" />
       <html:div class="todolist-mode-quickbar">
         <html:span style="font-size: 13px; color: var(--zotero-text-secondary);">快速打开测试：</html:span>
@@ -28,10 +28,10 @@
         <html:button id="todolist-btn-open-window" class="todolist-pref-btn" type="button" title="打开 1120×760 独立桌面全屏大窗口">⬚ 独立大窗口</html:button>
       </html:div>
 
-      <html:div class="todolist-pref-subheading">界面配色与默认视图</html:div>
+      <html:div class="todolist-pref-subheading">列表与外观</html:div>
       <html:div id="todolist-pref-view" class="todolist-pref-content" />
 
-      <html:div class="todolist-pref-subheading">专注提醒与每日晨报</html:div>
+      <html:div class="todolist-pref-subheading">专注提醒</html:div>
       <html:div id="todolist-pref-focus" class="todolist-pref-content" />
     </html:div>
   </html:details>
@@ -43,7 +43,7 @@
       <html:span class="todolist-card-chevron" aria-hidden="true"></html:span>
     </html:summary>
     <html:div class="todolist-card-body">
-      <html:p class="todolist-pref-desc">配置 Zotero 文献详情侧栏 (ItemPane)、子笔记多端同步、状态自动打标与 PDF 阅读器快捷动作。</html:p>
+      <html:p class="todolist-pref-desc">管理文献侧栏、子笔记同步、标签自动化及 PDF 阅读器入口。</html:p>
 
       <html:div class="todolist-pref-subheading">文献详情侧栏 (ItemPane)</html:div>
       <html:div id="todolist-pref-literature" class="todolist-pref-content" />
@@ -54,8 +54,12 @@
       <html:div class="todolist-pref-subheading">文献研读状态自动打标</html:div>
       <html:div id="todolist-pref-tags" class="todolist-pref-content" />
 
-      <html:div class="todolist-pref-subheading">学术场景与阅读器自动化</html:div>
+      <html:div class="todolist-pref-subheading">任务默认值</html:div>
       <html:div id="todolist-pref-academic" class="todolist-pref-content" />
+
+      <html:div class="todolist-pref-subheading">PDF 阅读器联动</html:div>
+      <html:div id="todolist-pref-reader" class="todolist-pref-content" />
+      <html:p class="todolist-pref-desc">快捷加入开关关闭时，阅读器选区工具条和批注菜单不会显示 TaskFlow 添加入口；Ctrl+Shift+T 快捷键仍按下方设置工作。</html:p>
     </html:div>
   </html:details>
 
@@ -72,19 +76,19 @@
       <html:div class="todolist-tag-creator-bar" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px;">
         <html:input type="text" id="todolist-new-tag-name" class="todolist-control" style="max-width: 220px;" placeholder="标签名，如：导师审阅 / 顶会投稿" />
         <html:div id="todolist-tag-color-palette" style="display: flex; gap: 6px; align-items: center;">
-          <html:span class="todolist-pref-color-dot active" data-color="#ef4444" style="background:#ef4444;" title="红色"></html:span>
-          <html:span class="todolist-pref-color-dot" data-color="#f97316" style="background:#f97316;" title="橙色"></html:span>
-          <html:span class="todolist-pref-color-dot" data-color="#eab308" style="background:#eab308;" title="黄色"></html:span>
-          <html:span class="todolist-pref-color-dot" data-color="#22c55e" style="background:#22c55e;" title="绿色"></html:span>
-          <html:span class="todolist-pref-color-dot" data-color="#3b82f6" style="background:#3b82f6;" title="蓝色"></html:span>
-          <html:span class="todolist-pref-color-dot" data-color="#a855f7" style="background:#a855f7;" title="紫色"></html:span>
-          <html:span class="todolist-pref-color-dot" data-color="#ec4899" style="background:#ec4899;" title="粉色"></html:span>
-          <html:span class="todolist-pref-color-dot" data-color="#64748b" style="background:#64748b;" title="灰色"></html:span>
+          <html:button type="button" class="todolist-pref-color-dot active" data-color="#ef4444" style="background:#ef4444;" title="红色" aria-label="红色" aria-pressed="true"></html:button>
+          <html:button type="button" class="todolist-pref-color-dot" data-color="#f97316" style="background:#f97316;" title="橙色" aria-label="橙色" aria-pressed="false"></html:button>
+          <html:button type="button" class="todolist-pref-color-dot" data-color="#eab308" style="background:#eab308;" title="黄色" aria-label="黄色" aria-pressed="false"></html:button>
+          <html:button type="button" class="todolist-pref-color-dot" data-color="#22c55e" style="background:#22c55e;" title="绿色" aria-label="绿色" aria-pressed="false"></html:button>
+          <html:button type="button" class="todolist-pref-color-dot" data-color="#3b82f6" style="background:#3b82f6;" title="蓝色" aria-label="蓝色" aria-pressed="false"></html:button>
+          <html:button type="button" class="todolist-pref-color-dot" data-color="#a855f7" style="background:#a855f7;" title="紫色" aria-label="紫色" aria-pressed="false"></html:button>
+          <html:button type="button" class="todolist-pref-color-dot" data-color="#ec4899" style="background:#ec4899;" title="粉色" aria-label="粉色" aria-pressed="false"></html:button>
+          <html:button type="button" class="todolist-pref-color-dot" data-color="#64748b" style="background:#64748b;" title="灰色" aria-label="灰色" aria-pressed="false"></html:button>
         </html:div>
         <html:button id="todolist-btn-add-tag" type="button" class="todolist-pref-btn todolist-pref-btn-primary">➕ 添加标签</html:button>
       </html:div>
 
-      <html:p class="todolist-pref-desc">支持数据全量备份与跨格式导出、灾备恢复导入、学术清单打印、全局快捷键与重置偏好。</html:p>
+      <html:p class="todolist-pref-desc">将备份、导入、清单输出和系统维护分组，危险操作单独放置。</html:p>
 
       <html:div class="todolist-pref-subheading">数据全量备份与跨格式导出</html:div>
       <html:div class="todolist-export-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; margin-top: 8px;">
@@ -104,20 +108,26 @@
       </html:div>
       <html:p id="todolist-import-status" class="todolist-pref-desc" style="margin-top: 6px; font-size: 13px; color: var(--flow-pref-muted); font-weight: 500;"></html:p>
 
-      <html:div class="todolist-pref-subheading" style="margin-top: 18px;">系统维护、诊断与快捷键</html:div>
+      <html:div class="todolist-pref-subheading" style="margin-top: 18px;">快捷键与诊断</html:div>
       <html:div id="todolist-pref-maintenance" style="margin-bottom: 8px;" />
+      <html:div class="todolist-shortcut-help">
       <html:p class="todolist-pref-desc">
         <strong>全局快捷键支持：</strong><html:br/>
         • <html:code>Ctrl+Alt+T</html:code> (Mac: <html:code>Cmd+Alt+T</html:code>)：随时唤起 TaskFlow 学术任务看板（依默认窗口设置）。<html:br/>
         • <html:code>Ctrl+Shift+T</html:code> (Mac: <html:code>Cmd+Shift+T</html:code>)：在 PDF 阅读器中将选中文本与当前页码一键建立带锚点链接的研读待办。<html:br/>
       </html:p>
-      <html:div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;">
+      </html:div>
+      <html:div class="todolist-pref-subheading">清单输出</html:div>
+      <html:div class="todolist-action-group">
         <html:button id="todolist-btn-print" type="button" class="todolist-pref-btn">🖨️ 打印学术清单</html:button>
         <html:button id="todolist-btn-copy-summary" type="button" class="todolist-pref-btn">📋 复制研读概览 (Markdown 组会汇报)</html:button>
+      </html:div>
+      <html:div class="todolist-pref-subheading todolist-pref-danger-heading">危险操作与偏好重置</html:div>
+      <html:p class="todolist-pref-desc">恢复默认偏好只重置开关和选项；清空任务数据会永久删除全部任务及其进度。</html:p>
+      <html:div class="todolist-action-group todolist-action-group-danger">
         <html:button id="todolist-btn-clear-all" type="button" class="todolist-pref-btn todolist-pref-btn-danger">🗑️ 清空所有任务数据</html:button>
         <html:button id="todolist-btn-reset-defaults" type="button" class="todolist-pref-btn todolist-pref-btn-warning">🔄 恢复默认偏好设置</html:button>
       </html:div>
-      <html:p class="todolist-pref-desc" style="margin-top: 8px; font-size: 13px; color: var(--zotero-text-muted);">注：恢复默认偏好设置仅重置开关与选项，不会清空任何任务或文献数据；清空所有任务数据不可撤销，请谨慎操作。</html:p>
     </html:div>
   </html:details>
   <html:footer class="todolist-pref-release-info" aria-label="版本信息">
@@ -125,7 +135,7 @@
     <html:dl>
       <html:div><html:dt>版本说明</html:dt><html:dd>等待宿主确认提醒与每日摘要投递；失败时释放预约，以便后续重试。</html:dd></html:div>
       <html:div><html:dt>构建日期</html:dt><html:dd>2026-10-28</html:dd></html:div>
-      <html:div><html:dt>安装包</html:dt><html:dd><html:a href="https://github.com/groele/Zotero-TaskFlow/releases/download/v12.6.5/zotero-taskflow-12.6.5.xpi">下载 TaskFlow v12.6.5</html:a></html:dd></html:div>
+      <html:div><html:dt>安装包</html:dt><html:dd><html:a href="https://github.com/groele/Zotero-TaskFlow/releases/download/v12.6.6/zotero-taskflow-12.6.6.xpi">下载 TaskFlow v12.6.6</html:a></html:dd></html:div>
       <html:div><html:dt>项目仓库</html:dt><html:dd><html:a href="https://github.com/groele/Zotero-TaskFlow">GitHub 仓库</html:a></html:dd></html:div>
     </html:dl>
   </html:footer>

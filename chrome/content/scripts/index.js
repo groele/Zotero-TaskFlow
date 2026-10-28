@@ -1824,7 +1824,7 @@
       this._readerHooks = [];
       if (Zotero.Reader?.registerEventListener) {
         const annotationMenu = ({ reader, params, append }) => {
-          if (!params?.ids?.length) return;
+          if (!this.getPref('readerSelectionQuickAdd', false) || !params?.ids?.length) return;
           append({ label: '加入研读待办', onCommand: () => {
             // Use saved annotation IDs; completion never modifies the annotation itself.
             const run = async () => { for (const key of params.ids) await this.createTaskFromAnnotation(reader, key, { forceInstant: params.ids.length > 1 }); };
@@ -1832,7 +1832,7 @@
           } });
         };
         const selectionPopup = ({ reader, doc, params, append }) => {
-          if (!params?.annotation?.text) return;
+          if (!this.getPref('readerSelectionQuickAdd', false) || !params?.annotation?.text) return;
           const button = doc.createElement('button'); button.type = 'button'; button.textContent = '加入研读待办';
           button.title = '将选中文字与当前页加入待办';
           button.addEventListener('click', async () => {

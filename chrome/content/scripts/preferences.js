@@ -58,6 +58,7 @@ window.TaskFlow_Preferences = (() => {
     defaultDueDays: 7,
     readingProfile: 'general',
     readerShortcutAction: 'create_instant',
+    readerSelectionQuickAdd: false,
     pdfReaderJumpPage: true,
 
     // Focus & Sound Alerts
@@ -141,11 +142,14 @@ window.TaskFlow_Preferences = (() => {
         ['medium', '中优先级 (P2)'],
         ['low', '低优先级 (P3)']
       ]],
+    ],
+    reader: [
+      ['readerSelectionQuickAdd', '在 PDF 选区工具条和批注菜单中显示“加入研读待办”快捷操作（默认关闭）', 'check'],
       ['readerShortcutAction', 'PDF 阅读器快捷键 (Ctrl+Shift+T) 行为', 'select', [
-        ['create_instant', '⚡ 提取选中文字与页码立即生成待办'],
-        ['open_modal', '✏️ 弹出待办编辑框供微调']
+        ['create_instant', '提取选中文字与页码后立即创建待办'],
+        ['open_modal', '打开待办编辑框以便调整']
       ]],
-      ['pdfReaderJumpPage', '点击待办的 PDF 伴读按钮时自动精准跳转至对应页码', 'check'],
+      ['pdfReaderJumpPage', '点击待办的 PDF 伴读按钮时自动跳转到对应页码', 'check'],
     ],
     focus: [
       ['enableSound', '启用倒计时结束与重要提醒提示音效 (Web Audio 合成)', 'check'],
@@ -455,6 +459,7 @@ window.TaskFlow_Preferences = (() => {
         renderGroup(doc, 'todolist-pref-sync', FIELDS.sync);
         renderGroup(doc, 'todolist-pref-tags', FIELDS.tags);
         renderGroup(doc, 'todolist-pref-academic', FIELDS.academic);
+        renderGroup(doc, 'todolist-pref-reader', FIELDS.reader);
         renderGroup(doc, 'todolist-pref-focus', FIELDS.focus);
         renderGroup(doc, 'todolist-pref-maintenance', FIELDS.maintenance);
 
@@ -468,8 +473,9 @@ window.TaskFlow_Preferences = (() => {
           const dots = palette.querySelectorAll('.todolist-pref-color-dot');
           dots.forEach((dot) => {
             dot.addEventListener('click', () => {
-              dots.forEach((d) => d.classList.remove('active'));
+              dots.forEach((d) => { d.classList.remove('active'); d.setAttribute('aria-pressed', 'false'); });
               dot.classList.add('active');
+              dot.setAttribute('aria-pressed', 'true');
               activeTagColor = dot.getAttribute('data-color') || '#ef4444';
             });
           });

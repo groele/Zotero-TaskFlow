@@ -1,4 +1,4 @@
-// Zotero TaskFlow - Default Preferences (v12.6.5)
+// Zotero TaskFlow - Default Preferences (v12.6.6)
 // Group 1: Window Modes & Multi-window Layout
 pref("extensions.taskflow.windowMode", "tab");
 pref("extensions.taskflow.subwindowAlwaysOnTop", false);
@@ -39,6 +39,7 @@ pref("extensions.taskflow.defaultPriority", "medium");
 pref("extensions.taskflow.defaultDueDays", 7);
 pref("extensions.taskflow.readingProfile", "general");
 pref("extensions.taskflow.readerShortcutAction", "create_instant");
+pref("extensions.taskflow.readerSelectionQuickAdd", false);
 pref("extensions.taskflow.pdfReaderJumpPage", true);
 
 // Group 7: Pomodoro Focus Sprint & Sound Reminders
@@ -82,6 +83,7 @@ pref("extensions.todolist.defaultPriority", "medium");
 pref("extensions.todolist.defaultDueDays", 7);
 pref("extensions.todolist.readingProfile", "general");
 pref("extensions.todolist.readerShortcutAction", "create_instant");
+pref("extensions.todolist.readerSelectionQuickAdd", false);
 pref("extensions.todolist.pdfReaderJumpPage", true);
 pref("extensions.todolist.enableSound", true);
 pref("extensions.todolist.pomodoroFocus", 25);

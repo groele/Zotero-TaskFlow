@@ -230,7 +230,7 @@ select.todolist-control { width: 100%; cursor: pointer; }
   background: Field;
   color: var(--flow-pref-text);
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
   cursor: pointer;
   user-select: none;
@@ -250,6 +250,28 @@ select.todolist-control { width: 100%; cursor: pointer; }
   border-color: color-mix(in srgb, var(--flow-pref-warning) 42%, transparent);
   color: var(--flow-pref-warning);
 }
+.todolist-action-group {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  padding: 2px 0 5px;
+}
+.todolist-action-group-danger {
+  padding: 9px;
+  border: 1px solid color-mix(in srgb, var(--flow-pref-danger) 24%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--flow-pref-danger) 2%, transparent);
+}
+.todolist-pref-danger-heading { color: var(--flow-pref-danger); }
+.todolist-shortcut-help {
+  margin-top: 4px;
+  padding: 8px 10px;
+  border-inline-start: 3px solid color-mix(in srgb, var(--flow-pref-accent) 38%, transparent);
+  background: var(--flow-pref-surface);
+}
+.todolist-shortcut-help .todolist-pref-desc { margin: 0; }
 
 .todolist-pref-tags-container { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 28px; margin-top: 4px; }
 .todolist-pref-tag-badge {
@@ -263,7 +285,7 @@ select.todolist-control { width: 100%; cursor: pointer; }
 }
 .todolist-pref-tag-delete { padding: 0 2px; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; opacity: .7; }
 .todolist-pref-tag-delete:hover { opacity: 1; }
-.todolist-pref-color-dot { width: 18px; height: 18px; border: 2px solid transparent; border-radius: 50%; cursor: pointer; }
+.todolist-pref-color-dot { appearance: none; flex: 0 0 20px; width: 20px; height: 20px; padding: 0; border: 2px solid transparent; border-radius: 50%; cursor: pointer; }
 .todolist-pref-color-dot.active { border-color: var(--flow-pref-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--flow-pref-accent) 26%, transparent); }
 
 .todolist-pref-release-info {

@@ -1,13 +1,13 @@
 # Changelog
 
-## 12.6.5 - 2026-10-28
+## 12.6.6 - 2026-10-28
 
-### Fixed
-- Allow explicit candidate builds without publishing an unreleased version in the automatic update feed; validate release XPI checksums and cover both paths with regression tests.
-- Keep in-app version, release date, download link, and release documentation aligned.
+### Added
+- Add an opt-in PDF text-selection and annotation quick action for creating reading tasks; it is off by default.
+- Split reader controls into their own preferences subsection; group routine output separately from destructive/reset actions, and make tag-color controls keyboard accessible.
 
 ### Verification
-- 141 Node.js tests and 5 Python build-policy tests passed. The production package and feed checksum match. No main-profile installation is claimed.
+- 141 Node.js tests and 5 Python build-policy tests passed; settings XHTML parsed and candidate/production XPI checksums matched.
 
 ## 12.6.3 - 2026-10-25
 

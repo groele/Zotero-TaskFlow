@@ -1,0 +1,29 @@
+{
+  "product": "Zotero TaskFlow",
+  "version": "12.6.6",
+  "addonID": "todolist@groele.org",
+  "file": "zotero-taskflow-12.6.6.xpi",
+  "bytes": 484434,
+  "sha256": "3749d15b99c518bd29ec45c7d8a089f2bc4314a85a97b3986624078773e99b69",
+  "sha512": "4c411754a75af0f35c87d545d3048866b07906d0cbdb57c38754be21f7bbca344259312a076d26ec75e948d109d0cd9a1601acd47d73728fbd00e07aa3d69e97",
+  "entries": 131,
+  "sourcePayloadVerified": true,
+  "updateFeedsVerified": [
+    "update.json"
+  ],
+  "sourceBaseCommit": "df6f29584e564462e4707edbf92d2398c960c191",
+  "automatedTests": {
+    "nodePassed": 141,
+    "nodeFailed": 0,
+    "pythonPassed": 5,
+    "pythonFailed": 0
+  },
+  "nativeZotero": {
+    "performed": false,
+    "version": null,
+    "profile": null,
+    "boundary": "The isolated-profile launch did not yield a uniquely targetable Zotero test window; the existing user Zotero window was left untouched."
+  },
+  "mainProfileInstalled": false,
+  "automaticUpdateInstallation": "not performed"
+}

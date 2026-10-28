@@ -294,7 +294,19 @@ test('native integration registers reader/notifier hooks once, handles annotatio
   assert.equal(hooks.size, 2); assert(observer);
   let menu;
   hooks.get('createAnnotationContextMenu')({ reader: { itemID: 11 }, params: { ids: ['ANNOTATION'] }, append: value => { menu = value; } });
+  assert.equal(menu, undefined, 'reader quick-add is disabled by default');
+  const popup = new JSDOM('<body></body>'); t.after(() => popup.window.close());
+  let selectionButton;
+  hooks.get('renderTextSelectionPopup')({ reader: { itemID: 11 }, doc: popup.window.document,
+    params: { annotation: { text: 'Selected quote' } }, append: value => { selectionButton = value; } });
+  assert.equal(selectionButton, undefined, 'selection popup quick-add is disabled by default');
+  native.context.Zotero.Prefs.get = key => key.endsWith('readerSelectionQuickAdd') ? true : undefined;
+  hooks.get('createAnnotationContextMenu')({ reader: { itemID: 11 }, params: { ids: ['ANNOTATION'] }, append: value => { menu = value; } });
   menu.onCommand(); await waitFor(() => native.disk().tasks.length === 1);
+  selectionButton = undefined;
+  hooks.get('renderTextSelectionPopup')({ reader: { itemID: 11 }, doc: popup.window.document,
+    params: { annotation: { text: 'Selected quote' } }, append: value => { selectionButton = value; } });
+  assert.equal(selectionButton?.textContent, '加入研读待办');
   await native.host.shutdown();
   assert(removed.includes(7)); assert(removed.includes('createAnnotationContextMenu')); assert(removed.includes('renderTextSelectionPopup'));
 });
