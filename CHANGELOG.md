@@ -1,5 +1,13 @@
 # Changelog
 
+## 12.6.7 - 2026-10-28
+
+### Fixed
+- Remove duplicate window-mode quick-open buttons and unsupported controls from preferences; reorganize active settings by task defaults, reminders, literature integration, and data maintenance.
+
+### Verification
+- 142 Node.js tests and 5 build-policy tests passed; XPI package, identity, version, and update-feed SHA-256 verified.
+
 ## 12.6.6 - 2026-10-28
 
 ### Added

@@ -1,0 +1,14 @@
+{
+  "version": "12.6.7",
+  "file": "zotero-taskflow-12.6.7.xpi",
+  "sizeBytes": 483068,
+  "sha256": "58668e49aae2bcc4bf71ee532f89c00660bc9ba347bf04d7e33bab4ee2e43958",
+  "addonId": "todolist@groele.org",
+  "packageEntries": 131,
+  "nodeTests": "142 passed",
+  "pythonBuildPolicyTests": "5 passed",
+  "releaseTagPolicy": "self-test passed",
+  "settingsXHTML": "well-formed",
+  "nativeZoteroVisualAcceptance": "not run",
+  "mainProfileInstallation": "not run"
+}\n

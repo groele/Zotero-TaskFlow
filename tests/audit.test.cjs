@@ -2,6 +2,13 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { page, makeHost, waitFor, copy, read, JSDOM } = require('./helpers.cjs');
 
+test('preferences expose one default window-mode selector without duplicate quick-open controls', () => {
+  const source = read('chrome/content/preferences.xhtml');
+  assert.match(read('chrome/content/scripts/preferences.js'), /\['windowMode', '工作区默认打开模式', 'select'/);
+  assert.doesNotMatch(source, /todolist-mode-quickbar|todolist-btn-open-(workspace|subwindow|window)/);
+  assert.doesNotMatch(read('chrome/content/scripts/preferences.js'), /todolist-btn-open-(workspace|subwindow|window)/);
+});
+
 test('parallel tag/template additions and deletions preserve neighboring window changes', async t => {
   const native = makeHost();
   const a = await page('index.html', null, native.host); t.after(a.close);
@@ -211,27 +218,34 @@ test('the item-pane and welcome switches and default academic type affect their 
   assert.equal(p.Modal.getAcademicType(), 'writing');
 });
 
-test('settings without runtime consumers are visibly unavailable and controls have labels', t => {
-  const groups = ['window', 'view', 'literature', 'sync', 'tags', 'academic', 'reader', 'focus', 'maintenance'];
+test('settings omit unsupported controls, keep active options available, and save time values', async t => {
+  const groups = ['window', 'view', 'literature', 'sync', 'tags', 'academic', 'reader', 'reminders'];
   const dom = new JSDOM('<body><div id="todolist-preferences-pane"></div><div id="todolist-tag-color-palette">' +
     '<button class="todolist-pref-color-dot active" data-color="#ef4444" aria-pressed="true"></button>' +
     '<button class="todolist-pref-color-dot" data-color="#eab308" aria-pressed="false"></button></div>' +
     groups.map(group => `<div id="todolist-pref-${group}"></div>`).join('') + '</body>', { runScripts: 'outside-only' });
   t.after(() => dom.window.close());
   const win = dom.window;
-  win.Zotero = makeHost().context.Zotero;
+  const native = makeHost();
+  const prefValues = new Map();
+  native.context.Zotero.Prefs = { get: key => prefValues.get(key), set: (key, value) => prefValues.set(key, value) };
+  win.Zotero = native.context.Zotero;
   win.eval(read('chrome/content/scripts/preferences.js'));
   win.Todolist_Preferences.init(win);
   for (const key of ['academicPresets', 'enableSound', 'pomodoroFocus', 'pomodoroShortBreak', 'pomodoroLongBreak', 'autoArchiveDays']) {
-    const control = win.document.getElementById(`pref-${key}`);
-    assert.equal(control.disabled, true, key);
-    assert.match(control.labels[0].textContent, /此设置尚未接入/);
+    assert.equal(win.document.getElementById(`pref-${key}`), null, key);
   }
   for (const key of ['subwindowCompactMode', 'locateOnTaskClick', 'dragDropFromLibrary', 'pdfReaderJumpPage']) {
     assert.equal(win.document.getElementById(`pref-${key}`).disabled, false, key);
   }
   assert.equal(win.document.getElementById('pref-defaultView').disabled, false);
   assert.equal(win.document.getElementById('pref-readerSelectionQuickAdd').checked, false);
+  const timeControl = win.document.getElementById('pref-summaryTime');
+  assert.equal(timeControl.type, 'time');
+  timeControl.value = '08:30';
+  timeControl.dispatchEvent(new win.Event('change', { bubbles: true }));
+  await waitFor(() => native.disk().settings.summaryTime === '08:30');
+  assert.equal(prefValues.get('extensions.taskflow.summaryTime'), '08:30');
   const colors = win.document.querySelectorAll('.todolist-pref-color-dot');
   colors[1].click();
   assert.equal(colors[0].getAttribute('aria-pressed'), 'false');

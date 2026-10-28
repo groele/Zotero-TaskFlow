@@ -3,12 +3,6 @@ window.TaskFlow_Preferences = (() => {
   const PREFIX = 'extensions.taskflow.';
   const LEGACY_PREFIX = 'extensions.todolist.';
   const HTML = 'http://www.w3.org/1999/xhtml';
-  // These preferences have no runtime consumer yet. Do not offer ineffective controls.
-  const UNAVAILABLE_SETTINGS = new Set([
-    'academicPresets', 'enableSound', 'pomodoroFocus', 'pomodoroShortBreak',
-    'pomodoroLongBreak', 'autoArchiveDays'
-  ]);
-
   function reportOperationError(zot, doc, action, error) {
     zot?.logError?.('[TaskFlow] ' + action + ': ' + error);
     const host = zot?.TaskFlow || zot?.Todolist;
@@ -129,7 +123,6 @@ window.TaskFlow_Preferences = (() => {
     academic: [
       ['defaultDueDays', '研读任务默认截止天数', 'select', [['3', '3 天'], ['7', '一周'], ['14', '两周'], ['30', '30 天']]],
       ['readingProfile', '默认精读清单', 'select', [['general', '通用研读'], ['theory', '理论论文'], ['experiment', '实验论文'], ['review', '综述论文'], ['algorithm', '算法与复现']]],
-      ['academicPresets', '启用学术研读 5 大场景预设与快捷分类', 'check'],
       ['defaultTaskType', '默认待办学术类型', 'select', [
         ['literature_reading', '📖 论文研读与精读'],
         ['writing', '✍️ 论文写作与修改'],
@@ -151,36 +144,9 @@ window.TaskFlow_Preferences = (() => {
       ]],
       ['pdfReaderJumpPage', '点击待办的 PDF 伴读按钮时自动跳转到对应页码', 'check'],
     ],
-    focus: [
-      ['enableSound', '启用倒计时结束与重要提醒提示音效 (Web Audio 合成)', 'check'],
-      ['pomodoroFocus', '番茄钟专注研读时长 (分钟)', 'select', [
-        ['15', '15 分钟 (短平快任务)'],
-        ['25', '25 分钟 (经典番茄钟，推荐)'],
-        ['30', '30 分钟 (深度文献精读)'],
-        ['45', '45 分钟 (长篇论文研读)'],
-        ['60', '60 分钟 (代码复现冲刺)']
-      ]],
-      ['pomodoroShortBreak', '短休息时长 (分钟)', 'select', [
-        ['3', '3 分钟'],
-        ['5', '5 分钟 (经典推荐)'],
-        ['10', '10 分钟']
-      ]],
-      ['pomodoroLongBreak', '长休息时长 (分钟)', 'select', [
-        ['10', '10 分钟'],
-        ['15', '15 分钟 (经典推荐)'],
-        ['20', '20 分钟'],
-        ['30', '30 分钟']
-      ]],
+    reminders: [
       ['dailySummary', '启用每日学术待办晨报提醒', 'check'],
-      ['summaryTime', '每日晨报提醒时间 (HH:MM)', 'text'],
-    ],
-    maintenance: [
-      ['autoArchiveDays', '自动归档已完成任务', 'select', [
-        ['0', '从不自动归档'],
-        ['7', '7 天后自动归档'],
-        ['14', '14 天后自动归档'],
-        ['30', '30 天后自动归档']
-      ]],
+      ['summaryTime', '每日晨报提醒时间', 'time'],
     ]
   };
 
@@ -250,36 +216,6 @@ window.TaskFlow_Preferences = (() => {
     } finally {
       if (control.type === 'checkbox') control.checked = Boolean(getPref(key));
       else control.value = String(getPref(key));
-      control.disabled = UNAVAILABLE_SETTINGS.has(key);
-      if (key === 'windowMode') updateHeaderModeButtons(doc, getPref(key));
-    }
-  }
-
-  function updateHeaderModeButtons(doc, activeMode) {
-    if (!doc) return;
-    const mode = activeMode || getPref('windowMode') || 'tab';
-    const buttonMap = [
-      { mode: 'tab', id: 'todolist-btn-open-workspace' },
-      { mode: 'subwindow', id: 'todolist-btn-open-subwindow' },
-      { mode: 'window', id: 'todolist-btn-open-window' }
-    ];
-
-    buttonMap.forEach(({ mode: m, id }) => {
-      const btn = doc.getElementById(id);
-      if (!btn) return;
-      btn.removeAttribute('style');
-      if (m === mode) {
-        btn.classList.add('todolist-pref-btn-primary');
-        btn.setAttribute('aria-pressed', 'true');
-      } else {
-        btn.classList.remove('todolist-pref-btn-primary');
-        btn.setAttribute('aria-pressed', 'false');
-      }
-    });
-
-    const select = doc.getElementById('pref-windowMode');
-    if (select && select.value !== mode) {
-      select.value = mode;
     }
   }
 
@@ -290,8 +226,7 @@ window.TaskFlow_Preferences = (() => {
 
     for (const [key, labelText, type, options] of items) {
       const currentVal = getPref(key);
-      const unavailable = UNAVAILABLE_SETTINGS.has(key);
-      const visibleLabel = unavailable ? `${labelText}（此设置尚未接入，当前不可用）` : labelText;
+      const visibleLabel = labelText;
 
       if (type === 'check') {
         const row = doc.createElementNS(HTML, 'label');
@@ -300,7 +235,6 @@ window.TaskFlow_Preferences = (() => {
         const input = doc.createElementNS(HTML, 'input');
         input.type = 'checkbox';
         input.id = `pref-${key}`;
-        input.disabled = unavailable;
         input.className = 'todolist-control';
         input.checked = Boolean(currentVal);
         input.addEventListener('change', () => {
@@ -326,7 +260,6 @@ window.TaskFlow_Preferences = (() => {
         const select = doc.createElementNS(HTML, 'select');
         select.className = 'todolist-control';
         select.id = `pref-${key}`;
-        select.disabled = unavailable;
 
         for (const [optVal, optLabel] of (options || [])) {
           const option = doc.createElementNS(HTML, 'option');
@@ -346,7 +279,7 @@ window.TaskFlow_Preferences = (() => {
         row.appendChild(label);
         row.appendChild(select);
         container.appendChild(row);
-      } else if (type === 'text') {
+      } else if (type === 'text' || type === 'time') {
         const row = doc.createElementNS(HTML, 'div');
         row.className = 'todolist-control-row';
 
@@ -356,9 +289,8 @@ window.TaskFlow_Preferences = (() => {
         label.htmlFor = `pref-${key}`;
 
         const input = doc.createElementNS(HTML, 'input');
-        input.type = 'text';
+        input.type = type;
         input.id = `pref-${key}`;
-        input.disabled = unavailable;
         input.className = 'todolist-control';
         input.value = String(currentVal ?? '');
 
@@ -460,8 +392,7 @@ window.TaskFlow_Preferences = (() => {
         renderGroup(doc, 'todolist-pref-tags', FIELDS.tags);
         renderGroup(doc, 'todolist-pref-academic', FIELDS.academic);
         renderGroup(doc, 'todolist-pref-reader', FIELDS.reader);
-        renderGroup(doc, 'todolist-pref-focus', FIELDS.focus);
-        renderGroup(doc, 'todolist-pref-maintenance', FIELDS.maintenance);
+        renderGroup(doc, 'todolist-pref-reminders', FIELDS.reminders);
 
         // Render Custom Tags Manager
         renderCustomTagsManager(doc, win);
@@ -520,45 +451,6 @@ window.TaskFlow_Preferences = (() => {
             handleAddTag();
           }
         });
-
-        const handleSwitchMode = (targetMode) => runOperation('切换窗口模式', async () => {
-          await setPref('windowMode', targetMode);
-          updateHeaderModeButtons(doc, targetMode);
-          const zot = win?.Zotero || window.Zotero || (typeof Zotero !== 'undefined' ? Zotero : null);
-          const mainWin = zot?.getMainWindow?.() || (typeof Services !== 'undefined' ? Services.wm?.getMostRecentWindow('navigator:browser') : null);
-          if (zot?.Todolist?.switchWindowMode) {
-            await zot.Todolist.switchWindowMode(targetMode, mainWin);
-          } else if (zot?.Todolist?.openTodolist) {
-            await zot.Todolist.openTodolist({ targetMode }, mainWin);
-          }
-        });
-
-        // Open Internal Tab
-        const openTabBtn = doc.getElementById('todolist-btn-open-workspace');
-        if (openTabBtn) {
-          openTabBtn.addEventListener('click', () => {
-            handleSwitchMode('tab');
-          });
-        }
-
-        // Open Subwindow
-        const openSubBtn = doc.getElementById('todolist-btn-open-subwindow');
-        if (openSubBtn) {
-          openSubBtn.addEventListener('click', () => {
-            handleSwitchMode('subwindow');
-          });
-        }
-
-        // Open Window
-        const openWinBtn = doc.getElementById('todolist-btn-open-window');
-        if (openWinBtn) {
-          openWinBtn.addEventListener('click', () => {
-            handleSwitchMode('window');
-          });
-        }
-
-        // Initialize active mode button highlight
-        updateHeaderModeButtons(doc, getPref('windowMode') || 'tab');
 
         // Export JSON
         doc.getElementById('todolist-btn-export-json')?.addEventListener('click', () => {
@@ -634,14 +526,13 @@ window.TaskFlow_Preferences = (() => {
             try {
               await setPrefs(DEFAULTS);
               for (const [group, fields] of Object.entries(FIELDS)) renderGroup(doc, `todolist-pref-${group}`, fields);
-              updateHeaderModeButtons(doc);
               if (statusEl) statusEl.textContent = '默认设置已恢复。';
             } finally { resetBtn.disabled = false; }
           }));
         }
 
         if (statusEl) {
-          statusEl.textContent = '设置已加载；标注为尚未接入的选项当前不可用。';
+          statusEl.textContent = '设置已加载；修改会自动保存。';
         }
       } catch (err) {
         if (statusEl) {

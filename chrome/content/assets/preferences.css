@@ -209,18 +209,6 @@ select.todolist-control { width: 100%; cursor: pointer; }
   outline-offset: 2px;
 }
 
-.todolist-mode-quickbar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-block: 7px 9px;
-  padding: 7px 9px;
-  border: 1px solid var(--flow-pref-divider);
-  border-radius: 4px;
-  background: var(--flow-pref-surface);
-}
-.todolist-mode-quickbar > span { color: var(--flow-pref-muted); font-size: 13px; }
 .todolist-pref-btn {
   min-width: 0;
   min-height: 32px;

@@ -5,45 +5,54 @@
   <html:header class="todolist-pref-header">
     <html:div class="todolist-pref-title-row">
       <html:h1>Zotero TaskFlow</html:h1>
-      <html:span class="todolist-pref-version">v12.6.6</html:span>
+      <html:span class="todolist-pref-version">v12.6.7</html:span>
     </html:div>
   </html:header>
   <html:p id="todolist-pref-status" class="todolist-pref-status" role="status" aria-live="polite">正在加载设置项…</html:p>
 
-  <!-- 1. 常规与工作区视图 -->
+  <!-- 1. 工作区与外观 -->
   <html:details id="todolist-group-view" class="todolist-pref-card" open="open">
     <html:summary class="todolist-card-header">
-      <html:span class="todolist-card-title">常规与工作区视图</html:span>
+      <html:span class="todolist-card-title">工作区与外观</html:span>
       <html:span class="todolist-card-chevron" aria-hidden="true"></html:span>
     </html:summary>
     <html:div class="todolist-card-body">
-      <html:p class="todolist-pref-desc">设置工作区打开方式、任务视图和提醒。按需展开分区，修改会自动保存。</html:p>
+      <html:p class="todolist-pref-desc">选择工作区窗口、任务视图与显示方式。设置会自动保存。</html:p>
 
       <html:div class="todolist-pref-subheading">默认工作区与窗口</html:div>
       <html:div id="todolist-pref-window" class="todolist-pref-content" />
-      <html:div class="todolist-mode-quickbar">
-        <html:span style="font-size: 13px; color: var(--zotero-text-secondary);">快速打开测试：</html:span>
-        <html:button id="todolist-btn-open-workspace" class="todolist-pref-btn" type="button" title="在 Zotero 内部选项卡中打开">📑 内部选项卡</html:button>
-        <html:button id="todolist-btn-open-subwindow" class="todolist-pref-btn" type="button" title="打开 460×760 紧凑伴读子窗口，适合边读 PDF 边核对待办">🗗 伴读子窗口</html:button>
-        <html:button id="todolist-btn-open-window" class="todolist-pref-btn" type="button" title="打开 1120×760 独立桌面全屏大窗口">⬚ 独立大窗口</html:button>
-      </html:div>
 
-      <html:div class="todolist-pref-subheading">列表与外观</html:div>
+      <html:div class="todolist-pref-subheading">任务视图与外观</html:div>
       <html:div id="todolist-pref-view" class="todolist-pref-content" />
-
-      <html:div class="todolist-pref-subheading">专注提醒</html:div>
-      <html:div id="todolist-pref-focus" class="todolist-pref-content" />
     </html:div>
   </html:details>
 
-  <!-- 2. 文献深度联动与自动化 -->
-  <html:details id="todolist-group-literature" class="todolist-pref-card">
+  <!-- 2. 任务默认值与提醒 -->
+  <html:details id="todolist-group-tasks" class="todolist-pref-card">
     <html:summary class="todolist-card-header">
-      <html:span class="todolist-card-title">文献深度联动与自动化</html:span>
+      <html:span class="todolist-card-title">任务默认值与提醒</html:span>
       <html:span class="todolist-card-chevron" aria-hidden="true"></html:span>
     </html:summary>
     <html:div class="todolist-card-body">
-      <html:p class="todolist-pref-desc">管理文献侧栏、子笔记同步、标签自动化及 PDF 阅读器入口。</html:p>
+      <html:p class="todolist-pref-desc">设置新任务的默认内容和每日提醒时间。</html:p>
+
+      <html:div class="todolist-pref-subheading">新建任务默认值</html:div>
+      <html:div id="todolist-pref-academic" class="todolist-pref-content" />
+
+      <html:div class="todolist-pref-subheading">每日摘要提醒</html:div>
+      <html:div id="todolist-pref-reminders" class="todolist-pref-content" />
+      <html:p class="todolist-pref-desc">关闭每日摘要提醒时，时间设置不会触发通知。</html:p>
+    </html:div>
+  </html:details>
+
+  <!-- 3. Zotero 文献联动 -->
+  <html:details id="todolist-group-integration" class="todolist-pref-card">
+    <html:summary class="todolist-card-header">
+      <html:span class="todolist-card-title">Zotero 文献联动</html:span>
+      <html:span class="todolist-card-chevron" aria-hidden="true"></html:span>
+    </html:summary>
+    <html:div class="todolist-card-body">
+      <html:p class="todolist-pref-desc">管理文献详情栏、子笔记、标签和 PDF 阅读器中的 TaskFlow 操作。</html:p>
 
       <html:div class="todolist-pref-subheading">文献详情侧栏 (ItemPane)</html:div>
       <html:div id="todolist-pref-literature" class="todolist-pref-content" />
@@ -54,19 +63,16 @@
       <html:div class="todolist-pref-subheading">文献研读状态自动打标</html:div>
       <html:div id="todolist-pref-tags" class="todolist-pref-content" />
 
-      <html:div class="todolist-pref-subheading">任务默认值</html:div>
-      <html:div id="todolist-pref-academic" class="todolist-pref-content" />
-
       <html:div class="todolist-pref-subheading">PDF 阅读器联动</html:div>
       <html:div id="todolist-pref-reader" class="todolist-pref-content" />
       <html:p class="todolist-pref-desc">快捷加入开关关闭时，阅读器选区工具条和批注菜单不会显示 TaskFlow 添加入口；Ctrl+Shift+T 快捷键仍按下方设置工作。</html:p>
     </html:div>
   </html:details>
 
-  <!-- 3. 数据、标签与系统维护 -->
+  <!-- 4. 标签与数据维护 -->
   <html:details id="todolist-group-backup" class="todolist-pref-card todolist-pref-group-last">
     <html:summary class="todolist-card-header">
-      <html:span class="todolist-card-title">数据、标签与系统维护</html:span>
+      <html:span class="todolist-card-title">标签与数据维护</html:span>
       <html:span class="todolist-card-chevron" aria-hidden="true"></html:span>
     </html:summary>
     <html:div class="todolist-card-body">
@@ -109,12 +115,11 @@
       <html:p id="todolist-import-status" class="todolist-pref-desc" style="margin-top: 6px; font-size: 13px; color: var(--flow-pref-muted); font-weight: 500;"></html:p>
 
       <html:div class="todolist-pref-subheading" style="margin-top: 18px;">快捷键与诊断</html:div>
-      <html:div id="todolist-pref-maintenance" style="margin-bottom: 8px;" />
       <html:div class="todolist-shortcut-help">
       <html:p class="todolist-pref-desc">
         <strong>全局快捷键支持：</strong><html:br/>
         • <html:code>Ctrl+Alt+T</html:code> (Mac: <html:code>Cmd+Alt+T</html:code>)：随时唤起 TaskFlow 学术任务看板（依默认窗口设置）。<html:br/>
-        • <html:code>Ctrl+Shift+T</html:code> (Mac: <html:code>Cmd+Shift+T</html:code>)：在 PDF 阅读器中将选中文本与当前页码一键建立带锚点链接的研读待办。<html:br/>
+        • <html:code>Ctrl+Shift+T</html:code> (Mac: <html:code>Cmd+Shift+T</html:code>)：按上方 PDF 快捷键设置，在阅读器中打开待办编辑框或立即创建任务。<html:br/>
       </html:p>
       </html:div>
       <html:div class="todolist-pref-subheading">清单输出</html:div>
@@ -135,7 +140,7 @@
     <html:dl>
       <html:div><html:dt>版本说明</html:dt><html:dd>等待宿主确认提醒与每日摘要投递；失败时释放预约，以便后续重试。</html:dd></html:div>
       <html:div><html:dt>构建日期</html:dt><html:dd>2026-10-28</html:dd></html:div>
-      <html:div><html:dt>安装包</html:dt><html:dd><html:a href="https://github.com/groele/Zotero-TaskFlow/releases/download/v12.6.6/zotero-taskflow-12.6.6.xpi">下载 TaskFlow v12.6.6</html:a></html:dd></html:div>
+      <html:div><html:dt>安装包</html:dt><html:dd><html:a href="https://github.com/groele/Zotero-TaskFlow/releases/download/v12.6.7/zotero-taskflow-12.6.7.xpi">下载 TaskFlow v12.6.7</html:a></html:dd></html:div>
       <html:div><html:dt>项目仓库</html:dt><html:dd><html:a href="https://github.com/groele/Zotero-TaskFlow">GitHub 仓库</html:a></html:dd></html:div>
     </html:dl>
   </html:footer>
