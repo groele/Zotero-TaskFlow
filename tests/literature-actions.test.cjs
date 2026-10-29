@@ -11,6 +11,23 @@ const nextWeek = () => {
   const date = new Date(); date.setDate(date.getDate() + 7);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 };
+
+test('item pane exposes progress, checkbox names and live subtask expansion state', async t => {
+  const native = makeHost();
+  const task = (await native.host.addLiteratureReadingTask(paper(), { profileID: 'general' })).task;
+  const { body } = await sidebar(t, native);
+  const progress = body.querySelector('[role="progressbar"]');
+  assert.equal(progress.getAttribute('aria-valuenow'), '0');
+  assert.equal(progress.getAttribute('aria-valuemax'), '1');
+  assert.equal(body.querySelector('.td-checkbox').getAttribute('aria-label'), task.title);
+  const toggle = body.querySelector('.td-subtask-toggle');
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true');
+  toggle.click();
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+  toggle.click();
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true');
+  assert(body.querySelector('.td-subtask-list .td-checkbox').getAttribute('aria-label'));
+});
 async function sidebar(t, native, target = paper()) {
   native.context.Zotero.Items.getByLibraryAndKey = (libraryID, key) => libraryID === target.libraryID && key === target.key ? target : null;
   const dom = new JSDOM('<body><div id="pane"></div></body>'); t.after(() => dom.window.close());
@@ -24,6 +41,39 @@ async function sidebar(t, native, target = paper()) {
   await refresh();
   return { doc, body, pane, refresh };
 }
+
+test('sidebar refresh preserves the current draft, priority and subtask expansion, but item changes reset them', async t => {
+  const native = makeHost();
+  await native.host.addLiteratureReadingTask(paper(), { profileID: 'general' });
+  const { doc, body, pane, refresh } = await sidebar(t, native);
+  const input = body.querySelector('.td-quick-input');
+  input.value = 'Check control experiment';
+  input.dispatchEvent(new doc.defaultView.Event('input'));
+  const priority = body.querySelector('.td-prio-select');
+  priority.value = 'high'; priority.dispatchEvent(new doc.defaultView.Event('change'));
+  body.querySelector('.td-subtask-toggle').click();
+  await refresh();
+  assert.equal(body.querySelector('.td-quick-input').value, 'Check control experiment');
+  assert.equal(body.querySelector('.td-prio-select').value, 'high');
+  assert.equal(body.querySelector('.td-subtask-toggle').getAttribute('aria-expanded'), 'false');
+  pane.onItemChange({ body, item: paper('OTHER'), setEnabled() {} });
+  pane.onItemChange({ body, item: paper(), setEnabled() {} });
+  await refresh();
+  assert.equal(body.querySelector('.td-quick-input').value, '');
+  assert.equal(body.querySelector('.td-prio-select').value, 'medium');
+  assert.equal(body.querySelector('.td-subtask-toggle').getAttribute('aria-expanded'), 'true');
+});
+
+test('adding the default reading task preserves an unrelated custom draft through save-triggered refreshes', async t => {
+  const native = makeHost();
+  const { doc, body } = await sidebar(t, native);
+  const input = body.querySelector('.td-quick-input');
+  input.value = 'My follow-up question'; input.dispatchEvent(new doc.defaultView.Event('input'));
+  body.querySelector('.td-add-reading').click();
+  await waitFor(() => native.disk().tasks.length === 1);
+  await waitFor(() => body.querySelector('.td-add-reading')?.textContent === '已加入论文研读');
+  assert.equal(body.querySelector('.td-quick-input').value, 'My follow-up question');
+});
 
 test('one-click sidebar creates linked reading task due in seven days; repeat clicks do not duplicate it', async t => {
   const native = makeHost(); const { body } = await sidebar(t, native);

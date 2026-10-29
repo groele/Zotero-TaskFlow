@@ -51,3 +51,6 @@ todolist-item-pane-create = Add Task
 todolist-item-pane-open-board = Open TaskFlow Workspace
 todolist-item-pane-open-pdf = Open PDF Companion
 todolist-item-pane-sync-note = 📝 Sync to Child Note
+
+taskflow-item-pane-progress =
+    .aria-label = Linked task completion

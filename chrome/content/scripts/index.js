@@ -726,6 +726,31 @@
           .td-empty-desc, .td-add-hint { color: var(--fill-secondary, GrayText); }
           .td-prio-select { background: transparent; }
           .td-quick-submit, .td-btn-milestone-primary { background: #c5282a !important; }
+          /* The host theme can differ from the operating-system color scheme. */
+          .td-pane-wrap { font: inherit; color-scheme: inherit; }
+          .td-pane-wrap :is(button, input, select) { font: inherit; min-width: 0; max-width: 100%; }
+          .td-pane-wrap :is(.td-header-card, .td-empty-card, .td-task-card, .td-quick-box) {
+            background: color-mix(in srgb, currentColor 2%, transparent) !important;
+            border-color: color-mix(in srgb, currentColor 18%, transparent) !important;
+          }
+          .td-pane-wrap :is(.td-status-badge, .td-progress-pct, .td-empty-title, .td-task-title, .td-subtask-item) {
+            color: var(--fill-primary, CanvasText); font-size: inherit;
+          }
+          .td-pane-wrap :is(.td-empty-desc, .td-add-hint, .td-subtask-toggle) { color: var(--fill-secondary, GrayText); }
+          .td-pane-wrap .td-status-badge { background: color-mix(in srgb, currentColor 6%, transparent); }
+          .td-pane-wrap :is(.td-add-reading, .td-quick-submit, .td-btn-milestone-primary, .td-action-btn) {
+            background: var(--material-button, ButtonFace) !important;
+            color: var(--fill-primary, ButtonText) !important;
+            border: 1px solid color-mix(in srgb, currentColor 18%, transparent) !important;
+            box-shadow: none; transform: none; white-space: normal; overflow-wrap: anywhere;
+          }
+          .td-pane-wrap .td-add-reading { width: 100%; min-height: 30px; padding: 6px 10px; border-radius: 5px; cursor: pointer; }
+          .td-pane-wrap button:hover { background: color-mix(in srgb, currentColor 4%, transparent) !important; transform: none; }
+          .td-pane-wrap button:disabled { opacity: .6; cursor: default; }
+          .td-pane-wrap :is(button, input, select):focus-visible { outline: 2px solid var(--color-accent, Highlight); outline-offset: 2px; }
+          .td-pane-wrap .td-progress-track { background: color-mix(in srgb, currentColor 12%, transparent); }
+          .td-pane-wrap .td-progress-fill { background: var(--color-accent, Highlight); }
+          @media (prefers-reduced-motion: reduce) { .td-pane-wrap * { transition: none !important; animation: none !important; } }
         `;
         (doc.head || doc.documentElement || doc.body).appendChild(style);
       } catch (e) {
@@ -1274,7 +1299,7 @@
             description: `分类专题：${collection.name}\n作者：${meta.authors} (${meta.year})\n出版物：${meta.publication}\n文献链接：${meta.zoteroUri}`,
             dueDate: LiteratureWorkflow.dateAfter(LiteratureWorkflow.days(this.getPref('defaultDueDays', 7))),
             dueTime: null,
-            priority: 'medium',
+            priority: this.getPref('defaultPriority', 'medium'),
             category: '论文研读',
             completed: false,
             createdAt: new Date().toISOString(),
@@ -1403,7 +1428,7 @@
           description,
           dueDate: LiteratureWorkflow.dateAfter(LiteratureWorkflow.days(this.getPref('defaultDueDays', 7))),
           dueTime: null,
-          priority: 'medium',
+          priority: this.getPref('defaultPriority', 'medium'),
           category: '论文研读',
           completed: false,
           createdAt: new Date().toISOString(),
@@ -2026,6 +2051,9 @@
               itemKey: target?.key || null,
               libraryID: target?.libraryID || null,
               renderVersion: 0,
+              quickDraft: '',
+              quickPriority: null,
+              expandedTasks: new Map(),
               saving: false,
               refresh,
               onDataChanged: () => {
@@ -2051,7 +2079,12 @@
             );
             const state = sectionStates.get(body);
             if (state) {
-              if (state.itemKey !== target?.key || state.libraryID !== target?.libraryID) state.profileID = null;
+              if (state.itemKey !== target?.key || state.libraryID !== target?.libraryID) {
+                state.profileID = null;
+                state.quickDraft = '';
+                state.quickPriority = null;
+                state.expandedTasks.clear();
+              }
               state.itemKey = target?.key || null;
               state.libraryID = target?.libraryID || null;
               state.renderVersion++;
@@ -2079,7 +2112,6 @@
             const addButton = createEl('button', 'td-add-reading', '＋ 添加到论文研读');
             addButton.type = 'button';
             addButton.disabled = !target || Boolean(state?.saving);
-            addButton.style.cssText = 'display:flex;align-items:center;justify-content:center;width:100%;min-height:38px;padding:8px 12px;border:1px solid #a91f22;border-radius:6px;background:#c5282a;color:#fff;font:inherit;font-weight:600;cursor:pointer;';
             addButton.setAttribute('aria-label', '添加到论文研读');
             addButton.title = target ? '创建关联当前文献的研读待办，默认一周后截止' : '请先在 Zotero 文献库中选中一篇文献';
             addButton.addEventListener('click', async () => {
@@ -2222,6 +2254,11 @@
             const showProgressBar = this.getPref('itemPaneShowProgressBar', true);
             if (total > 0 && showProgressBar) {
               const track = createEl('div', 'td-progress-track');
+              track.setAttribute('role', 'progressbar');
+              track.setAttribute('data-l10n-id', 'taskflow-item-pane-progress');
+              track.setAttribute('aria-valuemin', '0');
+              track.setAttribute('aria-valuemax', String(total));
+              track.setAttribute('aria-valuenow', String(done));
               const fill = createEl('div', 'td-progress-fill');
               fill.style.width = `${pct}%`;
               track.appendChild(fill);
@@ -2235,7 +2272,7 @@
 
             const prioSelect = createEl('select', 'td-prio-select');
             prioSelect.setAttribute('aria-label', '新待办优先级');
-            const defaultPrio = this.getPref('defaultPriority', 'medium');
+            const defaultPrio = state?.quickPriority || this.getPref('defaultPriority', 'medium');
             const priorities = [
               { val: 'medium', label: '🟡 中' },
               { val: 'high', label: '🔴 高' },
@@ -2247,9 +2284,12 @@
               if (p.val === defaultPrio) opt.selected = true;
               prioSelect.appendChild(opt);
             }
+            prioSelect.addEventListener('change', () => { if (state) state.quickPriority = prioSelect.value; });
 
             const quickInput = createEl('input', 'td-quick-input');
             quickInput.type = 'text';
+            quickInput.value = state?.quickDraft || '';
+            quickInput.addEventListener('input', () => { if (state) state.quickDraft = quickInput.value; });
             quickInput.setAttribute('aria-label', '新待办事项');
             quickInput.placeholder = '+ 快速新建待办 (Enter 保存)';
 
@@ -2257,6 +2297,7 @@
             quickBtn.type = 'button';
             quickBtn.title = '添加待办任务';
             quickBtn.setAttribute('aria-label', '添加待办任务');
+            quickInput.disabled = prioSelect.disabled = quickBtn.disabled = Boolean(state?.saving);
 
             const literatureTitle = serializeLiteratureItem(target).title;
             const existingReadingTask = uncompletedTasks.find(task =>
@@ -2264,7 +2305,6 @@
               (task.academicType || 'literature_reading') === 'literature_reading');
             const addReadingBtn = createEl('button', 'td-add-reading', existingReadingTask ? '已加入论文研读' : '＋ 添加到论文研读');
             addReadingBtn.type = 'button';
-            addReadingBtn.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:34px;padding:7px 10px;border:1px solid #a91f22;border-radius:6px;background:#c5282a;color:#fff;font:inherit;font-weight:600;cursor:pointer;';
             addReadingBtn.title = `为当前文献创建论文研读待办，默认 ${LiteratureWorkflow.days(this.getPref('defaultDueDays', 7))} 天后截止`;
             addReadingBtn.setAttribute('aria-label', '添加到论文研读');
             addReadingBtn.disabled = Boolean(existingReadingTask || state?.saving);
@@ -2297,7 +2337,10 @@
                   title: text, priority: selectedPrio,
                   academicType: useLiteratureTitle ? 'literature_reading' : this.getPref('defaultTaskType', 'literature_reading')
                 });
-                quickInput.value = '';
+                if (!useLiteratureTitle) {
+                  quickInput.value = '';
+                  if (state?.itemKey === target.key && state?.libraryID === target.libraryID) state.quickDraft = '';
+                }
                 this.showNotice(result.created ? '已加入待办事项' : '该文献已加入待办', `截止日期：${result.task.dueDate || '未设置'}`);
               } catch (error) {
                 addHint.textContent = '保存失败，请重试。';
@@ -2393,6 +2436,7 @@
                 // Checkbox
                 const checkbox = createEl('input', 'td-checkbox');
                 checkbox.type = 'checkbox';
+                checkbox.setAttribute('aria-label', t.title);
                 checkbox.checked = Boolean(t.completed);
                 checkbox.title = t.completed ? '标记为未完成' : '标记为已完成';
                 checkbox.addEventListener('change', async (e) => {
@@ -2451,15 +2495,19 @@
                   const subToggle = createEl('button', 'td-subtask-toggle', `☑️ ${doneSubs}/${t.subtasks.length}`);
                   subToggle.type = 'button';
                   subToggle.title = '展开/收起子任务清单';
+                  const expanded = state?.expandedTasks.get(t.id) ?? showSubtasks;
+                  subToggle.setAttribute('aria-expanded', String(expanded));
                   controls.appendChild(subToggle);
 
                   subList = createEl('div', 'td-subtask-list');
-                  if (!showSubtasks) subList.style.display = 'none';
+                  if (!expanded) subList.style.display = 'none';
 
                   subToggle.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const isHidden = subList.style.display === 'none';
                     subList.style.display = isHidden ? 'flex' : 'none';
+                    subToggle.setAttribute('aria-expanded', String(isHidden));
+                    state?.expandedTasks.set(t.id, isHidden);
                   });
 
                   for (const sub of t.subtasks) {
@@ -2467,8 +2515,8 @@
 
                     const subCheck = createEl('input', 'td-checkbox');
                     subCheck.type = 'checkbox';
+                    subCheck.setAttribute('aria-label', sub.title);
                     subCheck.checked = Boolean(sub.completed);
-                    subCheck.style.transform = 'scale(0.85)';
                     subCheck.addEventListener('change', async (e) => {
                       e.stopPropagation();
                       try {

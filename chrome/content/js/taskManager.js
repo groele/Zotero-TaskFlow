@@ -56,7 +56,7 @@ const TaskManager = {
       description: String(taskData.description || '').trim(),
       dueDate: taskData.dueDate || null,
       dueTime: taskData.dueTime || null,
-      priority: taskData.priority || 'medium',
+      priority: taskData.priority || Storage.getPreference('defaultPriority', 'medium'),
       category: String(taskData.category || '').trim(),
       completed: Boolean(taskData.completed),
       status: taskData.completed ? 'done' : (taskData.status === 'in-progress' ? 'in-progress' : 'todo'),

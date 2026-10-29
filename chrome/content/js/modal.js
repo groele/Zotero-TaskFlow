@@ -379,7 +379,13 @@ const Modal = {
       }
     }
 
-    // Set default priority to medium if not set
+    // Explicit prefills override the native preference, including after form reset.
+    if (!prefill?.priority) {
+      const priority = Storage.getPreference('defaultPriority', 'medium');
+      const radio = [...this.form.querySelectorAll('input[name="priority"]')].find(el => el.value === priority);
+      if (radio) radio.checked = true;
+    }
+    // Retain a safe fallback for profiles with an invalid saved preference.
     const mediumRadio = this.form.querySelector('input[name="priority"][value="medium"]');
     if (mediumRadio && !this.form.querySelector('input[name="priority"]:checked')) {
       mediumRadio.checked = true;

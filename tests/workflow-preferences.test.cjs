@@ -5,6 +5,18 @@ const { page, makeHost, waitFor, JSDOM, read } = require('./helpers.cjs');
 const paper = (id, key = `PAPER${id}`, libraryID = 1) => ({ id, key, libraryID,
   isRegularItem: () => true, getField: field => field === 'title' ? `Paper ${id}` : '',
   getCreators: () => [], getTags: () => [] });
+
+test('native priority preference reaches workspace forms and quick creation, while explicit choices win', async t => {
+  const native = makeHost();
+  native.host.getPref = key => key === 'defaultPriority' ? 'high' : undefined;
+  const p = await page('index.html', null, native.host); t.after(p.close);
+  p.Modal.openAdd();
+  assert.equal(p.doc.querySelector('input[name="priority"]:checked').value, 'high');
+  p.Modal.openAdd({ priority: 'low' });
+  assert.equal(p.doc.querySelector('input[name="priority"]:checked').value, 'low');
+  assert.equal((await p.TaskManager.addTask({ title: 'Quick add' })).priority, 'high');
+  assert.equal((await p.TaskManager.addTask({ title: 'Explicit', priority: 'low' })).priority, 'low');
+});
 function fixture(items) {
   const native = makeHost();
   native.context.Zotero.Items.get = id => items.find(item => item.id === id) || null;

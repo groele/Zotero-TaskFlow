@@ -45,3 +45,6 @@ todolist-item-pane-create = 添加待办
 todolist-item-pane-open-board = 打开 TaskFlow 看板
 todolist-item-pane-open-pdf = 打开 PDF 伴读
 todolist-item-pane-sync-note = 📝 同步为文献笔记
+
+taskflow-item-pane-progress =
+    .aria-label = 关联任务完成进度

@@ -1,5 +1,13 @@
 # Changelog
 
+## 12.6.8 - 2026-10-29
+
+### Fixed
+- Preserve item-pane drafts, temporary priority choices and subtask expansion across data refreshes; reset transient state on item changes and prevent repeated submission during a save.
+- Improve host-themed item pane controls, inherited typography, keyboard focus, reduced motion, progress semantics and subtask accessibility.
+- Apply the native default priority to workspace forms and quick creation; preserve explicit selections.
+- Honor the configured default priority when generating collection reading plans and creating tasks from PDF selections or annotations.
+
 ## 12.6.7 - 2026-10-28
 
 ### Fixed
