@@ -1,5 +1,11 @@
 # Changelog
 
+## 12.6.9 - 2026-10-29
+
+### Changed
+- Distinguish workspace actions in soft blue, reading/PDF actions in soft green and note/scheduling actions in soft amber, with matching hover states and dark color-scheme variants.
+- Simplify item-pane styling into one scoped stylesheet: quiet task rows, fine separators, wrapped titles, restrained priority accents and lightweight secondary actions. Remove decorative emoji and duplicate card treatments while preserving existing controls and behavior.
+
 ## 12.6.8 - 2026-10-29
 
 ### Fixed

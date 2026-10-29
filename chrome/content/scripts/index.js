@@ -213,544 +213,77 @@
         style.textContent = `
           item-pane-custom-section[data-pane*="todolist-item-pane"],
           item-pane-custom-section[data-pane*="todolist-item-pane"] > collapsible-section,
-          item-pane-custom-section[data-pane*="todolist-item-pane"] [data-type="body"] {
-            min-width: 0;
-            max-width: 100%;
-            box-sizing: border-box;
+          item-pane-custom-section[data-pane*="todolist-item-pane"] [data-type="body"] { min-width:0; max-width:100%; box-sizing:border-box; }
+          item-pane-sidenav .btn[data-pane*="todolist-item-pane"] { width:28px !important; height:28px !important; min-width:28px !important; padding:4px !important; overflow:hidden !important; font-size:0 !important; line-height:0 !important; color:transparent !important; white-space:nowrap !important; }
+          .td-pane-wrap { --td-line:color-mix(in srgb,currentColor 12%,transparent); --td-hover:color-mix(in srgb,currentColor 4%,transparent); display:flex; flex-direction:column; gap:10px; contain:inline-size; width:100%; min-width:0; max-width:100%; box-sizing:border-box; padding:6px 2px 12px; font:inherit; color:var(--fill-primary,CanvasText); color-scheme:inherit; line-height:1.5; }
+          .td-pane-wrap * { box-sizing:border-box; }
+          .td-pane-wrap :is(button,input,select,summary) { font:inherit; color:inherit; min-width:0; max-width:100%; }
+          .td-pane-wrap button { cursor:pointer; }
+          .td-pane-wrap button:disabled { opacity:.55; cursor:default; }
+          .td-pane-wrap :is(button,input,select,summary):focus-visible { outline:2px solid var(--color-accent,Highlight); outline-offset:2px; }
+          .td-pane-wrap :is(.td-header-card,.td-header-top) { display:flex; gap:8px; }
+          .td-pane-wrap .td-header-card { flex-direction:column; padding:0 0 4px; }
+          .td-pane-wrap .td-header-top { align-items:center; justify-content:space-between; }
+          .td-pane-wrap .td-status-badge { font-weight:600; }
+          .td-pane-wrap :is(.td-progress-pct,.td-add-hint,.td-empty-desc) { color:var(--fill-secondary,GrayText); font-size:.92em; }
+          .td-pane-wrap .td-progress-track { height:3px; border-radius:2px; overflow:hidden; background:var(--td-line); }
+          .td-pane-wrap .td-progress-fill { height:100%; background:var(--color-accent,Highlight); }
+          .td-pane-wrap :is(.td-add-reading,.td-btn-milestone-primary,.td-action-btn) { border:1px solid var(--td-line); border-radius:5px; background:transparent; padding:6px 10px; white-space:normal; overflow-wrap:anywhere; }
+          .td-pane-wrap .td-add-reading { width:100%; font-weight:500; }
+          .td-pane-wrap button:hover:not(:disabled) { background:var(--td-hover); }
+          .td-pane-wrap .td-quick-box { display:flex; align-items:center; gap:6px; padding:4px; border:1px solid var(--td-line); border-radius:5px; }
+          .td-pane-wrap .td-quick-box:focus-within { border-color:var(--color-accent,Highlight); }
+          .td-pane-wrap .td-prio-select { flex:0 0 auto; padding:3px; border:0; border-inline-end:1px solid var(--td-line); background:transparent; }
+          .td-pane-wrap .td-quick-input { flex:1 1 0; width:0; padding:4px; border:0; background:transparent; }
+          .td-pane-wrap .td-quick-input::placeholder { color:var(--fill-secondary,GrayText); }
+          .td-pane-wrap .td-quick-submit { flex:0 0 26px; height:26px; padding:0; border:0; border-radius:3px; background:transparent; font-size:18px; }
+          .td-pane-wrap .td-reading-profile { display:flex; align-items:center; gap:10px; color:var(--fill-secondary,GrayText); font-size:.92em; }
+          .td-pane-wrap .td-reading-profile select { flex:1; padding:4px 6px; border:1px solid var(--td-line); border-radius:4px; background:transparent; color:var(--fill-primary,CanvasText); }
+          .td-pane-wrap .td-empty-card { display:flex; flex-direction:column; align-items:flex-start; gap:6px; padding:12px 0; }
+          .td-pane-wrap .td-empty-title { font-weight:500; }
+          .td-pane-wrap .td-btn-milestone-primary { margin-top:4px; }
+          .td-pane-wrap .td-task-list { display:flex; flex-direction:column; min-width:0; }
+          .td-pane-wrap .td-task-card { display:flex; flex-direction:column; gap:6px; min-width:0; padding:12px 0; border-block-end:1px solid var(--td-line); }
+          .td-pane-wrap .td-task-row { display:flex; align-items:flex-start; gap:7px; min-width:0; }
+          .td-pane-wrap .td-prio-dot { width:4px; height:4px; margin-top:8px; border-radius:50%; flex-shrink:0; background:var(--fill-secondary,GrayText); }
+          .td-pane-wrap .td-prio-high { background:var(--color-red,#c43b3b); }
+          .td-pane-wrap .td-prio-low { opacity:.45; }
+          .td-pane-wrap .td-checkbox { flex:0 0 auto; width:15px; height:15px; margin:3px 0 0; accent-color:var(--color-accent,Highlight); }
+          .td-pane-wrap .td-task-title { flex:1 1 0; text-align:start; padding:0; border:0; background:transparent; overflow-wrap:anywhere; line-height:1.5; }
+          .td-pane-wrap .is-done { text-decoration:line-through; color:var(--fill-secondary,GrayText); }
+          .td-pane-wrap .td-task-locate { flex:0 0 auto; padding:1px 4px; font-size:.85em; color:var(--fill-secondary,GrayText); background:transparent; border:0; border-radius:3px; }
+          .td-pane-wrap .td-task-controls { display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; padding-inline-start:26px; color:var(--fill-secondary,GrayText); font-size:.85em; }
+          .td-pane-wrap :is(.td-task-controls button,.td-reschedule summary,.td-subtask-toggle) { border:0; border-radius:3px; background:transparent; padding:2px 3px; font:inherit; cursor:pointer; }
+          .td-pane-wrap .td-task-delete { color:var(--fill-secondary,GrayText); }
+          .td-pane-wrap .td-task-delete:hover { color:var(--color-red,#c43b3b); }
+          .td-pane-wrap .td-badge-date { line-height:1.5; }
+          .td-pane-wrap .td-badge-date.is-overdue { color:var(--color-red,#c43b3b); }
+          .td-pane-wrap .td-reschedule[open] { flex-basis:100%; }
+          .td-pane-wrap .td-subtask-list { display:flex; flex-direction:column; gap:6px; margin:2px 0 0 26px; padding-inline-start:10px; border-inline-start:1px solid var(--td-line); }
+          .td-pane-wrap .td-subtask-item { display:flex; align-items:flex-start; gap:7px; font-size:.92em; }
+          .td-pane-wrap .td-subtask-title { flex:1; min-width:0; overflow-wrap:anywhere; }
+          .td-pane-wrap .td-action-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px; padding-top:10px; border-top:1px solid var(--td-line); }
+          .td-pane-wrap .td-action-btn { font-size:.92em; border-color:transparent; text-align:start; padding:5px 6px; }
+          .td-pane-wrap .td-action-btn-pdf { grid-column:1 / -1; }
+          .td-pane-wrap .td-fallback-task-list { display:flex; flex-direction:column; gap:4px; }
+          /* Soft functional accents follow the host's inherited color scheme. */
+          .td-pane-wrap { --td-blue:light-dark(#315f94,#a8c9ef); --td-green:light-dark(#316d58,#a0d3bb); --td-amber:light-dark(#7a5d2c,#e3c58d); }
+          .td-pane-wrap :is(.td-add-reading,.td-quick-submit,.td-action-workspace,.td-task-edit) { --td-tone:var(--td-blue); }
+          .td-pane-wrap :is(.td-btn-milestone-primary,.td-action-reading,.td-action-btn-pdf,.td-task-pdf,.td-task-locate) { --td-tone:var(--td-green); }
+          .td-pane-wrap :is(.td-action-notes,.td-reschedule) { --td-tone:var(--td-amber); }
+          .td-pane-wrap button:is(.td-add-reading,.td-quick-submit,.td-btn-milestone-primary,.td-action-btn,.td-task-edit,.td-task-pdf,.td-task-locate),
+          .td-pane-wrap .td-reschedule summary {
+            color:var(--td-tone,var(--td-blue));
+            background:color-mix(in srgb,var(--td-tone,var(--td-blue)) 9%,transparent);
+            border:1px solid color-mix(in srgb,var(--td-tone,var(--td-blue)) 20%,transparent);
           }
-
-          /* Zotero's ItemPane sidenav is a narrow icon rail. Keep this
-             rule limited to Todolist's own button so core labels stay intact. */
-          item-pane-sidenav .btn[data-pane*="todolist-item-pane"] {
-            width: 28px !important;
-            height: 28px !important;
-            min-width: 28px !important;
-            padding: 4px !important;
-            overflow: hidden !important;
-            font-size: 0 !important;
-            line-height: 0 !important;
-            color: transparent !important;
-            white-space: nowrap !important;
+          .td-pane-wrap button:is(.td-add-reading,.td-quick-submit,.td-btn-milestone-primary,.td-action-btn,.td-task-edit,.td-task-pdf,.td-task-locate):hover:not(:disabled),
+          .td-pane-wrap .td-reschedule summary:hover {
+            background:color-mix(in srgb,var(--td-tone,var(--td-blue)) 16%,transparent);
+            border-color:color-mix(in srgb,var(--td-tone,var(--td-blue)) 32%,transparent);
           }
-
-          .td-pane-wrap {
-            display: flex;
-            /* Prevent long HTML titles from expanding Zotero's XUL ItemPane. */
-            contain: inline-size;
-            flex-direction: column;
-            gap: 8px;
-            padding: 6px 2px 10px 2px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            font-size: 12px;
-            box-sizing: border-box;
-            width: 100%;
-            min-width: 0;
-            max-width: 100%;
-          }
-
-          /* Header card & Progress bar */
-          .td-header-card {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            padding: 8px 10px;
-            background: rgba(0, 0, 0, 0.025);
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            border-radius: 8px;
-            box-sizing: border-box;
-          }
-          .td-header-top {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-          }
-          .td-status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 11px;
-            font-weight: 600;
-            padding: 2px 8px;
-            border-radius: 12px;
-            line-height: 1.3;
-          }
-          .td-status-empty {
-            background: rgba(100, 116, 139, 0.12);
-            color: #64748b;
-          }
-          .td-status-active {
-            background: rgba(16, 185, 129, 0.12);
-            color: #059669;
-          }
-          .td-status-done {
-            background: rgba(16, 185, 129, 0.2);
-            color: #047857;
-          }
-          .td-progress-pct {
-            font-size: 11px;
-            font-weight: 700;
-            color: #059669;
-          }
-          .td-progress-track {
-            width: 100%;
-            height: 6px;
-            background: rgba(0, 0, 0, 0.08);
-            border-radius: 3px;
-            overflow: hidden;
-          }
-          .td-progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #10b981, #059669);
-            border-radius: 3px;
-            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          }
-
-          /* Empty State Card */
-          .td-empty-card {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            padding: 14px 12px;
-            gap: 8px;
-            background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
-            border: 1px solid rgba(0, 0, 0, 0.09);
-            border-radius: 8px;
-            box-sizing: border-box;
-          }
-          .td-empty-title {
-            font-size: 12px;
-            font-weight: 600;
-            color: #334155;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-          }
-          .td-empty-desc {
-            font-size: 11px;
-            color: #64748b;
-            line-height: 1.4;
-            max-width: 260px;
-          }
-          .td-btn-milestone-primary {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 5px;
-            padding: 6px 14px;
-            font-size: 11px;
-            font-weight: 600;
-            color: #ffffff !important;
-            background: linear-gradient(135deg, #059669, #10b981) !important;
-            border: none !important;
-            border-radius: 6px !important;
-            cursor: pointer !important;
-            box-shadow: 0 1px 3px rgba(5, 150, 105, 0.3);
-            appearance: none;
-            -moz-appearance: none;
-            transition: all 0.15s ease;
-            margin-top: 2px;
-          }
-          .td-btn-milestone-primary:hover {
-            background: linear-gradient(135deg, #047857, #059669) !important;
-            box-shadow: 0 2px 6px rgba(5, 150, 105, 0.4);
-            transform: translateY(-1px);
-          }
-          .td-btn-milestone-primary:active {
-            transform: translateY(0);
-          }
-
-          /* Task List */
-          .td-task-list {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            max-height: 280px;
-            overflow-y: auto;
-            overflow-x: hidden;
-            min-width: 0;
-            max-width: 100%;
-            padding-right: 2px;
-            box-sizing: border-box;
-          }
-          .td-task-card {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            padding: 7px 9px;
-            border-radius: 7px;
-            background: #ffffff;
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-            transition: border-color 0.15s, box-shadow 0.15s;
-            box-sizing: border-box;
-            min-width: 0;
-            max-width: 100%;
-          }
-          .td-task-card:hover {
-            border-color: rgba(5, 150, 105, 0.4);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
-          }
-          .td-task-card.is-completed {
-            opacity: 0.65;
-            background: #f8fafc;
-          }
-          .td-task-row {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            min-width: 0;
-            width: 100%;
-          }
-          .td-prio-dot {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            flex-shrink: 0;
-          }
-          .td-prio-high { background: #ef4444; }
-          .td-prio-medium { background: #f59e0b; }
-          .td-prio-low { background: #10b981; }
-
-          .td-checkbox {
-            cursor: pointer;
-            width: 14px;
-            height: 14px;
-            margin: 0;
-            accent-color: #059669;
-            flex-shrink: 0;
-          }
-          .td-task-title {
-            flex: 1 1 0;
-            min-width: 0;
-            padding: 0;
-            border: none;
-            background: transparent;
-            text-align: left;
-            font-size: 12px;
-            font-weight: 500;
-            color: #1e293b;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            cursor: pointer;
-          }
-          .td-task-title.is-done {
-            text-decoration: line-through;
-            color: #94a3b8;
-          }
-          .td-badge-date {
-            font-size: 10px;
-            padding: 1px 5px;
-            border-radius: 4px;
-            background: rgba(217, 119, 6, 0.12);
-            color: #d97706;
-            flex-shrink: 0;
-            line-height: 1.3;
-          }
-          .td-badge-date.is-overdue {
-            background: rgba(239, 68, 68, 0.12);
-            color: #dc2626;
-            font-weight: 600;
-          }
-          .td-subtask-toggle {
-            font-size: 10px;
-            padding: 1px 5px;
-            border-radius: 4px;
-            background: rgba(0, 0, 0, 0.05);
-            color: #475569;
-            cursor: pointer;
-            user-select: none;
-            flex-shrink: 0;
-            border: none;
-            appearance: none;
-            -moz-appearance: none;
-            line-height: 1.3;
-          }
-          .td-subtask-toggle:hover {
-            background: rgba(0, 0, 0, 0.09);
-          }
-          .td-task-delete {
-            background: none !important;
-            border: none !important;
-            color: #94a3b8 !important;
-            cursor: pointer !important;
-            font-size: 14px !important;
-            line-height: 1 !important;
-            padding: 0 3px !important;
-            opacity: 1;
-            min-width: 36px;
-            min-height: 28px;
-            appearance: none;
-            -moz-appearance: none;
-            flex-shrink: 0;
-          }
-          .td-task-delete:hover {
-            opacity: 1;
-            color: #ef4444 !important;
-          }
-
-          /* Subtask list */
-          .td-subtask-list {
-            display: flex;
-            flex-direction: column;
-            gap: 3px;
-            margin-left: 20px;
-            padding-left: 6px;
-            border-left: 2px solid rgba(0, 0, 0, 0.07);
-            margin-top: 3px;
-            margin-bottom: 2px;
-          }
-          .td-subtask-item {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 11px;
-            color: #475569;
-          }
-          .td-subtask-title {
-            flex: 1;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-          }
-          .td-subtask-title.is-done {
-            text-decoration: line-through;
-            color: #94a3b8;
-          }
-
-          /* Compound Quick Add Row */
-          .td-add-reading {
-            width: 100%;
-            padding: 7px 10px;
-            border: 1px solid #b52123;
-            border-radius: 6px;
-            background: #c5282a;
-            color: #fff;
-            font: inherit;
-            font-weight: 600;
-            cursor: pointer;
-          }
-          .td-add-reading:hover:not(:disabled) { background: #ae2224; }
-          .td-add-reading:disabled { opacity: 0.65; cursor: default; }
-          .td-add-reading:focus-visible { outline: 2px solid #c5282a; outline-offset: 2px; }
-          .td-task-locate {
-            flex: 0 0 auto; padding: 3px 7px; border: 1px solid var(--fill-quinary, #cbd5e1);
-            min-width: 0; white-space: nowrap;
-            border-radius: 5px; background: var(--material-background, Canvas); color: var(--fill-primary, CanvasText);
-            font: inherit; font-size: 11px; cursor: pointer;
-          }
-          .td-task-locate:hover { border-color: #c5282a; color: #a51f21; }
-          .td-task-locate:focus-visible { outline: 2px solid #c5282a; outline-offset: 2px; }
-          .td-add-hint { color: var(--fill-secondary, #64748b); font-size: 11px; line-height: 1.5; }
-          .td-reading-profile, .td-task-controls { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-          .td-reading-profile select { flex: 1; min-width: 0; font: inherit; padding: 4px; border: 1px solid var(--fill-quinary, #cbd5e1); border-radius: 4px; background: transparent; color: inherit; }
-          .td-task-controls { padding-top: 4px; }
-          .td-task-controls button, .td-reschedule summary { min-width: 0; font: inherit; font-size: 11px; color: inherit; background: transparent; border: 1px solid var(--fill-quinary, #cbd5e1); border-radius: 4px; padding: 3px 7px; cursor: pointer; }
-          .td-task-controls button:focus-visible, .td-reschedule summary:focus-visible { outline: 2px solid #c5282a; outline-offset: 2px; }
-          .td-reschedule[open] { width: 100%; }
-          .td-reschedule[open] summary { margin-bottom: 4px; }
-          button.td-task-title { border: 0; padding: 0; background: transparent; text-align: left; font: inherit; cursor: pointer; }
-          .td-quick-box {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            padding: 3px 5px 3px 6px;
-            background: #ffffff;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            margin-top: 2px;
-            transition: border-color 0.15s, box-shadow 0.15s;
-            box-sizing: border-box;
-          }
-          .td-quick-box:focus-within {
-            border-color: #059669;
-            box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.15);
-          }
-          .td-prio-select {
-            font-size: 11px;
-            padding: 2px 4px;
-            border-radius: 4px;
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            background: rgba(0, 0, 0, 0.03);
-            color: #475569;
-            cursor: pointer;
-            outline: none;
-            flex-shrink: 0;
-          }
-          .td-quick-input {
-            flex: 1;
-            border: none !important;
-            background: transparent !important;
-            font-size: 12px;
-            color: #1e293b;
-            outline: none;
-            padding: 3px 4px;
-            min-width: 0;
-            box-sizing: border-box;
-          }
-          .td-quick-input::placeholder {
-            color: #94a3b8;
-          }
-          .td-quick-submit {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 22px;
-            height: 22px;
-            border-radius: 4px;
-            background: #059669 !important;
-            color: #ffffff !important;
-            border: none !important;
-            cursor: pointer !important;
-            font-size: 15px;
-            font-weight: 700;
-            line-height: 1;
-            flex-shrink: 0;
-            appearance: none;
-            -moz-appearance: none;
-            transition: background 0.15s;
-          }
-          .td-quick-submit:hover {
-            background: #047857 !important;
-          }
-
-          /* Action Buttons Grid (2 Columns, perfectly aligned, no overflow) */
-          .td-action-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px;
-            margin-top: 4px;
-            box-sizing: border-box;
-          }
-          .td-action-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-            padding: 5px 6px;
-            font-size: 11px;
-            font-weight: 500;
-            color: #334155 !important;
-            background: #ffffff !important;
-            border: 1px solid rgba(0, 0, 0, 0.1) !important;
-            border-radius: 6px !important;
-            cursor: pointer !important;
-            text-decoration: none;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            appearance: none;
-            -moz-appearance: none;
-            transition: all 0.15s ease;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-            box-sizing: border-box;
-          }
-          .td-action-btn:hover {
-            background: #f8fafc !important;
-            border-color: rgba(5, 150, 105, 0.4) !important;
-            color: #059669 !important;
-            transform: translateY(-0.5px);
-          }
-          .td-action-btn:active {
-            transform: translateY(0);
-          }
-          .td-action-btn-pdf {
-            grid-column: 1 / -1;
-            background: linear-gradient(135deg, rgba(37, 99, 235, 0.06), rgba(59, 130, 246, 0.1)) !important;
-            border-color: rgba(37, 99, 235, 0.25) !important;
-            color: #1d4ed8 !important;
-            font-weight: 600;
-          }
-          .td-action-btn-pdf:hover {
-            background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(59, 130, 246, 0.18)) !important;
-            border-color: #2563eb !important;
-            color: #1e40af !important;
-          }
-
-          /* Dark theme support */
-          @media (prefers-color-scheme: dark) {
-            .td-pane-wrap { color: #e2e8f0; }
-            .td-header-card {
-              background: rgba(255, 255, 255, 0.04);
-              border-color: rgba(255, 255, 255, 0.08);
-            }
-            .td-empty-card {
-              background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-              border-color: rgba(255, 255, 255, 0.1);
-            }
-            .td-empty-title { color: #f1f5f9; }
-            .td-empty-desc { color: #94a3b8; }
-            .td-task-card {
-              background: #1e293b;
-              border-color: rgba(255, 255, 255, 0.08);
-            }
-            .td-task-card.is-completed {
-              background: rgba(30, 41, 59, 0.6);
-            }
-            .td-task-title { color: #f1f5f9; }
-            .td-subtask-item { color: #cbd5e1; }
-            .td-quick-box {
-              background: #1e293b;
-              border-color: #334155;
-            }
-            .td-prio-select {
-              background: #0f172a;
-              border-color: #334155;
-              color: #e2e8f0;
-            }
-            .td-quick-input { color: #f1f5f9; }
-            .td-action-btn {
-              background: #1e293b !important;
-              border-color: rgba(255, 255, 255, 0.1) !important;
-              color: #e2e8f0 !important;
-            }
-            .td-action-btn:hover {
-              background: #334155 !important;
-              border-color: #10b981 !important;
-              color: #34d399 !important;
-            }
-            .td-action-btn-pdf {
-              background: rgba(37, 99, 235, 0.15) !important;
-              border-color: rgba(59, 130, 246, 0.35) !important;
-              color: #60a5fa !important;
-            }
-          }
-          /* Follow Zotero's semantic colors and native control metrics. */
-          .td-pane-wrap { color: var(--fill-primary, CanvasText); color-scheme: light dark; }
-          .td-header-card, .td-empty-card, .td-task-card, .td-quick-box, .td-action-btn {
-            background: var(--material-background, Canvas) !important;
-            border-color: var(--fill-quinary, #cbd5e1) !important; box-shadow: none;
-          }
-          .td-empty-title, .td-task-title, .td-quick-input, .td-prio-select, .td-action-btn { color: var(--fill-primary, CanvasText) !important; }
-          .td-empty-desc, .td-add-hint { color: var(--fill-secondary, GrayText); }
-          .td-prio-select { background: transparent; }
-          .td-quick-submit, .td-btn-milestone-primary { background: #c5282a !important; }
-          /* The host theme can differ from the operating-system color scheme. */
-          .td-pane-wrap { font: inherit; color-scheme: inherit; }
-          .td-pane-wrap :is(button, input, select) { font: inherit; min-width: 0; max-width: 100%; }
-          .td-pane-wrap :is(.td-header-card, .td-empty-card, .td-task-card, .td-quick-box) {
-            background: color-mix(in srgb, currentColor 2%, transparent) !important;
-            border-color: color-mix(in srgb, currentColor 18%, transparent) !important;
-          }
-          .td-pane-wrap :is(.td-status-badge, .td-progress-pct, .td-empty-title, .td-task-title, .td-subtask-item) {
-            color: var(--fill-primary, CanvasText); font-size: inherit;
-          }
-          .td-pane-wrap :is(.td-empty-desc, .td-add-hint, .td-subtask-toggle) { color: var(--fill-secondary, GrayText); }
-          .td-pane-wrap .td-status-badge { background: color-mix(in srgb, currentColor 6%, transparent); }
-          .td-pane-wrap :is(.td-add-reading, .td-quick-submit, .td-btn-milestone-primary, .td-action-btn) {
-            background: var(--material-button, ButtonFace) !important;
-            color: var(--fill-primary, ButtonText) !important;
-            border: 1px solid color-mix(in srgb, currentColor 18%, transparent) !important;
-            box-shadow: none; transform: none; white-space: normal; overflow-wrap: anywhere;
-          }
-          .td-pane-wrap .td-add-reading { width: 100%; min-height: 30px; padding: 6px 10px; border-radius: 5px; cursor: pointer; }
-          .td-pane-wrap button:hover { background: color-mix(in srgb, currentColor 4%, transparent) !important; transform: none; }
-          .td-pane-wrap button:disabled { opacity: .6; cursor: default; }
-          .td-pane-wrap :is(button, input, select):focus-visible { outline: 2px solid var(--color-accent, Highlight); outline-offset: 2px; }
-          .td-pane-wrap .td-progress-track { background: color-mix(in srgb, currentColor 12%, transparent); }
-          .td-pane-wrap .td-progress-fill { background: var(--color-accent, Highlight); }
-          @media (prefers-reduced-motion: reduce) { .td-pane-wrap * { transition: none !important; animation: none !important; } }
+          .td-pane-wrap .td-action-grid { gap:7px; }
+          .td-pane-wrap .td-action-btn { padding:7px 9px; text-align:center; }
         `;
         (doc.head || doc.documentElement || doc.body).appendChild(style);
       } catch (e) {
@@ -2235,10 +1768,10 @@
             let badgeClass = 'td-status-badge td-status-empty';
             if (total > 0) {
               if (done === total) {
-                statusText = `🎉 精读已完成 (${done}/${total})`;
+                statusText = `研读已完成 (${done}/${total})`;
                 badgeClass = 'td-status-badge td-status-done';
               } else {
-                statusText = `⏳ 研读进行中 (${done}/${total})`;
+                statusText = `研读进行中 (${done}/${total})`;
                 badgeClass = 'td-status-badge td-status-active';
               }
             }
@@ -2274,9 +1807,9 @@
             prioSelect.setAttribute('aria-label', '新待办优先级');
             const defaultPrio = state?.quickPriority || this.getPref('defaultPriority', 'medium');
             const priorities = [
-              { val: 'medium', label: '🟡 中' },
-              { val: 'high', label: '🔴 高' },
-              { val: 'low', label: '🟢 低' }
+              { val: 'medium', label: '中' },
+              { val: 'high', label: '高' },
+              { val: 'low', label: '低' }
             ];
             for (const p of priorities) {
               const opt = createEl('option', '', p.label);
@@ -2394,10 +1927,10 @@
             if (total === 0) {
               const emptyCard = createEl('div', 'td-empty-card');
 
-              const emptyTitle = createEl('div', 'td-empty-title', '📚 暂未建立学术研读清单');
+              const emptyTitle = createEl('div', 'td-empty-title', '暂无研读任务');
               const emptyDesc = createEl('div', 'td-empty-desc', '点击上方“加入待办事项”即可开始研读，也可生成 5 步精读里程碑');
 
-              const btnCreateMilestones = createEl('button', 'td-btn-milestone-primary', '⚡ 一键生成 5 步精读清单');
+              const btnCreateMilestones = createEl('button', 'td-btn-milestone-primary', '生成精读清单');
               btnCreateMilestones.type = 'button';
               btnCreateMilestones.title = '按所选研读模板为本文献建立精读清单';
               btnCreateMilestones.addEventListener('click', async (e) => {
@@ -2482,7 +2015,7 @@
                 if (t.dueDate) {
                   const todayStr = this.localDateString(new Date());
                   const isOverdue = !t.completed && t.dueDate < todayStr;
-                  const dateText = (isOverdue ? '⚠️ ' : '📅 ') + (t.dueDate.length > 5 ? t.dueDate.slice(5) : t.dueDate);
+                  const dateText = (isOverdue ? '逾期 · ' : '') + (t.dueDate.length > 5 ? t.dueDate.slice(5) : t.dueDate);
                   const dueBadge = createEl('span', `td-badge-date ${isOverdue ? 'is-overdue' : ''}`, dateText);
                   dueBadge.title = isOverdue ? `已逾期！截止日期: ${t.dueDate}` : `截止日期: ${t.dueDate}`;
                   controls.appendChild(dueBadge);
@@ -2492,7 +2025,7 @@
                 let subList = null;
                 if (Array.isArray(t.subtasks) && t.subtasks.length > 0) {
                   const doneSubs = t.subtasks.filter((s) => s.completed).length;
-                  const subToggle = createEl('button', 'td-subtask-toggle', `☑️ ${doneSubs}/${t.subtasks.length}`);
+                  const subToggle = createEl('button', 'td-subtask-toggle', `子任务 ${doneSubs}/${t.subtasks.length}`);
                   subToggle.type = 'button';
                   subToggle.title = '展开/收起子任务清单';
                   const expanded = state?.expandedTasks.get(t.id) ?? showSubtasks;
@@ -2626,7 +2159,7 @@
             // 4. Action Buttons Grid (2 Columns, perfectly aligned, no overflow)
             const actionGrid = createEl('div', 'td-action-grid');
 
-            const btnOpenBoard = createEl('button', 'td-action-btn', '📋 待办看板');
+            const btnOpenBoard = createEl('button', 'td-action-btn td-action-workspace', '待办看板');
             btnOpenBoard.type = 'button';
             btnOpenBoard.title = '在主标签页中打开 TaskFlow 任务看板';
             btnOpenBoard.addEventListener('click', () => {
@@ -2634,7 +2167,7 @@
             });
             actionGrid.appendChild(btnOpenBoard);
 
-            const btnSubwin = createEl('button', 'td-action-btn', '🗗 伴读子窗口');
+            const btnSubwin = createEl('button', 'td-action-btn td-action-workspace', '伴读窗口');
             btnSubwin.type = 'button';
             btnSubwin.title = '打开轻量伴读窗口，适合与 PDF 左右分屏对照';
             btnSubwin.addEventListener('click', () => {
@@ -2642,7 +2175,7 @@
             });
             actionGrid.appendChild(btnSubwin);
 
-            const btnMilestones = createEl('button', 'td-action-btn', '⚡ 精读清单');
+            const btnMilestones = createEl('button', 'td-action-btn td-action-reading', '精读清单');
             btnMilestones.type = 'button';
             btnMilestones.title = '一键为本篇文献生成 5 项精读里程碑待办';
             btnMilestones.addEventListener('click', async () => {
@@ -2651,7 +2184,7 @@
             });
             actionGrid.appendChild(btnMilestones);
 
-            const btnSyncNote = createEl('button', 'td-action-btn', '📝 同步子笔记');
+            const btnSyncNote = createEl('button', 'td-action-btn td-action-notes', '同步子笔记');
             btnSyncNote.type = 'button';
             btnSyncNote.title = '将本文献的所有研读待办同步导出为文献子笔记 (云端)';
             btnSyncNote.addEventListener('click', async () => {
@@ -2662,7 +2195,7 @@
 
             const meta = serializeLiteratureItem(target);
             if (meta?.pdfUri) {
-              const btnPdf = createEl('button', 'td-action-btn td-action-btn-pdf', '📖 打开伴读 PDF');
+              const btnPdf = createEl('button', 'td-action-btn td-action-btn-pdf', '打开 PDF');
               btnPdf.type = 'button';
               btnPdf.title = '在 Zotero 内置阅读器中打开该文献的 PDF 全文';
               btnPdf.addEventListener('click', () => {
