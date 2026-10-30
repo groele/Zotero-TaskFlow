@@ -1,5 +1,10 @@
 # Changelog
 
+## 12.8.1 - 2026-10-30
+
+- Fix layout overflow for the quick-add submit button in narrow item panes with nowrap and flex alignment.
+- Place the "打开 PDF" button alongside "同步子笔记" in the two-column action grid instead of spanning full width.
+
 ## 12.8.0 - 2026-10-30
 
 - Harden the item-linked literature card: escape year and page values before inserting them into HTML.

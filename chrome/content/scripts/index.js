@@ -265,7 +265,7 @@
           .td-pane-wrap .td-subtask-title { flex:1; min-width:0; overflow-wrap:anywhere; }
           .td-pane-wrap .td-action-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px; padding-top:10px; border-top:1px solid var(--td-line); }
           .td-pane-wrap .td-action-btn { font-size:.92em; border-color:transparent; text-align:start; padding:5px 6px; }
-          .td-pane-wrap .td-action-btn-pdf { grid-column:1 / -1; }
+          /* .td-pane-wrap .td-action-btn-pdf { grid-column:1 / -1; } */
           .td-pane-wrap .td-fallback-task-list { display:flex; flex-direction:column; gap:4px; }
           /* Soft functional accents follow the host's inherited color scheme. */
           .td-pane-wrap { --td-blue:light-dark(#315f94,#a8c9ef); --td-green:light-dark(#316d58,#a0d3bb); --td-amber:light-dark(#7a5d2c,#e3c58d); }
@@ -289,7 +289,7 @@
           .td-pane-wrap .td-quick-box:focus-within { border-color:var(--color-accent,Highlight); box-shadow:0 0 0 2px color-mix(in srgb,var(--color-accent,Highlight) 28%,transparent); }
           .td-pane-wrap .td-quick-input { padding:6px 4px; font-size:1.05em; color:var(--fill-primary,CanvasText); }
           .td-pane-wrap .td-quick-input::placeholder { color:color-mix(in srgb,var(--fill-primary,CanvasText) 62%,transparent); }
-          .td-pane-wrap .td-quick-box button.td-quick-submit { flex:0 0 auto; width:auto; min-width:52px; height:30px; padding:0 12px; border:1px solid var(--color-accent,Highlight); border-radius:5px; background:var(--color-accent,Highlight); color:var(--accent-white,#fff); font-size:1em; font-weight:600; }
+          .td-pane-wrap .td-quick-box button.td-quick-submit { flex:0 0 auto; width:auto; min-width:48px; height:28px; line-height:28px; padding:0 10px; border:1px solid var(--color-accent,Highlight); border-radius:5px; background:var(--color-accent,Highlight); color:var(--accent-white,#fff); font-size:0.95em; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:inline-flex; align-items:center; justify-content:center; }
           .td-pane-wrap .td-quick-box button.td-quick-submit:hover:not(:disabled) { background:color-mix(in srgb,var(--color-accent,Highlight) 85%,black); }
           .td-pane-wrap .td-quick-box button.td-quick-submit:disabled { opacity:.55; }
           .td-pane-wrap .td-action-grid { gap:7px; }
