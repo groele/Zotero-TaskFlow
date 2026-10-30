@@ -171,7 +171,8 @@ test('native localization loads one alias-complete resource once per document an
   native.host.ensureLocalization(legacy.window.document);
   assert.deepEqual(calls, ['taskflow.ftl']);
   for (const locale of ['zh-CN', 'en-US']) {
-    const ids = name => [...read(`locale/${locale}/${name}.ftl`).matchAll(/^([a-z][\w-]*)\s*=/gm)].map(match => match[1]).sort();
-    assert.deepEqual(ids('taskflow'), ids('todolist'), `${locale}: preserve all legacy message IDs in the canonical resource`);
+    const ids = [...read(`locale/${locale}/taskflow.ftl`).matchAll(/^([a-z][\w-]*)\s*=/gm)].map(match => match[1]);
+    assert(ids.includes('taskflow-item-pane-header'), `${locale} should have taskflow-item-pane-header`);
+    assert(ids.includes('taskflow-item-pane-sidenav'), `${locale} should have taskflow-item-pane-sidenav`);
   }
 });

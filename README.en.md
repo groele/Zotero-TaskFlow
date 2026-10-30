@@ -81,7 +81,7 @@ Configure windows, default view, literature links, reminders, and data maintenan
 
 | Item | Scope |
 |---|---|
-| Current add-on version | 13.1.0 |
+| Current add-on version | 14.0.0 |
 | Declared Zotero range | `10.0.0` through `12.*` |
 | Evidence boundary | 12.8.3 refines the item-pane sidebar: renames to 'Zotero TaskFlow Tasks', emphasizes quick creation with a visible label and solid submit button, declutters empty states, and hardens HTML escaping. |
 

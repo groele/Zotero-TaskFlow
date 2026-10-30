@@ -141,7 +141,7 @@ test('item-pane styles keep only the Todolist sidenav icon visible and preserve 
   assert.match(styles, /item-pane-sidenav\s+\.btn\[data-pane\*="todolist-item-pane"\]/);
   assert.match(styles, /font-size\s*:\s*0/);
   assert.doesNotMatch(styles, /item-pane-sidenav\s+\.btn(?!\[data-pane\*="todolist-item-pane"\])/);
-  const zh = read('locale/zh-CN/todolist.ftl'), en = read('locale/en-US/todolist.ftl');
+  const zh = read('locale/zh-CN/taskflow.ftl'), en = read('locale/en-US/taskflow.ftl');
   for (const locale of [zh, en]) {
     const message = locale.match(/todolist-item-pane-sidenav =([\s\S]*?)(?=\ntodolist-|$)/)?.[1] || '';
     assert.match(message, /\.title\s*=/);
@@ -152,7 +152,7 @@ test('item-pane styles keep only the Todolist sidenav icon visible and preserve 
 
 test('native Fluent header localization preserves the collapsible section body and controls', () => {
   for (const locale of ['zh-CN', 'en-US']) {
-    const ftl = read(`locale/${locale}/todolist.ftl`);
+    const ftl = read(`locale/${locale}/taskflow.ftl`);
     for (const [id, attribute] of [['todolist-item-pane-header', 'label'], ['todolist-item-pane-sidenav', 'aria-label']]) {
       const message = ftl.match(new RegExp(`(?:^|\\n)${id}[ \\t]*=([\\s\\S]*?)(?=\\r?\\ntodolist-|$)`))?.[1];
       assert(message, `${locale}: missing ${id}`);

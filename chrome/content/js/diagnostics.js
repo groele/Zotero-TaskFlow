@@ -17,7 +17,7 @@ const Diagnostics = {
       const host = window.Zotero?.TaskFlow || window.Zotero?.Todolist || window.parent?.Zotero?.TaskFlow || window.parent?.Zotero?.Todolist;
       if (host?.recordDiagnostic) Promise.resolve(host.recordDiagnostic(record)).catch(() => {});
       else if (typeof ZoteroBridge !== 'undefined' && ZoteroBridge.isZotero) {
-        ZoteroBridge.sendToHost({ type: 'TODOLIST_DIAGNOSTIC', record });
+        ZoteroBridge.sendToHost({ type: 'TASKFLOW_DIAGNOSTIC', record });
       }
     } catch (_) {}
     return record;
@@ -33,5 +33,6 @@ const Diagnostics = {
     catch (error) { this.showFailure(action, error); }
   }
 };
+window.TaskFlowDiagnostics = Diagnostics;
 window.TaskFlowDiagnostics = Diagnostics;
 window.TodolistDiagnostics = Diagnostics;

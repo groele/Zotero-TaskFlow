@@ -7,7 +7,7 @@
   const messageListeners = [];
 
   window.chrome = window.chrome || {};
-  window.chrome._todolistMock = true;
+  window.chrome._taskflowMock = true; window.chrome._todolistMock = true;
 
   window.chrome.runtime = window.chrome.runtime || {
     lastError: null,
@@ -59,12 +59,12 @@
       const p = new Promise(resolve => {
         const result = {};
         const keysArray = keys == null
-          ? Object.keys(localStorage).filter(k => k.startsWith('todolist_')).map(k => k.slice(9))
+          ? Object.keys(localStorage).filter(k => k.startsWith('taskflow_') || k.startsWith('todolist_')).map(k => k.slice(9))
           : typeof keys === 'string' ? [keys] : Array.isArray(keys) ? keys : Object.keys(keys);
 
         keysArray.forEach(key => {
           try {
-            const val = localStorage.getItem('todolist_' + key);
+            const val = localStorage.getItem('taskflow_' + key) ?? localStorage.getItem('todolist_' + key);
             result[key] = val !== null ? JSON.parse(val) : (typeof keys === 'object' && !Array.isArray(keys) ? keys[key] : null);
           } catch (e) { throw new Error('无法读取保存的数据: ' + key, { cause: e }); }
         });
@@ -79,8 +79,8 @@
       const p = new Promise(resolve => {
         const changes = {};
         Object.entries(data).forEach(([key, val]) => {
-          const oldVal = localStorage.getItem('todolist_' + key);
-          localStorage.setItem('todolist_' + key, JSON.stringify(val));
+          const oldVal = localStorage.getItem('taskflow_' + key) ?? localStorage.getItem('todolist_' + key);
+          localStorage.setItem('taskflow_' + key, JSON.stringify(val));
           changes[key] = { oldValue: oldVal ? JSON.parse(oldVal) : null, newValue: val };
         });
 
@@ -98,7 +98,7 @@
       const p = new Promise(resolve => {
         const keysArray = Array.isArray(keys) ? keys : [keys];
         keysArray.forEach(key => {
-          localStorage.removeItem('todolist_' + key);
+          localStorage.removeItem('taskflow_' + key);
         });
 
         if (callback) callback();

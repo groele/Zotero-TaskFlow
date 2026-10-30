@@ -1,4 +1,4 @@
-// Utility functions for Todolist extension
+// Utility functions for Zotero TaskFlow extension
 
 const Utils = {
   // Generate unique ID for tasks

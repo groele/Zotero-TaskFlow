@@ -8,7 +8,7 @@ const Notifications = {
 
   // Request notification permission
   async requestPermission() {
-    if (Storage.isZotero() || (chrome.notifications && !chrome._todolistMock)) {
+    if (Storage.isZotero() || (chrome.notifications && !chrome._taskflowMock && !chrome._todolistMock)) {
       return true;
     }
 
@@ -57,7 +57,7 @@ const Notifications = {
       this.playChime();
     }
 
-    if (chrome.notifications && !chrome._todolistMock) {
+    if (chrome.notifications && !chrome._taskflowMock && !chrome._todolistMock) {
       // Use Chrome notifications API
       await chrome.notifications.create({
         type: 'basic',
