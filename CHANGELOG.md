@@ -1,5 +1,9 @@
 # Changelog
 
+## 12.8.3 - 2026-10-30
+
+- Ensure "打开 PDF" consistently aligns side-by-side to the right of "同步子笔记" across both empty and populated states.
+- Re-position additional milestone creation to its own full-width bottom row when tasks are present.
 ## 12.8.2 - 2026-10-30
 
 - Soften quick-add submit button and container colors to align with sidebar's functional pastel palette.

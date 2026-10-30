@@ -292,7 +292,8 @@
           .td-pane-wrap .td-quick-box button.td-quick-submit { flex:0 0 auto; width:auto; min-width:48px; height:28px; line-height:28px; padding:0 10px; border:1px solid color-mix(in srgb,var(--td-blue) 30%,transparent); border-radius:5px; background:color-mix(in srgb,var(--td-blue) 12%,transparent); color:var(--td-tone,var(--td-blue)); font-size:0.92em; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:inline-flex; align-items:center; justify-content:center; }
           .td-pane-wrap .td-quick-box button.td-quick-submit:hover:not(:disabled) { background:color-mix(in srgb,var(--td-blue) 20%,transparent); border-color:color-mix(in srgb,var(--td-blue) 45%,transparent); }
           .td-pane-wrap .td-quick-box button.td-quick-submit:disabled { opacity:.55; }
-          .td-pane-wrap .td-action-grid { gap:7px; }
+          .td-pane-wrap .td-action-grid { gap:7px; grid-template-columns:repeat(2,minmax(0,1fr)); }
+          .td-pane-wrap .td-action-btn-milestones-row { grid-column:1 / -1; width:100%; text-align:center; }
           .td-pane-wrap .td-action-btn { padding:7px 9px; text-align:center; }
         `;
         (doc.head || doc.documentElement || doc.body).appendChild(style);
@@ -2196,16 +2197,6 @@
             });
             actionGrid.appendChild(btnSubwin);
 
-            const btnMilestones = createEl('button', 'td-action-btn td-action-reading', '精读清单');
-            btnMilestones.type = 'button';
-            btnMilestones.title = '一键为本篇文献生成 5 项精读里程碑待办';
-            btnMilestones.addEventListener('click', async () => {
-              await this.createReadingMilestones(target, Zotero.getMainWindow?.(), profileSelect.value);
-              state?.refresh?.();
-            });
-            // The empty state already offers this action; avoid a duplicate button there.
-            if (total > 0) actionGrid.appendChild(btnMilestones);
-
             const btnSyncNote = createEl('button', 'td-action-btn td-action-notes', '同步子笔记');
             btnSyncNote.type = 'button';
             btnSyncNote.title = '将本文献的所有研读待办同步导出为文献子笔记 (云端)';
@@ -2224,6 +2215,18 @@
                 this.openPdfAttachment(target);
               });
               actionGrid.appendChild(btnPdf);
+            }
+
+            // If tasks already exist, offer the reading milestones action across the bottom row
+            if (total > 0) {
+              const btnMilestones = createEl('button', 'td-action-btn td-action-reading td-action-btn-milestones-row', '追加精读清单');
+              btnMilestones.type = 'button';
+              btnMilestones.title = '按当前研读模板为本文献追加生成 5 项精读里程碑待办';
+              btnMilestones.addEventListener('click', async () => {
+                await this.createReadingMilestones(target, Zotero.getMainWindow?.(), profileSelect.value);
+                state?.refresh?.();
+              });
+              actionGrid.appendChild(btnMilestones);
             }
 
             wrapper.appendChild(actionGrid);
