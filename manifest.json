@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Zotero TaskFlow",
-  "version": "14.0.2",
+  "version": "14.0.3",
   "description": "Turn literature reading into trackable tasks and plans.",
   "homepage_url": "https://github.com/groele/Zotero-TaskFlow",
   "author": "groele",

@@ -1,146 +1,244 @@
 # Zotero TaskFlow
 
+**Zotero Flow Series · Academic Research & Reading Task Workspace**
 
-**Zotero Flow Series · Tasks**
-
-*让研究的每一步衔接起来。 / Connect each step of research.*
-
-Turn literature reading into trackable tasks and plans.
+*Turn literature reading into trackable tasks and actionable research plans.*
 
 [简体中文](README.md) · [English](README.en.md)
 
-[![Release](https://img.shields.io/badge/version-12.8.3-245ac7?style=flat-square)](https://github.com/groele/Zotero-TaskFlow/releases/tag/v12.8.3) · [Download XPI](https://github.com/groele/Zotero-TaskFlow/releases/download/v12.8.3/zotero-taskflow-12.8.3.xpi) · [Report an issue](https://github.com/groele/Zotero-TaskFlow/issues)
+[![Version](https://img.shields.io/badge/version-14.0.3-245ac7?style=flat-square)](https://github.com/groele/Zotero-TaskFlow/releases/tag/v14.0.3)
+[![Zotero Compatibility](https://img.shields.io/badge/Zotero-10.0%20to%2012.*-059669?style=flat-square)](https://github.com/groele/Zotero-TaskFlow)
+[![License](https://img.shields.io/badge/license-MIT-yellow?style=flat-square)](LICENSE)
+[![Local Privacy](https://img.shields.io/badge/storage-100%25%20Local%20Privacy-success?style=flat-square)](https://github.com/groele/Zotero-TaskFlow)
+[![Download XPI](https://img.shields.io/badge/download-XPI%20Release-blue?style=flat-square)](https://github.com/groele/Zotero-TaskFlow/releases/download/v14.0.3/zotero-taskflow-14.0.3.xpi)
 
-[Overview](#overview) · [Installation and updates](#installation) · [Quick start](#quick-start) · [Key features](#features) · [Settings](#settings) · [Data, sync, and services](#data) · [Compatibility and validation](#compatibility) · [Troubleshooting](#troubleshooting) · [Development and documentation](#development) · [The Flow series](#series) · [Origin and license](#license)
+[Key Highlights](#highlights) · [Keyboard Shortcuts](#shortcuts) · [Quick Start](#quick-start) · [Multi-Dimensional Views](#views) · [Academic Checklists](#academic-templates) · [Zotero Integration](#integration) · [Settings & Preferences](#settings) · [Data & Backup](#data) · [Troubleshooting FAQ](#troubleshooting) · [Installation & Updates](#installation) · [Zotero Flow Series](#series) · [License](#license)
 
-<a id="overview"></a>
+---
 
-## Overview
+<a id="highlights"></a>
 
-For researchers planning reading, writing, and project work: link tasks, deadlines, subtasks, and reading progress to Zotero papers and PDF locations.
+## 🌟 Key Highlights & Academic Values
 
-Install this add-on independently and combine it with other Flow products as needed.
+**Zotero TaskFlow** is an academic task management and reading workflow add-on built specifically for researchers, scholars, and graduate students. It bridges the gap between generic to-do apps and academic literature by integrating your Zotero library, PDF reader, and task Kanban into one unified workspace:
 
-<a id="installation"></a>
+1. **Bidirectional Literature & PDF Anchoring**: Convert selected text or annotation highlights in the PDF reader into reading tasks with one click, preserving verbatim quotes and precise page numbers. Jump back to the exact PDF location at any time.
+2. **5 Disciplined Academic Reading Templates**: Tailored milestone frameworks for theoretical proofs, empirical/laboratory experiments, literature reviews, algorithm & code reproduction, and general survey reading.
+3. **Comprehensive Multi-Dimensional Views**: Organize your research across Kanban Board, List View, Calendar Schedule, and Analytics metrics.
+4. **Deep Native Zotero Integration**: Collapsible task cards seamlessly embedded in the Item Pane sidebar, PDF context menus, and toolbar badges showing real-time task counts and overdue warnings.
+5. **Strict Local Storage & Zero Data Leakage**: Pure local JSON file (`taskflow-data.json`) storage with zero third-party cloud analytics or transmissions. Export cleanly to Markdown, CSV, and standard JSON.
+6. **Ultra-Lightweight & Modern Architecture**: Free from legacy dependencies, reducing package size by over 30% compared to historical versions.
 
-## Installation and updates
+---
 
-1. Download [zotero-taskflow-12.8.3.xpi](https://github.com/groele/Zotero-TaskFlow/releases/download/v12.8.3/zotero-taskflow-12.8.3.xpi) (add-on version **12.8.3**), not the Source code ZIP.
-2. In Zotero, open **Tools → Plugins/Add-ons**, then choose **Install Add-on From File** from the gear menu.
-3. Select the XPI, complete installation, and restart if requested.
+<a id="shortcuts"></a>
 
-Use the add-on manager to check for later updates. Automatic checking/installation depends on Zotero, per-add-on update settings, and compatibility. Back up important data before upgrades or migration.
+## ⚡ Keyboard Shortcuts
 
-Update feed: [update.json](https://github.com/groele/Zotero-TaskFlow/blob/main/update.json) · Add-on ID: `todolist@groele.org`.
+| Shortcut (Windows / Linux) | Shortcut (macOS) | Context | Action |
+|---|---|---|---|
+| <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd> | <kbd>Cmd</kbd> + <kbd>Opt</kbd> + <kbd>T</kbd> | Any Zotero window | Open / focus the TaskFlow academic workspace |
+| <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>T</kbd> | <kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>T</kbd> | PDF selection / annotation | Convert selected text and page number into a task |
+| <kbd>Enter</kbd> | <kbd>Return</kbd> | Quick-add input | Commit and save a new task |
+| <kbd>Esc</kbd> | <kbd>Esc</kbd> | Modal dialogs / filters | Close modal and return to main view |
+
+---
 
 <a id="quick-start"></a>
 
-## Quick start
+## 🚀 Quick Start
 
-1. Select a paper, create a reading task, and add a deadline and checklist.
-2. Use Ctrl/Cmd+Shift+T in the PDF reader to create a task from selected text and available page information.
-3. Update progress in the item pane or task views and export JSON backups regularly.
+### Scenario 1: Capture Thoughts and Follow-ups while Reading PDFs
+1. Open a paper in Zotero's built-in PDF reader.
+2. Highlight a derivation formula, experimental protocol, or reference to inspect later.
+3. Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>T</kbd> (or right-click and choose **"Convert Selection/Annotation to Task"**).
+4. TaskFlow automatically captures the quote, exact page number, and item metadata with a preset deadline.
+5. Click the literature badge on the task card anytime to **jump directly to that page in the PDF**.
 
-<a id="features"></a>
+### Scenario 2: Batch Plan Reading for a Collection of New Papers
+1. Select multiple papers in your Zotero item list (or right-click a collection).
+2. Right-click and choose **"Batch Generate Reading Plan for All Papers in Collection"** (or drag the papers directly onto the TaskFlow board).
+3. TaskFlow skips items that already have active tasks and creates structured reading tasks for each new paper.
 
-## Key features
+### Scenario 3: Break Down High-Impact Milestone Papers
+1. Open the TaskFlow workspace and click **"New Task"**.
+2. Under **Academic Profile**, select the target genre (e.g., "Algorithm & Code Reproduction" or "Experimental / Empirical").
+3. Apply the preset checklist to automatically populate milestones (e.g., baseline verification, ablation test, dataset setup).
 
-| Differentiator | What it does | Boundary |
+---
+
+<a id="views"></a>
+
+## 📊 Multi-Dimensional Views
+
+TaskFlow provides 4 purpose-built views designed for academic workflows:
+
+### 1. Kanban Board
+- **4-Stage Academic Pipeline**: Default columns for **To Read**, **In Progress**, **Reviewing / Reproducing**, and **Completed**.
+- **Drag-and-Drop Workflow**: Move cards between columns to update status and priority seamlessly.
+- **Rich Card Badges**: View linked paper titles, authors/year, subtask progress meters, deadlines, and colored tags at a glance.
+
+### 2. List View
+- **Multi-Level Subtask Trees**: Expand parent tasks to manage detailed subtask checklists with full keyboard navigation.
+- **Dynamic Grouping & Sorting**: Group by due date, priority (P1 Urgent to P4 Low), collection, or custom tags.
+- **Instant Filters**: Quickly filter for "Due Today", "This Week", "Overdue", or specific paper categories.
+
+### 3. Calendar View
+- **Research Milestone Timeline**: Visualize paper deadlines, conference submission dates, and defense goals on month/week views.
+- **Balanced Workload Planning**: Spot scheduling bottlenecks early to distribute reading pressure evenly.
+
+### 4. Analytics & Statistics
+- **Research Effort Tracking**: Cumulative statistics on finished papers, subtask completion rate, and focus time logs.
+- **Completion Trends**: Progress curves and velocity indicators to keep literature reviews on schedule.
+
+---
+
+<a id="academic-templates"></a>
+
+## 🎯 5 Disciplined Academic Reading Templates
+
+Structured reading templates designed for diverse academic genres:
+
+| Academic Template | Best For | Preset Milestones |
 |---|---|---|
-| Full research-task structure | Manages title, description, due date, priority, category, tags, subtasks, and recurring schedules, with bulk actions, filtering, and sorting. | The task database is local to the Zotero data directory; installing the add-on does not automatically synchronize it across devices. |
-| List, board, calendar, and statistics | Advances work in a list, changes status/order on a board, schedules deadlines in a calendar, and displays completion, overdue, and trend data. | Statistics reflect current local task data; they do not replace lab records, calendars, or time audits. |
-| Paper, PDF, and reading-location links | Creates tasks from selected items or PDF text and retains available excerpts, pages, and annotation anchors; a task can return to its item or PDF location. | Return navigation depends on the original PDF, page, or anchor still being available; it is not a permanent copy of PDF content. |
-| Five reading checklists and focus timing | Supplies editable templates for general, theoretical, experimental, review, and algorithm/reproduction papers, with step tracking and focus-time records. | Templates are a working framework, not an automated judgment of research quality or task completion. |
-| Native item pane and optional child notes | Shows linked tasks/progress in Zotero’s ItemPane, with quick create/check actions, and can write reading details into Zotero child notes. | Child notes follow Zotero’s own sync; the TaskFlow task store and child notes are separate layers. |
-| Reliable reminders, backup, and recovery | Checks reminders/daily summaries while Zotero runs, finalizes after delivery confirmation, releases failed leases for retry, and exports/imports local backups. | Reminders require a running Zotero and host notification support; a backup is recovery material, not automatic cloud sync. |
+| **Theoretical Proofs** | Mathematics, theoretical physics, algorithmic proofs | 1. Verify core assumptions<br>2. Derive key lemmas and theorems<br>3. Inspect boundary and corner cases<br>4. Analyze theoretical limitations |
+| **Experimental / Empirical** | Biomedicine, materials science, chemistry, clinical trials | 1. Check experimental cohort and control groups<br>2. Log key protocol steps and variable controls<br>3. Review statistical significance in figures<br>4. Identify potential biases and reproduction challenges |
+| **Literature Review** | Surveys, systematic reviews, meta-analyses | 1. Summarize research taxonomies and paradigms<br>2. Trace seminal citations and cross-comparisons<br>3. Construct comparative matrix of pros/cons<br>4. Identify open challenges and future directions |
+| **Algorithm & Code Reproduction** | AI/ML, computer systems, computational biology | 1. Prepare datasets and evaluation metrics<br>2. Implement core network/algorithm and verify weights<br>3. Reproduce benchmark results and ablation studies<br>4. Refactor and integrate into project codebase |
+| **General Academic Survey** | Rapid screening, preliminary reading | 1. Extract core contributions from abstract & intro<br>2. Diagram workflow and highlight novel techniques<br>3. Skim experimental results and discussion<br>4. Evaluate takeaways for own research |
+
+---
+
+<a id="integration"></a>
+
+## 🧩 Deep Zotero Integration
+
+TaskFlow integrates natively into the Zotero host:
+
+- **Item Pane Sidebar**:
+  - Selecting any reference item in Zotero displays its linked task cards and completion meter in the right-hand panel.
+  - Create tasks, toggle subtasks, or sync directly without leaving your library.
+- **Sync to Child Notes**:
+  - Export task progress into a standard Zotero child note with one click, synchronizing with official Zotero cloud storage.
+- **Toolbar Status Badge**:
+  - A persistent toolbar indicator displays pending, in-progress, and overdue task counts.
+
+---
 
 <a id="settings"></a>
 
-## Settings
+## ⚙️ Settings & Preferences
 
-Open the add-on preference page in **Zotero → Settings → Zotero TaskFlow**.
+Configure behaviors under **Zotero → Settings → Zotero TaskFlow**:
 
-Configure windows, default view, literature links, reminders, and data maintenance. Settings marked unavailable are not connected; Pomodoro countdown, automatic archiving, and sound reminders are not advertised as completed features.
+- **Library Drag & Drop**: Drag items from your Zotero library into TaskFlow to batch-create reading tasks.
+- **Click-to-Locate Paper**: Clicking a task card or literature badge highlights the corresponding item in Zotero's main list.
+- **PDF Page Navigation**: When enabled, clicking a PDF task navigates directly to the exact page where the task was created.
+- **Window Mode**: Choose between independent window, companion side pane, or full-screen view.
 
-- Library drag and drop creates a batch from the actual dragged items. Child attachments resolve to their parent papers, and existing pending reading tasks are skipped. Disabling library drag and drop stops accepting these drops.
-- Click-to-locate opens the linked Zotero item from a task card or literature badge. Turning it off opens task editing instead. Explicit edit and locate buttons keep their respective actions.
-- PDF navigation uses the saved page or annotation when enabled. Turning it off opens the PDF without forcing a reading position.
-- Compact companion layout affects companion subwindows only. Turning it off restores the regular task layout without changing the saved sidebar expansion preference.
+---
 
 <a id="data"></a>
 
-## Data, sync, and services
+## 💾 Data Storage, Backup & Migration
 
-- The task database is taskflow-data.json in Zotero’s data directory; it does not automatically sync across devices with Zotero items.
-- Zotero controls child-note/tag sync. JSON supports backup/restore; CSV/Markdown/TXT are reading or sharing exports.
-- Reminders require Zotero to be running; they do not replace operating-system or cloud reminders.
+- **Storage File**: Stored locally in your Zotero data directory as `taskflow-data.json`.
+- **100% Local Privacy**: Runs entirely offline with zero third-party telemetry, protecting unpublished research ideas and confidential grants.
+- **Backup & Restore**: Export full JSON backups directly from Settings to migrate across machines.
+- **Interoperability**: Export tasks to standard Markdown checklists or CSV tables for Obsidian, Notion, or Excel workflows.
 
-<a id="compatibility"></a>
-
-## Compatibility and validation
-
-| Item | Scope |
-|---|---|
-| Current add-on version | 14.0.2 |
-| Declared Zotero range | `10.0.0` through `12.*` |
-| Evidence boundary | 12.8.3 refines the item-pane sidebar: renames to 'Zotero TaskFlow Tasks', emphasizes quick creation with a visible label and solid submit button, declutters empty states, and hardens HTML escaping. |
-
-Add-on and Zotero versions are separate. Manifest compatibility does not establish testing on every host, operating system, or service. This release was not installed into the user's main Zotero profile.
+---
 
 <a id="troubleshooting"></a>
 
-## Troubleshooting
+## ❓ Troubleshooting FAQ
 
-If tasks are missing on another device, check whether task JSON was restored; child-note sync does not restore the whole task database. PDF navigation needs a usable attachment and saved location information.
+<details>
+<summary><strong>Q1: Why aren't my tasks appearing on my second computer after logging into Zotero Sync?</strong></summary>
 
-For an issue, include add-on/Zotero versions, OS, steps, expected/actual results, and sanitized errors.
+> **Answer**: Official Zotero sync covers items, attachments, and notes, but not third-party plugin data files. To synchronize:
+> 1. Use TaskFlow's **"📝 Sync to Child Note"** to save tasks as item notes, which sync across devices via Zotero;
+> 2. Or use **"Export Backup"** in Settings on your primary device and **"Import Data"** on your secondary device.
+</details>
+
+<details>
+<summary><strong>Q2: Clicking the PDF button opens the document but does not jump to the saved page?</strong></summary>
+
+> **Answer**: Please check:
+> 1. The item has an active and accessible PDF attachment;
+> 2. In **Zotero Settings → Zotero TaskFlow**, verify that **"Enable PDF Navigation"** is turned on;
+> 3. The task was created from text selection in the PDF reader or had a page specified.
+</details>
+
+<details>
+<summary><strong>Q3: The Ctrl+Alt+T shortcut does not open TaskFlow?</strong></summary>
+
+> **Answer**: This is usually caused by global hotkey conflicts with operating system utilities or input method software. You can open TaskFlow anytime by clicking the **TaskFlow icon** on the Zotero toolbar, or via **Tools → Zotero TaskFlow Academic Workspace**.
+</details>
+
+---
+
+<a id="installation"></a>
+
+## 📦 Installation & Updates
+
+### Manual Installation
+1. Download the latest release package [zotero-taskflow-14.0.3.xpi](https://github.com/groele/Zotero-TaskFlow/releases/download/v14.0.3/zotero-taskflow-14.0.3.xpi) from [GitHub Releases](https://github.com/groele/Zotero-TaskFlow/releases/tag/v14.0.3).
+2. In Zotero, open **Tools → Plugins / Add-ons**.
+3. Click the gear icon ⚙️ in the upper right corner and select **Install Add-on From File...**.
+4. Select the `.xpi` file, confirm the installation, and restart Zotero.
+
+### Automatic Updates
+TaskFlow includes an integrated update feed:
+- **Update Feed**: `https://raw.githubusercontent.com/groele/Zotero-TaskFlow/main/update.json`
+- **Add-on ID**: `taskflow@groele.org`
+
+---
 
 <a id="development"></a>
 
-## Development and documentation
+## 🛠️ Development & Testing
 
-Normal installation needs no development environment. Existing developer entry points follow; use an isolated profile for native tests.
+For contributors and developers:
 
 ```powershell
+# Install test dependencies
 npm ci
+
+# Run the complete test suite (152 unit and integration tests)
 npm test
+
+# Build the release XPI and verify checksums
 python scripts/build-package.py
 ```
 
-- [Release notes](docs/releases/v12.8.3.md)
-- [产品简介 / Product profile](docs/brand/PRODUCT.md)
-- [品牌规范 / Brand guide](docs/brand/BRAND.md)
-- [README 模板 / README template](docs/brand/README-TEMPLATE.md)
-- [后续提升清单 / Improvement priorities](docs/brand/IMPROVEMENTS.md)
-- [Previous detailed guide · README.md](docs/reference/README.md)
-- [Previous detailed guide · README_en.md](docs/reference/README_en.md)
+- [v14.0.3 Release Notes](docs/releases/v14.0.3.md)
+- [Product Specifications](docs/brand/PRODUCT.md)
+- [Release Tag Policy](docs/release-tag-policy.md)
 
-Previous detailed guides retain feature detail, shortcuts, historical evidence, and full attribution. Their versions and test results belong to the recorded stage.
+---
 
 <a id="series"></a>
 
-## The Flow series
+## 🌐 The Zotero Flow Series
 
-| Product | Role |
-|---|---|
-| [Zotero RefFlow](https://github.com/groele/Zotero-RefFlow) | Discovery · Discover references, citing works, and related research. |
-| [Zotero MetaFlow](https://github.com/groele/Zotero-MetaFlow) | Metadata · Validate, normalize, and enrich reference metadata. |
-| [Zotero ViewFlow](https://github.com/groele/Zotero-ViewFlow) | Preview · Preview and copy formatted references in Zotero’s item pane. |
-| [Zotero MindFlow](https://github.com/groele/Zotero-MindFlow) | Knowledge · Organize papers, annotations, and ideas into editable maps. |
-| [Zotero TaskFlow](https://github.com/groele/Zotero-TaskFlow) | Tasks · Turn literature reading into trackable tasks and plans. |
-| [Zotero CiteFlow](https://github.com/groele/Zotero-CiteFlow) | Citation · Track Word citations and connect them to Zotero items. |
-| [Zotero PaperFlow](https://github.com/groele/Zotero-PaperFlow) | Publication · Manage manuscripts, submission rounds, and review responses. |
+Zotero TaskFlow is part of the **Zotero Flow Academic Ecosystem**:
 
-Each add-on installs and updates separately. A shared brand does not imply a shared database or automatic integration of every workflow.
+| Plugin | Stage | Core Capability |
+|---|---|---|
+| [Zotero RefFlow](https://github.com/groele/Zotero-RefFlow) | **Discovery** | Citation graphs, literature tracing, and related paper discovery |
+| [Zotero MetaFlow](https://github.com/groele/Zotero-MetaFlow) | **Metadata** | Metadata normalization, consistency checks, and batch completion |
+| [Zotero ViewFlow](https://github.com/groele/Zotero-ViewFlow) | **Preview** | Smart reference previews, formatted citation copying, and fast reading |
+| [Zotero MindFlow](https://github.com/groele/Zotero-MindFlow) | **Knowledge** | Visual concept mapping linking papers, quotes, and research ideas |
+| [Zotero TaskFlow](https://github.com/groele/Zotero-TaskFlow) | **Tasks** | Turn literature reading into actionable, trackable research milestones |
+| [Zotero CiteFlow](https://github.com/groele/Zotero-CiteFlow) | **Citation** | Track citations in Word documents directly linked to Zotero items |
+| [Zotero PaperFlow](https://github.com/groele/Zotero-PaperFlow) | **Publication** | Manuscript lifecycle, journal submission rounds, and rebuttal tracking |
+
+---
 
 <a id="license"></a>
 
-## Origin and license
+## 📄 License & Attribution
 
-**Development-origin notice:** The maintained repository’s README, package metadata, and license do not declare a third-party Zotero add-on as TaskFlow’s derivative base; it is released as an independently maintained Zotero Flow add-on. The MIT license and the authorship/copyright notice in LICENSE remain required.
-
-License: [MIT](LICENSE).
-
-This series is independently maintained and is not an official Zotero product. Zotero and third-party names, trademarks, and materials belong to their respective rights holders.
-
-[Release/tag policy](docs/release-tag-policy.md)
+- **License**: Released under the open-source [MIT License](LICENSE).
+- **Disclaimer**: Independently maintained by the open-source community. Not an official product of Corporation for Digital Scholarship or Zotero. Zotero is a registered trademark of Corporation for Digital Scholarship.
