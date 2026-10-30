@@ -28,7 +28,7 @@ test('published update.json matches the stable package for both compatible add-o
   assert.equal(update.addons['todolist@groele.org'].updates[0].version, taskflowVersion);
   for (const addonId of ['taskflow@groele.org', 'todolist@groele.org']) {
     const entry = update.addons[addonId].updates[0];
-    assert.equal(entry.update_link, `https://github.com/groele/Zotero-TaskFlow/releases/download/v${version}/zotero-taskflow-${version}.xpi`);
+    assert.equal(entry.update_link, `https://github.com/groele/Zotero-TaskFlow/releases/download/v${taskflowVersion}/zotero-taskflow-${taskflowVersion}.xpi`);
     assert.equal(update.addons[addonId].updates[0].update_hash, update.addons['taskflow@groele.org'].updates[0].update_hash);
   }
 });

@@ -166,6 +166,11 @@ const UI = {
       subwindow: `<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.89-2-2-2zm0 14H5V8h14v10z"/></svg>`,
       window: `<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/></svg>`
     };
+    const modePaths = {
+      tab: 'M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h10v4h8v10z',
+      subwindow: 'M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.89-2-2-2zm0 14H5V8h14v10z',
+      window: 'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z'
+    };
     const getActiveWinMode = () => {
       const p = new URLSearchParams(window.location.search || '');
       return p.get('mode') || window.arguments?.[0]?.options?.currentWindowType || 'tab';
@@ -186,20 +191,35 @@ const UI = {
 
       const menu = document.createElement('div');
       menu.className = 'zotero-mode-dropdown';
-      menu.innerHTML = `
-        <button class="zotero-mode-item ${curMode === 'tab' ? 'active' : ''}" data-mode="tab">
-          <span class="zotero-mode-icon">${modeSvgs.tab}</span>
-          <span>标签页模式 (Tab)</span>
-        </button>
-        <button class="zotero-mode-item ${curMode === 'subwindow' ? 'active' : ''}" data-mode="subwindow">
-          <span class="zotero-mode-icon">${modeSvgs.subwindow}</span>
-          <span>伴读子窗口 (460×760)</span>
-        </button>
-        <button class="zotero-mode-item ${curMode === 'window' ? 'active' : ''}" data-mode="window">
-          <span class="zotero-mode-icon">${modeSvgs.window}</span>
-          <span>独立桌面大窗口 (1120×760)</span>
-        </button>
-      `;
+      const modes = [
+        { mode: 'tab', label: '标签页模式 (Tab)' },
+        { mode: 'subwindow', label: '伴读子窗口 (460×760)' },
+        { mode: 'window', label: '独立桌面大窗口 (1120×760)' }
+      ];
+      modes.forEach(({ mode, label }) => {
+        const option = document.createElement('button');
+        option.type = 'button';
+        option.className = `zotero-mode-item ${curMode === mode ? 'active' : ''}`;
+        option.dataset.mode = mode;
+
+        const icon = document.createElement('span');
+        icon.className = 'zotero-mode-icon';
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('width', '18');
+        svg.setAttribute('height', '18');
+        svg.setAttribute('aria-hidden', 'true');
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('fill', 'currentColor');
+        path.setAttribute('d', modePaths[mode]);
+        svg.appendChild(path);
+        icon.appendChild(svg);
+
+        const text = document.createElement('span');
+        text.textContent = label;
+        option.append(icon, text);
+        menu.appendChild(option);
+      });
 
       btnWinMode.parentElement.style.position = 'relative';
       btnWinMode.parentElement.appendChild(menu);

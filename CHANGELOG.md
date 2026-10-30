@@ -1,5 +1,10 @@
 # Changelog
 
+## 12.7.2 - 2026-10-30
+
+- Fix standalone TaskFlow windows failing to recover the Zotero host instance, which prevented initialization and made the window-mode button appear inert.
+- Route standalone-window host commands directly through Zotero APIs; retain message transport for embedded tabs and frames.
+
 ## 12.7.1 - 2026-10-30
 
 ### Changed

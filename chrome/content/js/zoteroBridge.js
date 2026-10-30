@@ -61,6 +61,18 @@ const ZoteroBridge = {
           this.isZotero = true;
           return;
         }
+        // Zotero's Services.ww.openWindow() does not reliably expose plain JS
+        // properties passed as window.arguments[0] in every Gecko version.
+        // A TaskFlow-owned chrome page opened by Zotero still has the main
+        // window as its opener, so recover the host from that trusted context.
+        if (window.location?.protocol === 'chrome:' &&
+            ['taskflow', 'todolist'].includes(window.location.hostname) &&
+            /^\/content\/(?:index|sidepanel)\.html$/.test(window.location.pathname) &&
+            window.opener?.Zotero) {
+          window.Zotero = window.opener.Zotero;
+          this.isZotero = true;
+          return;
+        }
         // In iframe under chrome://todolist/
         if (window.location && (window.location.protocol === 'chrome:' || window.parent !== window)) {
           this.isZotero = true;
@@ -119,10 +131,9 @@ const ZoteroBridge = {
         window.parent.postMessage(msg, '*');
         return;
       }
-      if (window.opener) {
-        window.opener.postMessage(msg, '*');
-        return;
-      }
+      // For standalone chrome windows, use the recovered Zotero object
+      // directly. Window.postMessage across native chrome windows is not a
+      // dependable bootstrap channel in Zotero/Gecko.
       if (window.Zotero && (window.Zotero.TaskFlow || window.Zotero.Todolist)) {
         const todolist = window.Zotero.TaskFlow || window.Zotero.Todolist;
         const mainWin = window.Zotero.getMainWindow ? window.Zotero.getMainWindow() : null;
@@ -229,6 +240,10 @@ const ZoteroBridge = {
             break;
           }
         }
+        return;
+      }
+      if (window.opener) {
+        window.opener.postMessage(msg, '*');
       }
     } catch (e) {
       this.failHostAction(msg, e);
