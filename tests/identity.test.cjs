@@ -4,18 +4,18 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { makeHost, read, root, JSDOM, waitFor } = require('./helpers.cjs');
 
-test('manifest.json and package.json declare the same candidate version and todolist@groele.org', () => {
+test('manifest.json and package.json declare the same candidate version and taskflow@groele.org', () => {
   const manifest = JSON.parse(read('manifest.json'));
   assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
-  assert.equal(manifest.applications.zotero.id, 'todolist@groele.org');
-  assert.equal(manifest.browser_specific_settings.zotero.id, 'todolist@groele.org');
+  assert.equal(manifest.applications.zotero.id, 'taskflow@groele.org');
+  assert.equal(manifest.browser_specific_settings.zotero.id, 'taskflow@groele.org');
 
   const pkg = JSON.parse(read('package.json'));
   assert.equal(pkg.name, 'zotero-taskflow');
   assert.equal(pkg.version, manifest.version);
 });
 
-test('published update.json matches the stable package for both compatible add-on IDs', () => {
+test('published update.json matches the stable package for taskflow@groele.org', () => {
   const update = JSON.parse(read('update.json'));
   const version = JSON.parse(read('manifest.json')).version;
   const product = JSON.parse(read('docs/brand/product.json'));
@@ -24,61 +24,49 @@ test('published update.json matches the stable package for both compatible add-o
   assert.equal(product.releaseStatus, 'stable');
   assert.equal(product.version, version);
   assert.equal(taskflowVersion, version);
-  assert(update.addons['todolist@groele.org']);
-  assert.equal(update.addons['todolist@groele.org'].updates[0].version, taskflowVersion);
-  for (const addonId of ['taskflow@groele.org', 'todolist@groele.org']) {
-    const entry = update.addons[addonId].updates[0];
-    assert.equal(entry.update_link, `https://github.com/groele/Zotero-TaskFlow/releases/download/v${taskflowVersion}/zotero-taskflow-${taskflowVersion}.xpi`);
-    assert.equal(update.addons[addonId].updates[0].update_hash, update.addons['taskflow@groele.org'].updates[0].update_hash);
-  }
+  const entry = update.addons['taskflow@groele.org'].updates[0];
+  assert.equal(entry.update_link, `https://github.com/groele/Zotero-TaskFlow/releases/download/v${taskflowVersion}/zotero-taskflow-${taskflowVersion}.xpi`);
 });
 
-test('chrome.manifest registers both taskflow and todolist namespaces', () => {
+test('chrome.manifest registers pure taskflow namespaces', () => {
   const manifest = read('chrome.manifest');
   assert.match(manifest, /content\s+taskflow\s+chrome\/content\//);
-  assert.match(manifest, /content\s+todolist\s+chrome\/content\//);
+  assert.doesNotMatch(manifest, /content\s+todolist/);
   assert.match(manifest, /locale\s+taskflow\s+zh-CN\s+locale\/zh-CN\//);
   assert.match(manifest, /locale\s+taskflow\s+en-US\s+locale\/en-US\//);
 });
 
-test('taskflow.ftl locale files exist and provide both taskflow and todolist keys', () => {
+test('taskflow.ftl locale files exist and provide taskflow keys', () => {
   for (const locale of ['zh-CN', 'en-US']) {
     const ftl = read(`locale/${locale}/taskflow.ftl`);
     assert.match(ftl, /taskflow-item-pane-header\s*=/);
     assert.match(ftl, /taskflow-item-pane-sidenav\s*=/);
-    assert.match(ftl, /todolist-item-pane-header\s*=/);
-    assert.match(ftl, /todolist-item-pane-sidenav\s*=/);
   }
 });
 
-test('host runtime uses taskflow identifier system with transparent legacy fallback', async () => {
+test('host runtime uses taskflow identifier system purely', async () => {
   const native = makeHost();
-  assert.equal(native.host.addonId, 'todolist@groele.org');
-  assert.equal(native.host.legacyAddonId, 'taskflow@groele.org');
+  assert.equal(native.host.addonId, 'taskflow@groele.org');
+  assert.equal(native.host.legacyAddonId, undefined);
   assert(native.host.getDataFilePath().endsWith('taskflow-data.json'));
-  assert(native.host.getLegacyDataFilePath().endsWith('todolist-data.json'));
+  assert.equal(native.host.getLegacyDataFilePath, undefined);
 });
 
-test('readDataFile migrates legacy todolist-data.json when taskflow-data.json does not exist', async () => {
-  const legacyTasks = [{ id: 'migrated_task_1', title: 'Legacy reading task' }];
-  const legacyData = { tasks: legacyTasks, settings: { defaultView: 'kanban' } };
+test('readDataFile reads taskflow-data.json directly without legacy fallback', async () => {
+  const tasks = [{ id: 'task_v13_1', title: 'TaskFlow v13 reading task' }];
+  const data = { tasks, settings: { defaultView: 'kanban' } };
 
   const writtenFiles = new Map();
+  writtenFiles.set('/test/taskflow-data.json', JSON.stringify(data));
+
   const mockContext = {
     console, setTimeout, clearTimeout, Promise,
     PathUtils: { join: (...parts) => parts.join('/'), profileDir: '/test' },
     IOUtils: {
-      exists: async (file) => {
-        if (file.endsWith('taskflow-data.json')) return writtenFiles.has(file);
-        if (file.endsWith('todolist-data.json')) return true;
-        return false;
-      },
+      exists: async (file) => file.endsWith('taskflow-data.json') && writtenFiles.has(file),
       readUTF8: async (file) => {
         if (file.endsWith('taskflow-data.json') && writtenFiles.has(file)) {
           return writtenFiles.get(file);
-        }
-        if (file.endsWith('todolist-data.json')) {
-          return JSON.stringify(legacyData);
         }
         throw new Error('File not found: ' + file);
       },
@@ -107,15 +95,11 @@ test('readDataFile migrates legacy todolist-data.json when taskflow-data.json do
   const loaded = await host.readDataFile();
 
   assert.equal(loaded.tasks.length, 1);
-  assert.equal(loaded.tasks[0].id, 'migrated_task_1');
-  assert(writtenFiles.has('/test/taskflow-data.json'), 'Should automatically persist migrated data to taskflow-data.json');
-  const persisted = JSON.parse(writtenFiles.get('/test/taskflow-data.json'));
-  assert.equal(persisted.tasks[0].id, 'migrated_task_1');
+  assert.equal(loaded.tasks[0].id, 'task_v13_1');
 });
 
-test('getPref prioritizes extensions.taskflow.* and falls back to extensions.todolist.*', async () => {
+test('getPref and setPref work purely with extensions.taskflow.* without legacy fallback', async () => {
   const prefs = new Map([
-    ['extensions.todolist.theme', 'dark'],
     ['extensions.taskflow.defaultView', 'kanban']
   ]);
 
@@ -125,25 +109,22 @@ test('getPref prioritizes extensions.taskflow.* and falls back to extensions.tod
     set: (key, val) => prefs.set(key, val)
   };
 
-  // extensions.taskflow takes precedence
+  // extensions.taskflow returns correct value
   assert.equal(native.host.getPref('defaultView', 'list'), 'kanban');
-  // extensions.todolist is used when extensions.taskflow is undefined
-  assert.equal(native.host.getPref('theme', 'zotero'), 'dark');
-  // Default is returned when neither is set
+  // Default is returned when not set
   assert.equal(native.host.getPref('nonexistent', 'fallback_val'), 'fallback_val');
 
-  // setPref updates both
+  // setPref updates extensions.taskflow exclusively
   native.host.setPref('theme', 'light');
   assert.equal(prefs.get('extensions.taskflow.theme'), 'light');
-  assert.equal(prefs.get('extensions.todolist.theme'), 'light');
+  assert.equal(prefs.get('extensions.todolist.theme'), undefined);
 });
 
-test('handleHostMessage accepts messages from chrome://taskflow/ origin as well as chrome://todolist/', async t => {
+test('handleHostMessage accepts messages from chrome://taskflow/ origin', async t => {
   const native = makeHost({ tasks: [{ id: 'task_001', title: 'Origin test' }], settings: {} });
   const main = new JSDOM('<body><div id="zotero-pane"><toolbar id="zotero-items-toolbar"></toolbar></div></body>');
   const taskflowWin = new JSDOM('<body></body>', { url: 'chrome://taskflow/content/index.html?mode=window' });
-  const todolistWin = new JSDOM('<body></body>', { url: 'chrome://todolist/content/index.html?mode=window' });
-  t.after(() => { main.window.close(); taskflowWin.window.close(); todolistWin.window.close(); });
+  t.after(() => { main.window.close(); taskflowWin.window.close(); });
 
   main.window.ZoteroPane = {};
   native.host.addToWindow(main.window);
@@ -156,9 +137,4 @@ test('handleHostMessage accepts messages from chrome://taskflow/ origin as well 
   send(taskflowWin.window, { tasks: [{ id: 'new_from_taskflow', title: 'Via TaskFlow URL' }] });
   await waitFor(() => native.disk().tasks[0]?.id === 'new_from_taskflow');
   assert.equal(native.disk().tasks[0].id, 'new_from_taskflow');
-
-  // Send from chrome://todolist/ (legacy compatibility)
-  send(todolistWin.window, { tasks: [{ id: 'new_from_todolist', title: 'Via Todolist URL' }] });
-  await waitFor(() => native.disk().tasks[0]?.id === 'new_from_todolist');
-  assert.equal(native.disk().tasks[0].id, 'new_from_todolist');
 });

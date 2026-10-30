@@ -235,6 +235,6 @@ test('preference changes persist only their own key and log async host failures'
   await new Promise(resolve => setTimeout(resolve, 0));
   assert(logs.some(message => message.includes('保存设置') && message.includes('simulated write failure')));
   assert.equal(includesQuotes.checked, false);
-  assert.equal(preferences.get('extensions.todolist.childNoteIncludeQuotes'), false);
+  assert.equal(preferences.get('extensions.taskflow.childNoteIncludeQuotes'), false);
   assert.match(win.document.getElementById('todolist-pref-status').textContent, /保存设置失败/);
 });

@@ -1,7 +1,6 @@
 /* Zotero TaskFlow settings pane script for Zotero 10+ */
 window.TaskFlow_Preferences = (() => {
   const PREFIX = 'extensions.taskflow.';
-  const LEGACY_PREFIX = 'extensions.todolist.';
   const HTML = 'http://www.w3.org/1999/xhtml';
   function reportOperationError(zot, doc, action, error) {
     zot?.logError?.('[TaskFlow] ' + action + ': ' + error);
@@ -154,12 +153,8 @@ window.TaskFlow_Preferences = (() => {
     if (typeof Zotero === 'undefined' || !Zotero.Prefs) return DEFAULTS[key];
     try {
       const fullKey = PREFIX + key;
-      const legacyKey = LEGACY_PREFIX + key;
       const type = typeof DEFAULTS[key];
       let val = Zotero.Prefs.get(fullKey, true);
-      if (val === undefined) {
-        val = Zotero.Prefs.get(legacyKey, true);
-      }
       if (type === 'boolean') {
         return typeof val === 'boolean' ? val : DEFAULTS[key];
       }
@@ -181,7 +176,6 @@ window.TaskFlow_Preferences = (() => {
       try {
         for (const [key, val] of Object.entries(values)) {
           Zotero.Prefs.set(PREFIX + key, val, true);
-          try { Zotero.Prefs.set(LEGACY_PREFIX + key, val, true); } catch (_) {}
           changed.push(key);
         }
         const saveSettings = Zotero.TaskFlow?.saveData || Zotero.Todolist?.saveData;
@@ -192,7 +186,6 @@ window.TaskFlow_Preferences = (() => {
         for (const key of changed) {
           try {
             if (Zotero.Prefs.get(PREFIX + key, true) === values[key]) Zotero.Prefs.set(PREFIX + key, previous[key], true);
-            if (Zotero.Prefs.get(LEGACY_PREFIX + key, true) === values[key]) Zotero.Prefs.set(LEGACY_PREFIX + key, previous[key], true);
           } catch (rollbackError) { Zotero.logError?.('[TaskFlow] Failed to restore preference: ' + rollbackError); }
         }
         throw error;
@@ -311,7 +304,7 @@ window.TaskFlow_Preferences = (() => {
     listEl.replaceChildren();
 
     const zot = win?.Zotero || window.Zotero || (typeof Zotero !== 'undefined' ? Zotero : null);
-    if (!zot?.Todolist?.loadData) {
+    if (!zot?.TaskFlow?.loadData) {
       const emptySpan = doc.createElementNS(HTML, 'span');
       emptySpan.textContent = '暂无自定义标签 (Zotero 就绪后即可管理)';
       emptySpan.style.color = 'var(--flow-pref-muted)';
@@ -321,7 +314,7 @@ window.TaskFlow_Preferences = (() => {
     }
 
     try {
-      const data = await zot.Todolist.loadData();
+      const data = await zot.TaskFlow.loadData();
       const tags = data.customTags || [];
 
       if (tags.length === 0) {
@@ -356,7 +349,7 @@ window.TaskFlow_Preferences = (() => {
           if (delBtn.disabled) return;
           delBtn.disabled = true;
           try {
-            await zot.Todolist.saveData({ customTagChanges: { deleted: [tag.id] } });
+            await zot.TaskFlow.saveData({ customTagChanges: { deleted: [tag.id] } });
             await renderCustomTagsManager(doc, win);
           } catch (error) { reportOperationError(zot, doc, '删除自定义标签', error); }
           finally { delBtn.disabled = false; }
@@ -421,7 +414,7 @@ window.TaskFlow_Preferences = (() => {
           const name = tagInput?.value?.trim();
           if (!name) return;
           const zot = win?.Zotero || window.Zotero || (typeof Zotero !== 'undefined' ? Zotero : null);
-          if (!zot?.Todolist) return;
+          if (!zot?.TaskFlow && !zot?.Todolist) return;
 
           addingTag = true;
           if (addTagBtn) addTagBtn.disabled = true;
@@ -433,7 +426,7 @@ window.TaskFlow_Preferences = (() => {
               color: activeTagColor || '#3b82f6',
               icon: '🏷️'
             };
-            await zot.Todolist.saveData({ customTagChanges: { added: [tag] } });
+            await zot.TaskFlow.saveData({ customTagChanges: { added: [tag] } });
             if (tagInput) tagInput.value = '';
             await renderCustomTagsManager(doc, win);
           } catch (error) { reportOperationError(zot, doc, '添加自定义标签', error); }
@@ -454,22 +447,22 @@ window.TaskFlow_Preferences = (() => {
 
         // Export JSON
         doc.getElementById('todolist-btn-export-json')?.addEventListener('click', () => {
-          runOperation('导出 JSON', () => Zotero?.Todolist?.exportData?.('json'));
+          runOperation('导出 JSON', () => Zotero?.TaskFlow?.exportData?.('json'));
         });
 
         // Export CSV
         doc.getElementById('todolist-btn-export-csv')?.addEventListener('click', () => {
-          runOperation('导出 CSV', () => Zotero?.Todolist?.exportData?.('csv'));
+          runOperation('导出 CSV', () => Zotero?.TaskFlow?.exportData?.('csv'));
         });
 
         // Export Markdown
         doc.getElementById('todolist-btn-export-markdown')?.addEventListener('click', () => {
-          runOperation('导出 Markdown', () => Zotero?.Todolist?.exportData?.('markdown'));
+          runOperation('导出 Markdown', () => Zotero?.TaskFlow?.exportData?.('markdown'));
         });
 
         // Export TXT
         doc.getElementById('todolist-btn-export-txt')?.addEventListener('click', () => {
-          runOperation('导出 TXT', () => Zotero?.Todolist?.exportData?.('txt'));
+          runOperation('导出 TXT', () => Zotero?.TaskFlow?.exportData?.('txt'));
         });
 
         // Import JSON
@@ -480,7 +473,7 @@ window.TaskFlow_Preferences = (() => {
             status.textContent = '正在准备导入…';
             status.style.color = 'var(--flow-pref-muted)';
           }
-          const res = await Zotero?.Todolist?.importDataFile?.(mode, win);
+          const res = await Zotero?.TaskFlow?.importDataFile?.(mode, win);
           if (res?.success) {
             if (status) status.textContent = `✅ 成功导入 ${res.count} 个任务与标签数据！`;
             renderCustomTagsManager(doc, win);
@@ -496,12 +489,12 @@ window.TaskFlow_Preferences = (() => {
 
         // Print Tasks
         doc.getElementById('todolist-btn-print')?.addEventListener('click', () => {
-          runOperation('打印任务', () => Zotero?.Todolist?.printTasks?.(win));
+          runOperation('打印任务', () => Zotero?.TaskFlow?.printTasks?.(win));
         });
 
         // Copy Tasks Summary
         doc.getElementById('todolist-btn-copy-summary')?.addEventListener('click', () => {
-          runOperation('复制任务摘要', () => Zotero?.Todolist?.copyTasksSummary?.(win));
+          runOperation('复制任务摘要', () => Zotero?.TaskFlow?.copyTasksSummary?.(win));
         });
 
         // Clear All Data
@@ -510,7 +503,7 @@ window.TaskFlow_Preferences = (() => {
             if (statusEl) statusEl.textContent = '数据未清空。';
             return;
           }
-          const cleared = await Zotero?.Todolist?.clearAllData?.(win);
+          const cleared = await Zotero?.TaskFlow?.clearAllData?.(win);
           if (cleared) {
             await renderCustomTagsManager(doc, win);
             if (statusEl) statusEl.textContent = '所有数据已清空。';

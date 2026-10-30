@@ -255,7 +255,7 @@ test('settings omit unsupported controls, keep active options available, and sav
 
 test('resetting preferences commits once, refreshes controls and rolls back on disk failure', async t => {
   const native = makeHost({ tasks: [], settings: { defaultView: 'kanban', theme: 'dark' } });
-  const preferences = new Map([['extensions.todolist.defaultView', 'kanban'], ['extensions.todolist.theme', 'dark']]);
+  const preferences = new Map([['extensions.taskflow.defaultView', 'kanban'], ['extensions.taskflow.theme', 'dark']]);
   native.context.Zotero.Prefs = { get: key => preferences.get(key), set: (key, value) => preferences.set(key, value) };
   const dom = new JSDOM('<body><div id="todolist-preferences-pane"></div><p id="todolist-pref-status"></p>' +
     '<div id="todolist-pref-view"></div><button id="todolist-btn-reset-defaults">Reset</button></body>', { runScripts: 'outside-only' });
@@ -265,7 +265,7 @@ test('resetting preferences commits once, refreshes controls and rolls back on d
   const reset = win.document.getElementById('todolist-btn-reset-defaults');
   native.failWrites(true); reset.click();
   await waitFor(() => win.document.getElementById('todolist-pref-status').textContent.includes('恢复默认设置失败'));
-  assert.equal(preferences.get('extensions.todolist.defaultView'), 'kanban');
+  assert.equal(preferences.get('extensions.taskflow.defaultView'), 'kanban');
   assert.equal(native.disk().settings.theme, 'dark');
   assert.equal(win.document.getElementById('pref-defaultView').value, 'kanban');
   native.failWrites(false); reset.click(); reset.click();

@@ -26,8 +26,6 @@ REQUIRED_FILES = (
     "chrome/content/js/literatureWorkflow.js",
     "chrome/content/js/diagnostics.js",
     "chrome/content/index.html",
-    "locale/en-US/todolist.ftl",
-    "locale/zh-CN/todolist.ftl",
     "locale/en-US/taskflow.ftl",
     "locale/zh-CN/taskflow.ftl",
     "chrome/content/icons/taskflow.svg",

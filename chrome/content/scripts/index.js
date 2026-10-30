@@ -13,10 +13,8 @@
     return;
   }
 
-  const ADDON_ID = 'todolist@groele.org';
-  const LEGACY_ADDON_ID = 'taskflow@groele.org';
+  const ADDON_ID = 'taskflow@groele.org';
   const CHROME_ROOT = 'chrome://taskflow/content/';
-  const LEGACY_CHROME_ROOT = 'chrome://todolist/content/';
 
   const escapeHtml = (value) => String(value ?? '')
     .replace(/&/g, '&amp;')
@@ -147,7 +145,6 @@
   Zotero.TaskFlow = {
     rootURI: typeof rootURI !== 'undefined' ? rootURI : '',
     addonId: ADDON_ID,
-    legacyAddonId: LEGACY_ADDON_ID,
     localizedDocs: new Set(),
     _cachedData: null,
     _dataListeners: new Set(),
@@ -165,12 +162,9 @@
         const file = PathUtils.join(Zotero.DataDirectory?.dir || PathUtils.profileDir, 'taskflow-debug.json');
         if (!this._diagnosticRecords) {
           try {
-            const legacyFile = PathUtils.join(Zotero.DataDirectory?.dir || PathUtils.profileDir, 'todolist-debug.json');
             let existing = null;
             if (await IOUtils.exists(file)) {
               existing = JSON.parse(await IOUtils.readUTF8(file));
-            } else if (await IOUtils.exists(legacyFile)) {
-              existing = JSON.parse(await IOUtils.readUTF8(legacyFile));
             }
             this._diagnosticRecords = Array.isArray(existing) ? existing.slice(-49) : [];
           } catch (_) { this._diagnosticRecords = []; }
@@ -190,8 +184,6 @@
                        doc.querySelector('link[rel="localization"][href="todolist.ftl"]');
       if (existing) return;
       try {
-        // Both files contain the same message IDs (including legacy aliases).
-        // Loading both produces a Fluent override error for every shared message.
         doc.defaultView?.MozXULElement?.insertFTLIfNeeded('taskflow.ftl');
         if (doc.querySelector('link[rel="localization"][href="taskflow.ftl"]') ||
             doc.querySelector('link[rel="localization"][href="todolist.ftl"]')) {
@@ -236,7 +228,7 @@
           .td-pane-wrap .td-prio-select { flex:0 0 auto; padding:3px; border:0; border-inline-end:1px solid var(--td-line); background:transparent; }
           .td-pane-wrap .td-quick-input { flex:1 1 0; width:0; padding:4px; border:0; background:transparent; }
           .td-pane-wrap .td-quick-input::placeholder { color:var(--fill-secondary,GrayText); }
-          .td-pane-wrap .td-quick-submit { flex:0 0 26px; height:26px; padding:0; border:0; border-radius:3px; background:transparent; font-size:18px; }
+          .td-pane-wrap .td-quick-submit { flex:0 0 auto; width:auto; min-width:44px; height:28px; padding:0 8px; border:1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius:4px; font-size:13px; white-space:nowrap; }
           .td-pane-wrap .td-reading-profile { display:flex; align-items:center; gap:10px; color:var(--fill-secondary,GrayText); font-size:.92em; }
           .td-pane-wrap .td-reading-profile select { flex:1; padding:4px 6px; border:1px solid var(--td-line); border-radius:4px; background:transparent; color:var(--fill-primary,CanvasText); }
           .td-pane-wrap .td-empty-card { display:flex; flex-direction:column; align-items:flex-start; gap:6px; padding:12px 0; }
@@ -289,27 +281,37 @@
           .td-pane-wrap .td-quick-box:focus-within { border-color:var(--color-accent,Highlight); box-shadow:0 0 0 2px color-mix(in srgb,var(--color-accent,Highlight) 28%,transparent); }
           .td-pane-wrap .td-quick-input { padding:6px 4px; font-size:1.05em; color:var(--fill-primary,CanvasText); }
           .td-pane-wrap .td-quick-input::placeholder { color:color-mix(in srgb,var(--fill-primary,CanvasText) 62%,transparent); }
-          .td-pane-wrap .td-quick-box button.td-quick-submit { flex:0 0 auto; width:auto; min-width:48px; height:28px; line-height:28px; padding:0 10px; border:1px solid color-mix(in srgb,var(--td-blue) 30%,transparent); border-radius:5px; background:color-mix(in srgb,var(--td-blue) 12%,transparent); color:var(--td-tone,var(--td-blue)); font-size:0.92em; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:inline-flex; align-items:center; justify-content:center; }
-          .td-pane-wrap .td-quick-box button.td-quick-submit:hover:not(:disabled) { background:color-mix(in srgb,var(--td-blue) 20%,transparent); border-color:color-mix(in srgb,var(--td-blue) 45%,transparent); }
-          .td-pane-wrap .td-quick-box button.td-quick-submit:disabled { opacity:.55; }
-          .td-pane-wrap .td-action-grid { gap:7px; grid-template-columns:repeat(2,minmax(0,1fr)); }
-          .td-pane-wrap .td-action-btn-milestones-row { grid-column:1 / -1; width:100%; text-align:center; }
-          .td-pane-wrap .td-action-btn { padding:7px 9px; text-align:center; }
+          .td-pane-wrap .td-quick-box button.td-quick-submit,
+          .td-pane-wrap button.td-quick-submit {
+            flex:0 0 auto !important; width:auto !important; min-width:44px !important; height:28px !important;
+            line-height:26px !important; padding:0 8px !important; font-size:13px !important; font-weight:500 !important;
+            white-space:nowrap !important; overflow:visible !important; text-overflow:clip !important;
+            display:inline-flex !important; align-items:center !important; justify-content:center !important;
+            color:var(--fill-primary, currentColor) !important;
+            background:color-mix(in srgb, currentColor 6%, transparent) !important;
+            border:1px solid color-mix(in srgb, currentColor 18%, transparent) !important;
+            border-radius:4px !important;
+          }
+          .td-pane-wrap .td-quick-box button.td-quick-submit:hover:not(:disabled),
+          .td-pane-wrap button.td-quick-submit:hover:not(:disabled) {
+            background:color-mix(in srgb, currentColor 11%, transparent) !important;
+            border-color:color-mix(in srgb, currentColor 28%, transparent) !important;
+          }
+          .td-pane-wrap button.td-quick-submit:disabled { opacity:.55 !important; }
+          .td-pane-wrap .td-action-grid { display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:6px !important; padding-top:10px !important; border-top:1px solid var(--td-line) !important; }
+          .td-pane-wrap .td-action-btn { padding:6px 8px !important; text-align:center !important; font-size:13px !important; grid-column:auto !important; }
+          .td-pane-wrap .td-action-btn-pdf { grid-column:auto !important; }
+          .td-pane-wrap .td-action-btn-milestones-row { grid-column:1 / -1 !important; width:100% !important; text-align:center !important; }
         `;
         (doc.head || doc.documentElement || doc.body).appendChild(style);
       } catch (e) {
-        Zotero.logError?.('[Todolist] Failed to inject itemPane styles: ' + e);
+        Zotero.logError?.('[TaskFlow] Failed to inject itemPane styles: ' + e);
       }
     },
 
     getDataFilePath() {
       const baseDir = Zotero.DataDirectory?.dir || PathUtils.profileDir;
       return PathUtils.join(baseDir, 'taskflow-data.json');
-    },
-
-    getLegacyDataFilePath() {
-      const baseDir = Zotero.DataDirectory?.dir || PathUtils.profileDir;
-      return PathUtils.join(baseDir, 'todolist-data.json');
     },
 
     localDateString(date) {
@@ -329,28 +331,16 @@
 
     async readDataFile() {
       const filePath = this.getDataFilePath();
-      const legacyPath = this.getLegacyDataFilePath();
       try {
-        let loadedFromLegacy = false;
         let data = null;
         if (await IOUtils.exists(filePath)) {
           data = JSON.parse(await IOUtils.readUTF8(filePath));
-        } else if (legacyPath && await IOUtils.exists(legacyPath)) {
-          data = JSON.parse(await IOUtils.readUTF8(legacyPath));
-          loadedFromLegacy = true;
         }
         if (data) {
           if (!Array.isArray(data.tasks)) throw new Error('任务数据格式无效');
           const seen = new Set();
           data.tasks = data.tasks.filter(t => t && t.id && !seen.has(t.id) && seen.add(t.id));
           this._cachedData = data;
-          if (loadedFromLegacy) {
-            try {
-              await IOUtils.writeUTF8(filePath, JSON.stringify(data, null, 2), { tmpPath: filePath + '.tmp' });
-            } catch (migErr) {
-              Zotero.logError?.('[TaskFlow] 自动迁移数据至 taskflow-data.json 失败: ' + migErr);
-            }
-          }
         } else {
           this._cachedData = { tasks: [], settings: { defaultView: 'list', showCompleted: true,
             sortOrder: 'dueDate', theme: this.getPref('theme', 'zotero'), defaultDueDays: this.getPref('defaultDueDays', 7),
@@ -441,7 +431,7 @@
         try {
           await IOUtils.writeUTF8(filePath, JSON.stringify(next, null, 2), { tmpPath: filePath + '.tmp' });
         } catch (error) {
-          Zotero.logError?.('[Todolist] 数据保存失败: ' + error);
+          Zotero.logError?.('[TaskFlow] 数据保存失败: ' + error);
           this.recordDiagnostic({ action: '保存待办数据', message: String(error?.message || error), stack: error?.stack });
           throw error;
         }
@@ -453,7 +443,7 @@
         this.notifyDataChanged();
         if (patch.syncLinkedItems) {
           try { await this.syncLinkedTaskChanges(current, next); }
-          catch (error) { Zotero.logError?.('[Todolist] 任务已保存，文献联动更新失败: ' + error); }
+          catch (error) { Zotero.logError?.('[TaskFlow] 任务已保存，文献联动更新失败: ' + error); }
         }
         const result = this.cloneData(next);
         if (prepared) result.importResult = { imported: prepared.imported };
@@ -489,9 +479,9 @@
         await this.tagItemOnTaskEvent(task.zoteroItemKey, 'complete_check', libraryID);
         if (syncNote && this.getPref('autoSyncChildNote', true)) {
           const note = await this.syncTasksToChildNote(item, null, { silent: true });
-          if (!note) Zotero.logError?.('[Todolist] 任务已保存，但子笔记未能更新: ' + task.zoteroItemKey);
+          if (!note) Zotero.logError?.('[TaskFlow] 任务已保存，但子笔记未能更新: ' + task.zoteroItemKey);
         }
-        } catch (error) { Zotero.logError?.('[Todolist] 任务已保存，文献联动更新失败: ' + task.zoteroItemKey + ': ' + error); }
+        } catch (error) { Zotero.logError?.('[TaskFlow] 任务已保存，文献联动更新失败: ' + task.zoteroItemKey + ': ' + error); }
       }
     },
 
@@ -527,7 +517,7 @@
         try {
           listener(this.cloneData(this._cachedData));
         } catch (e) {
-          Zotero.logError?.('[Todolist] Error in data listener: ' + e);
+          Zotero.logError?.('[TaskFlow] Error in data listener: ' + e);
         }
       }
     },
@@ -537,8 +527,6 @@
         if (Zotero.Prefs) {
           const tfVal = Zotero.Prefs.get(`extensions.taskflow.${key}`, true);
           if (tfVal !== undefined) return tfVal;
-          const todoVal = Zotero.Prefs.get(`extensions.todolist.${key}`, true);
-          return todoVal !== undefined ? todoVal : defaultVal;
         }
       } catch (_) {}
       return defaultVal;
@@ -548,7 +536,6 @@
       try {
         if (Zotero.Prefs) {
           Zotero.Prefs.set(`extensions.taskflow.${key}`, val, true);
-          try { Zotero.Prefs.set(`extensions.todolist.${key}`, val, true); } catch (_) {}
         }
       } catch (_) {}
     },
@@ -562,7 +549,7 @@
         progress.startCloseTimer(timeout);
         return true;
       } catch (e) {
-        Zotero.log?.(`[Todolist] Notice: ${headline} - ${description}`);
+        Zotero.log?.(`[TaskFlow] Notice: ${headline} - ${description}`);
         return false;
       }
     },
@@ -744,7 +731,7 @@
           newNote.parentID = target.id;
           newNote.setNote(noteHtml);
           try {
-            newNote.addTag('Todolist');
+            newNote.addTag('TaskFlow');
           } catch (_) {}
           await newNote.saveTx();
           targetNote = newNote;
@@ -753,7 +740,7 @@
         if (!options.silent) this.showNotice('文献笔记同步成功', `已更新《${meta.title.slice(0, 20)}...》的研读进度笔记，支持多端云同步！`);
         return targetNote;
       } catch (err) {
-        Zotero.logError?.('[Todolist] syncTasksToChildNote error: ' + err);
+        Zotero.logError?.('[TaskFlow] syncTasksToChildNote error: ' + err);
         this.recordDiagnostic({ action: '同步文献子笔记', message: String(err?.message || err), stack: err?.stack });
         return null;
       }
@@ -817,7 +804,7 @@
           await target.saveTx();
         }
       } catch (err) {
-        Zotero.logError?.('[Todolist] tagItemOnTaskEvent error: ' + err);
+        Zotero.logError?.('[TaskFlow] tagItemOnTaskEvent error: ' + err);
       }
     },
 
@@ -892,7 +879,7 @@
 
         this.openTodolist({ mode: 'create_from_collection', collectionName: collection.name }, window);
       } catch (err) {
-        Zotero.logError?.('[Todolist] createCollectionReadingPlan error: ' + err);
+        Zotero.logError?.('[TaskFlow] createCollectionReadingPlan error: ' + err);
       }
     },
 
@@ -1014,7 +1001,7 @@
           `已记录第 ${pageNum} 页任务，并生成一键直达锚点链接！`
         );
       } catch (err) {
-        Zotero.logError?.('[Todolist] createTaskFromReader error: ' + err);
+        Zotero.logError?.('[TaskFlow] createTaskFromReader error: ' + err);
         this.showNotice('从阅读器创建待办失败', String(err));
       }
     },
@@ -1025,25 +1012,25 @@
         const fp = Cc['@mozilla.org/filepicker;1'].createInstance(Ci.nsIFilePicker);
         const win = Zotero.getMainWindow?.() || Services.wm.getMostRecentWindow('navigator:browser');
         const titleMap = {
-          json: '导出 Todolist JSON 备份',
-          csv: '导出 Todolist CSV 表格 (Excel 兼容)',
-          markdown: '导出 Todolist Markdown 清单',
-          txt: '导出 Todolist 纯文本清单'
+          json: '导出 TaskFlow JSON 备份',
+          csv: '导出 TaskFlow CSV 表格 (Excel 兼容)',
+          markdown: '导出 TaskFlow Markdown 清单',
+          txt: '导出 TaskFlow 纯文本清单'
         };
-        fp.init(win, titleMap[format] || '导出 Todolist 数据', Ci.nsIFilePicker.modeSave);
+        fp.init(win, titleMap[format] || '导出 TaskFlow 数据', Ci.nsIFilePicker.modeSave);
         const dateStr = new Date().toISOString().slice(0, 10);
         if (format === 'json') {
           fp.appendFilter('JSON Files (*.json)', '*.json');
-          fp.defaultString = `todolist-backup-${dateStr}.json`;
+          fp.defaultString = `taskflow-backup-${dateStr}.json`;
         } else if (format === 'csv') {
           fp.appendFilter('CSV Files (*.csv)', '*.csv');
-          fp.defaultString = `todolist-tasks-${dateStr}.csv`;
+          fp.defaultString = `taskflow-tasks-${dateStr}.csv`;
         } else if (format === 'markdown') {
           fp.appendFilter('Markdown Files (*.md)', '*.md');
-          fp.defaultString = `todolist-tasks-${dateStr}.md`;
+          fp.defaultString = `taskflow-tasks-${dateStr}.md`;
         } else {
           fp.appendFilter('Text Files (*.txt)', '*.txt');
-          fp.defaultString = `todolist-tasks-${dateStr}.txt`;
+          fp.defaultString = `taskflow-tasks-${dateStr}.txt`;
         }
 
         const res = await new Promise((resolve) => fp.open(resolve));
@@ -1073,7 +1060,7 @@
             ].join(','));
             content = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
           } else if (format === 'markdown') {
-            content = `# Todolist 学术任务清单\n导出时间：${new Date().toLocaleString()}\n总计：${tasks.length} 项 (已完成：${tasks.filter(t => t.completed).length}，待研读：${tasks.filter(t => !t.completed).length})\n\n---\n\n`;
+            content = `# TaskFlow 学术任务清单\n导出时间：${new Date().toLocaleString()}\n总计：${tasks.length} 项 (已完成：${tasks.filter(t => t.completed).length}，待研读：${tasks.filter(t => !t.completed).length})\n\n---\n\n`;
             for (const t of tasks) {
               content += `- [${t.completed ? 'x' : ' '}] **${t.title}**${t.dueDate ? ` (截止: ${t.dueDate})` : ''}\n`;
               if (t.academicType) content += `  - 学术类型: ${t.academicType}\n`;
@@ -1087,7 +1074,7 @@
               }
             }
           } else {
-            content = `Todolist 学术任务清单\n导出时间：${new Date().toLocaleString()}\n====================================\n\n`;
+            content = `TaskFlow 学术任务清单\n导出时间：${new Date().toLocaleString()}\n====================================\n\n`;
             const incomplete = tasks.filter(t => !t.completed);
             const completed = tasks.filter(t => t.completed);
             if (incomplete.length > 0) {
@@ -1111,7 +1098,7 @@
           return filePath;
         }
       } catch (err) {
-        Zotero.logError?.('[Todolist] exportData error: ' + err);
+        Zotero.logError?.('[TaskFlow] exportData error: ' + err);
         this.recordDiagnostic({ action: '导出待办数据', message: String(err?.message || err), stack: err?.stack });
         this.showNotice('导出失败', String(err.message || err));
       }
@@ -1147,7 +1134,7 @@
           return { success: true, count: imported };
         }
       } catch (err) {
-        Zotero.logError?.('[Todolist] importDataFile error: ' + err);
+        Zotero.logError?.('[TaskFlow] importDataFile error: ' + err);
         this.recordDiagnostic({ action: '导入待办数据', message: String(err?.message || err), stack: err?.stack });
         this.showNotice('导入失败', String(err.message || err));
         return { success: false, error: err.message };
@@ -1164,7 +1151,7 @@
         this.showNotice('数据已清空', '所有任务、历史记录与自定义标签已安全清空。');
         return true;
       } catch (err) {
-        Zotero.logError?.('[Todolist] clearAllData error: ' + err);
+        Zotero.logError?.('[TaskFlow] clearAllData error: ' + err);
         return false;
       }
     },
@@ -1213,7 +1200,7 @@
         this.showNotice('已复制概览', '学术任务概览已复制到系统剪贴板，可直接粘贴至周报或笔记。');
         return true;
       } catch (err) {
-        Zotero.logError?.('[Todolist] copyTasksSummary error: ' + err);
+        Zotero.logError?.('[TaskFlow] copyTasksSummary error: ' + err);
         return false;
       }
     },
@@ -1224,7 +1211,7 @@
         const tasks = data.tasks || [];
         const win = window || Zotero.getMainWindow?.() || Services.wm.getMostRecentWindow('navigator:browser');
 
-        let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Todolist 学术任务清单</title><style>
+        let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>TaskFlow 学术任务清单</title><style>
           body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 24px; color: #1e293b; line-height: 1.5; }
           h1 { font-size: 20px; border-bottom: 2px solid #059669; padding-bottom: 8px; margin-bottom: 4px; color: #065f46; }
           .meta { font-size: 12px; color: #64748b; margin-bottom: 20px; }
@@ -1261,7 +1248,7 @@
           printWin.print();
         }, 300);
       } catch (err) {
-        Zotero.logError?.('[Todolist] printTasks error: ' + err);
+        Zotero.logError?.('[TaskFlow] printTasks error: ' + err);
       }
     },
 
@@ -1317,7 +1304,7 @@
                   try {
                     this.createTaskFromSelection(event?.target?.ownerDocument?.defaultView);
                   } catch (err) {
-                    Zotero.logError?.('[Todolist] Failed to create task: ' + err);
+                    Zotero.logError?.('[TaskFlow] Failed to create task: ' + err);
                   }
                 },
               },
@@ -1329,7 +1316,7 @@
             ],
           });
         } catch (err) {
-          Zotero.logError?.('[Todolist] MenuManager.registerMenu failed: ' + err);
+          Zotero.logError?.('[TaskFlow] MenuManager.registerMenu failed: ' + err);
         }
       }
     },
@@ -1385,7 +1372,7 @@
           this._pendingLinkIDs = new Set(); this._removedLinkRefs = []; this._refreshAllLinks = false;
           this._linkRefreshQueue = (this._linkRefreshQueue || Promise.resolve()).then(() => {
             if (!this._shuttingDown) return this.refreshLinkedLiterature(ids, removed);
-          }).catch(error => Zotero.logError?.('[Todolist] 文献状态更新失败: ' + error));
+          }).catch(error => Zotero.logError?.('[TaskFlow] 文献状态更新失败: ' + error));
         }, 100);
       };
       if (Zotero.Notifier?.registerObserver) {
@@ -1489,7 +1476,7 @@
       this.registerItemPaneSection();
       this.registerZoteroIntegration();
 
-      Zotero.log('[Todolist] Initialized successfully in Zotero');
+      Zotero.log('[TaskFlow] Initialized successfully in Zotero');
     },
 
     buildLiteratureTask(item, { title = '', priority = null, academicType = 'literature_reading', profileID = null,
@@ -1606,7 +1593,7 @@
               refresh,
               onDataChanged: () => {
                 Promise.resolve(refresh?.()).catch((err) => {
-                  Zotero.logError?.('[Todolist] ItemPane refresh failed: ' + err);
+                  Zotero.logError?.('[TaskFlow] ItemPane refresh failed: ' + err);
                 });
               }
             };
@@ -1719,7 +1706,7 @@
                   if (body.querySelector('.td-pane-fallback') === fallback) {
                     fallbackTaskList.replaceChildren(createEl('div', 'td-add-hint', '待办读取失败；添加按钮仍可使用，请重新选择条目重试。'));
                   }
-                  Zotero.logError?.('[Todolist] ItemPane fallback data load failed: ' + error);
+                  Zotero.logError?.('[TaskFlow] ItemPane fallback data load failed: ' + error);
                 });
               }
             } else {
@@ -1758,7 +1745,7 @@
             } catch (error) {
               if (state && renderVersion !== state.renderVersion) return;
               body.appendChild(createEl('div', 'td-add-hint', '待办数据读取失败，请重新选择条目后重试。'));
-              Zotero.logError?.('[Todolist] ItemPane data load failed: ' + error);
+              Zotero.logError?.('[TaskFlow] ItemPane data load failed: ' + error);
               return;
             }
             if (state && renderVersion !== state.renderVersion) return;
@@ -1909,18 +1896,18 @@
             };
 
             addReadingBtn.addEventListener('click', () => {
-              handleQuickAdd(true).catch(error => Zotero.logError?.('[Todolist] Quick add refresh failed: ' + error));
+              handleQuickAdd(true).catch(error => Zotero.logError?.('[TaskFlow] Quick add refresh failed: ' + error));
             });
 
             quickInput.addEventListener('keydown', (e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
-                handleQuickAdd().catch(error => Zotero.logError?.('[Todolist] Quick add refresh failed: ' + error));
+                handleQuickAdd().catch(error => Zotero.logError?.('[TaskFlow] Quick add refresh failed: ' + error));
               }
             });
             quickBtn.addEventListener('click', (e) => {
               e.preventDefault();
-              handleQuickAdd().catch(error => Zotero.logError?.('[Todolist] Quick add refresh failed: ' + error));
+              handleQuickAdd().catch(error => Zotero.logError?.('[TaskFlow] Quick add refresh failed: ' + error));
             });
 
             const quickLabel = createEl('label', 'td-quick-label', '快速新建待办');
@@ -2141,7 +2128,7 @@
                         menu.open = false;
                       } catch (error) { this.showNotice('改期失败', String(error)); }
                       finally { menu.querySelectorAll('button').forEach(btn => { btn.disabled = false; }); }
-                      Promise.resolve(state?.refresh?.()).catch(error => Zotero.logError?.('[Todolist] 改期刷新失败: ' + error));
+                      Promise.resolve(state?.refresh?.()).catch(error => Zotero.logError?.('[TaskFlow] 改期刷新失败: ' + error));
                     });
                     menu.appendChild(dateBtn);
                   }
@@ -2234,7 +2221,7 @@
           },
         });
       } catch (error) {
-        Zotero.logError?.('[Todolist] Could not register ItemPane section: ' + error);
+        Zotero.logError?.('[TaskFlow] Could not register ItemPane section: ' + error);
       }
     },
 
@@ -2372,7 +2359,7 @@
             try {
               this.createTaskFromSelection(window, doc, itemMenu);
             } catch (err) {
-              Zotero.logError?.('[Todolist] Failed to create task from item context menu: ' + err);
+              Zotero.logError?.('[TaskFlow] Failed to create task from item context menu: ' + err);
             }
           });
 
@@ -2620,7 +2607,7 @@
           }
 
         } catch (e) {
-          Zotero.logError?.('[Todolist] Host message processing error: ' + e);
+          Zotero.logError?.('[TaskFlow] Host message processing error: ' + e);
           this.recordDiagnostic({ action: 'Zotero 主窗口 ' + event.data?.type, message: String(e?.message || e), stack: e?.stack });
           try { event.source?.postMessage({ requestId: event.data?.requestId, success: false, error: String(e?.message || e) }, '*'); } catch (_) {}
         }
@@ -3039,7 +3026,7 @@
         let preferredWindowMode = 'tab';
         try {
           if (Zotero.Prefs) {
-            preferredWindowMode = Zotero.Prefs.get('extensions.todolist.windowMode', true) || 'tab';
+            preferredWindowMode = Zotero.Prefs.get('extensions.taskflow.windowMode', true) || 'tab';
           }
         } catch (_) {}
 
@@ -3087,7 +3074,7 @@
             select: true,
             data: options,
             onClose: () => {
-              Zotero.log?.('[Todolist] Tab closed');
+              Zotero.log?.('[TaskFlow] Tab closed');
             }
           });
 
@@ -3130,7 +3117,7 @@
           return;
         }
       } catch (e) {
-        Zotero.logError?.('[Todolist] openTodolist error: ' + e);
+        Zotero.logError?.('[TaskFlow] openTodolist error: ' + e);
       }
 
       this.openStandaloneWindow(options, targetWindow, 'window');
@@ -3196,7 +3183,7 @@
           mainWin.setTimeout(() => tryDeliver(0), 300);
         }
       } catch (err) {
-        Zotero.logError?.('[Todolist] openStandaloneWindow error: ' + err);
+        Zotero.logError?.('[TaskFlow] openStandaloneWindow error: ' + err);
       }
     },
 
@@ -3211,7 +3198,7 @@
           win?.openDialog?.('chrome://zotero/content/preferences/preferences.xhtml', 'Preferences', 'chrome,titlebar,toolbar,centerscreen,dialog=yes');
         }
       } catch (e) {
-        Zotero.logError?.('[Todolist] Could not open preferences: ' + e);
+        Zotero.logError?.('[TaskFlow] Could not open preferences: ' + e);
       }
     },
 
@@ -3259,11 +3246,10 @@
         } catch (_) {}
       }
 
-      Zotero.log?.('[Todolist] Shutdown completed');
+      Zotero.log?.('[TaskFlow] Shutdown completed');
     }
   };
 
-  Zotero.Todolist = Zotero.TaskFlow;
 
   // Run initialization
   Zotero.TaskFlow.init();

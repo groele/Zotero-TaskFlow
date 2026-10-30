@@ -114,9 +114,6 @@ async function startup({ id, version, resourceURI, rootURI }, reason) {
       ['content', 'taskflow', rootURI + 'chrome/content/'],
       ['locale', 'taskflow', 'en-US', rootURI + 'locale/en-US/'],
       ['locale', 'taskflow', 'zh-CN', rootURI + 'locale/zh-CN/'],
-      ['content', 'todolist', rootURI + 'chrome/content/'],
-      ['locale', 'todolist', 'en-US', rootURI + 'locale/en-US/'],
-      ['locale', 'todolist', 'zh-CN', rootURI + 'locale/zh-CN/'],
     ]);
 
     const ctx = {
@@ -158,7 +155,7 @@ async function shutdown({ id, version, resourceURI, rootURI }, reason) {
         Components.interfaces.nsISupports
       ).wrappedJSObject;
     }
-    await (Zotero?.TaskFlow?.shutdown?.() || Zotero?.Todolist?.shutdown?.());
+    await Zotero?.TaskFlow?.shutdown?.();
   } catch (error) {
     Zotero?.logError?.('Error during TaskFlow shutdown: ' + error);
   }
