@@ -100,7 +100,7 @@ window.TaskFlow_Preferences = (() => {
       ['showWelcomeOnStartup', '首次启动时显示使用技巧提示', 'check'],
     ],
     literature: [
-      ['enableItemPane', '在文献右侧详情栏中展示“学术待办”区域（重启 Zotero 后生效）', 'check'],
+      ['enableItemPane', '在文献右侧详情栏中展示“Zotero TaskFlow待办事项”区域（重启 Zotero 后生效）', 'check'],
       ['itemPaneShowProgressBar', '在侧边详情栏中展示研读完成度彩色进度条', 'check'],
       ['itemPaneShowSubtasks', '在侧边详情栏中直接展开子任务里程碑与互动勾选框', 'check'],
       ['locateOnTaskClick', '点击待办卡片或文献徽标时，在 Zotero 文献库中高亮定位对应条目', 'check'],

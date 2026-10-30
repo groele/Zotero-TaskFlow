@@ -634,7 +634,7 @@ const Modal = {
           </div>
           <div class="modal-lit-meta">
             <span class="modal-lit-author">✍️ ${Utils.escapeHtml(lit.authors || '未知作者')}</span>
-            ${lit.year ? `<span class="modal-lit-year">📅 ${lit.year}</span>` : ''}
+            ${lit.year ? `<span class="modal-lit-year">📅 ${Utils.escapeHtml(lit.year)}</span>` : ''}
             ${lit.publication ? `<span class="modal-lit-pub">🏛️ ${Utils.escapeHtml(lit.publication)}</span>` : ''}
           </div>
 
@@ -642,7 +642,7 @@ const Modal = {
           <div class="modal-lit-row">
             <div class="modal-lit-page-field">
               <label for="modal-lit-page">📖 PDF 对应页码:</label>
-              <input type="number" id="modal-lit-page" min="1" placeholder="页码 (如 12)" value="${lit.page || ''}" class="styled-page-input">
+              <input type="number" id="modal-lit-page" min="1" placeholder="页码 (如 12)" value="${Utils.escapeHtml(lit.page || '')}" class="styled-page-input">
             </div>
             <div class="modal-lit-actions">
               ${lit.pdfUri ? `<button type="button" id="btn-modal-open-pdf" class="btn-lit-action pdf">📖 打开 PDF 伴读</button>` : ''}

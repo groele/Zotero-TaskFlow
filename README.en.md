@@ -9,7 +9,7 @@ Turn literature reading into trackable tasks and plans.
 
 [简体中文](README.md) · [English](README.en.md)
 
-[![Release](https://img.shields.io/badge/version-12.7.3-245ac7?style=flat-square)](https://github.com/groele/Zotero-TaskFlow/releases/tag/v12.7.3) · [Download XPI](https://github.com/groele/Zotero-TaskFlow/releases/download/v12.7.3/zotero-taskflow-12.7.3.xpi) · [Report an issue](https://github.com/groele/Zotero-TaskFlow/issues)
+[![Release](https://img.shields.io/badge/version-12.8.0-245ac7?style=flat-square)](https://github.com/groele/Zotero-TaskFlow/releases/tag/v12.8.0) · [Download XPI](https://github.com/groele/Zotero-TaskFlow/releases/download/v12.8.0/zotero-taskflow-12.8.0.xpi) · [Report an issue](https://github.com/groele/Zotero-TaskFlow/issues)
 
 [Overview](#overview) · [Installation and updates](#installation) · [Quick start](#quick-start) · [Key features](#features) · [Settings](#settings) · [Data, sync, and services](#data) · [Compatibility and validation](#compatibility) · [Troubleshooting](#troubleshooting) · [Development and documentation](#development) · [The Flow series](#series) · [Origin and license](#license)
 
@@ -25,7 +25,7 @@ Install this add-on independently and combine it with other Flow products as nee
 
 ## Installation and updates
 
-1. Download [zotero-taskflow-12.7.3.xpi](https://github.com/groele/Zotero-TaskFlow/releases/download/v12.7.3/zotero-taskflow-12.7.3.xpi) (add-on version **12.7.3**), not the Source code ZIP.
+1. Download [zotero-taskflow-12.8.0.xpi](https://github.com/groele/Zotero-TaskFlow/releases/download/v12.8.0/zotero-taskflow-12.8.0.xpi) (add-on version **12.8.0**), not the Source code ZIP.
 2. In Zotero, open **Tools → Plugins/Add-ons**, then choose **Install Add-on From File** from the gear menu.
 3. Select the XPI, complete installation, and restart if requested.
 
@@ -81,9 +81,9 @@ Configure windows, default view, literature links, reminders, and data maintenan
 
 | Item | Scope |
 |---|---|
-| Current add-on version | 12.7.3 |
+| Current add-on version | 12.8.0 |
 | Declared Zotero range | `10.0.0` through `15.*` |
-| Evidence boundary | 12.7.3 repairs narrow-sidebar title overflow and checklist button layout. Multiple widths and light/dark color schemes were verified in an isolated Zotero 10.0.7 profile. |
+| Evidence boundary | 12.8.0 refines the item-pane sidebar: renames to 'Zotero TaskFlow Tasks', emphasizes quick creation with a visible label and solid submit button, declutters empty states, and hardens HTML escaping. |
 
 Add-on and Zotero versions are separate. Manifest compatibility does not establish testing on every host, operating system, or service. This release was not installed into the user's main Zotero profile.
 
@@ -107,7 +107,7 @@ npm test
 python scripts/build-package.py
 ```
 
-- [Release notes](docs/releases/v12.7.3.md)
+- [Release notes](docs/releases/v12.8.0.md)
 - [产品简介 / Product profile](docs/brand/PRODUCT.md)
 - [品牌规范 / Brand guide](docs/brand/BRAND.md)
 - [README 模板 / README template](docs/brand/README-TEMPLATE.md)

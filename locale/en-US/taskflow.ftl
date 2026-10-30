@@ -9,12 +9,12 @@ taskflow-toolbar-tooltip = Open Zotero TaskFlow Academic Workspace (Ctrl+Alt+T)
 taskflow-reader-add-task = Convert Selection/Annotation to Task (Ctrl+Shift+T)
 # This message targets the native collapsible-section. A value would erase its controls.
 taskflow-item-pane-header =
-    .label = Academic Tasks
-    .tooltiptext = TaskFlow Academic Tasks & Milestones
+    .label = Zotero TaskFlow Tasks
+    .tooltiptext = Zotero TaskFlow Tasks & Milestones
 taskflow-item-pane-sidenav =
-    .title = Open Academic Tasks
-    .aria-label = Academic Tasks
-    .tooltiptext = Open Academic Tasks
+    .title = Open Zotero TaskFlow Tasks
+    .aria-label = Zotero TaskFlow Tasks
+    .tooltiptext = Open Zotero TaskFlow Tasks
 taskflow-item-pane-count =
     { $count ->
         [0] No tasks for this item
@@ -36,12 +36,12 @@ todolist-collection-menu-plan = Batch Generate Reading Plan for All Papers in Co
 todolist-toolbar-tooltip = Open Zotero TaskFlow Academic Workspace (Ctrl+Alt+T)
 todolist-reader-add-task = Convert Selection/Annotation to Task (Ctrl+Shift+T)
 todolist-item-pane-header =
-    .label = Academic Tasks
-    .tooltiptext = TaskFlow Academic Tasks & Milestones
+    .label = Zotero TaskFlow Tasks
+    .tooltiptext = Zotero TaskFlow Tasks & Milestones
 todolist-item-pane-sidenav =
-    .title = Open Academic Tasks
-    .aria-label = Academic Tasks
-    .tooltiptext = Open Academic Tasks
+    .title = Open Zotero TaskFlow Tasks
+    .aria-label = Zotero TaskFlow Tasks
+    .tooltiptext = Open Zotero TaskFlow Tasks
 todolist-item-pane-count =
     { $count ->
         [0] No tasks for this item

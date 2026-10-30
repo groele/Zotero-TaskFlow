@@ -283,6 +283,15 @@
             background:color-mix(in srgb,var(--td-tone,var(--td-blue)) 16%,transparent);
             border-color:color-mix(in srgb,var(--td-tone,var(--td-blue)) 32%,transparent);
           }
+          /* Quick creation is the primary action: give it a visible label, field and solid submit button. */
+          .td-pane-wrap .td-quick-label { display:block; margin:6px 0 -2px; font-weight:600; color:var(--fill-primary,CanvasText); }
+          .td-pane-wrap .td-quick-box { min-height:38px; padding:5px; border:1.5px solid color-mix(in srgb,var(--color-accent,Highlight) 55%,transparent); background:color-mix(in srgb,var(--color-accent,Highlight) 6%,transparent); }
+          .td-pane-wrap .td-quick-box:focus-within { border-color:var(--color-accent,Highlight); box-shadow:0 0 0 2px color-mix(in srgb,var(--color-accent,Highlight) 28%,transparent); }
+          .td-pane-wrap .td-quick-input { padding:6px 4px; font-size:1.05em; color:var(--fill-primary,CanvasText); }
+          .td-pane-wrap .td-quick-input::placeholder { color:color-mix(in srgb,var(--fill-primary,CanvasText) 62%,transparent); }
+          .td-pane-wrap .td-quick-box button.td-quick-submit { flex:0 0 auto; width:auto; min-width:52px; height:30px; padding:0 12px; border:1px solid var(--color-accent,Highlight); border-radius:5px; background:var(--color-accent,Highlight); color:var(--accent-white,#fff); font-size:1em; font-weight:600; }
+          .td-pane-wrap .td-quick-box button.td-quick-submit:hover:not(:disabled) { background:color-mix(in srgb,var(--color-accent,Highlight) 85%,black); }
+          .td-pane-wrap .td-quick-box button.td-quick-submit:disabled { opacity:.55; }
           .td-pane-wrap .td-action-grid { gap:7px; }
           .td-pane-wrap .td-action-btn { padding:7px 9px; text-align:center; }
         `;
@@ -1810,11 +1819,12 @@
 
             const prioSelect = createEl('select', 'td-prio-select');
             prioSelect.setAttribute('aria-label', '新待办优先级');
+            prioSelect.title = '新待办优先级';
             const defaultPrio = state?.quickPriority || this.getPref('defaultPriority', 'medium');
             const priorities = [
-              { val: 'medium', label: '中' },
-              { val: 'high', label: '高' },
-              { val: 'low', label: '低' }
+              { val: 'medium', label: '中优先' },
+              { val: 'high', label: '高优先' },
+              { val: 'low', label: '低优先' }
             ];
             for (const p of priorities) {
               const opt = createEl('option', '', p.label);
@@ -1829,9 +1839,10 @@
             quickInput.value = state?.quickDraft || '';
             quickInput.addEventListener('input', () => { if (state) state.quickDraft = quickInput.value; });
             quickInput.setAttribute('aria-label', '新待办事项');
-            quickInput.placeholder = '+ 快速新建待办 (Enter 保存)';
+            quickInput.placeholder = '输入待办内容，按 Enter 添加';
+            quickInput.id = 'td-quick-input';
 
-            const quickBtn = createEl('button', 'td-quick-submit', '+');
+            const quickBtn = createEl('button', 'td-quick-submit', '添加');
             quickBtn.type = 'button';
             quickBtn.title = '添加待办任务';
             quickBtn.setAttribute('aria-label', '添加待办任务');
@@ -1911,6 +1922,9 @@
               handleQuickAdd().catch(error => Zotero.logError?.('[Todolist] Quick add refresh failed: ' + error));
             });
 
+            const quickLabel = createEl('label', 'td-quick-label', '快速新建待办');
+            quickLabel.setAttribute('for', 'td-quick-input');
+            wrapper.appendChild(quickLabel);
             quickBox.appendChild(prioSelect);
             quickBox.appendChild(quickInput);
             quickBox.appendChild(quickBtn);
@@ -1932,8 +1946,7 @@
             if (total === 0) {
               const emptyCard = createEl('div', 'td-empty-card');
 
-              const emptyTitle = createEl('div', 'td-empty-title', '暂无研读任务');
-              const emptyDesc = createEl('div', 'td-empty-desc', '点击上方“加入待办事项”即可开始研读，也可生成 5 步精读里程碑');
+              const emptyDesc = createEl('div', 'td-empty-desc', '点击上方“添加到论文研读”或在输入框新建待办；也可按所选模板一键生成 5 步精读清单');
 
               const btnCreateMilestones = createEl('button', 'td-btn-milestone-primary', '生成精读清单');
               btnCreateMilestones.type = 'button';
@@ -1944,7 +1957,6 @@
                 state?.refresh?.();
               });
 
-              emptyCard.appendChild(emptyTitle);
               emptyCard.appendChild(emptyDesc);
               emptyCard.appendChild(btnCreateMilestones);
               wrapper.appendChild(emptyCard);
@@ -2191,7 +2203,8 @@
               await this.createReadingMilestones(target, Zotero.getMainWindow?.(), profileSelect.value);
               state?.refresh?.();
             });
-            actionGrid.appendChild(btnMilestones);
+            // The empty state already offers this action; avoid a duplicate button there.
+            if (total > 0) actionGrid.appendChild(btnMilestones);
 
             const btnSyncNote = createEl('button', 'td-action-btn td-action-notes', '同步子笔记');
             btnSyncNote.type = 'button';
@@ -3067,7 +3080,7 @@
           // Open as internal Tab
           const tabResult = tabs.add({
             type: 'todolist',
-            title: 'TaskFlow 学术待办',
+            title: 'Zotero TaskFlow待办事项',
             select: true,
             data: options,
             onClose: () => {

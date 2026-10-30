@@ -6,12 +6,12 @@ taskflow-toolbar-tooltip = 打开 Zotero TaskFlow 任务工作台 (Ctrl+Alt+T)
 taskflow-reader-add-task = 将选中文本/批注转为研读待办 (Ctrl+Shift+T)
 # 此消息应用到整个原生 collapsible-section。仅设置属性，以保留标题和正文控件。
 taskflow-item-pane-header =
-    .label = 学术待办
-    .tooltiptext = TaskFlow 学术待办与研读任务
+    .label = Zotero TaskFlow待办事项
+    .tooltiptext = Zotero TaskFlow待办事项与研读任务
 taskflow-item-pane-sidenav =
-    .title = 打开学术待办
-    .aria-label = 学术待办
-    .tooltiptext = 打开学术待办
+    .title = 打开 Zotero TaskFlow待办事项
+    .aria-label = Zotero TaskFlow待办事项
+    .tooltiptext = 打开 Zotero TaskFlow待办事项
 taskflow-item-pane-count =
     { $count ->
         [0] 此文献暂无待办事项
@@ -30,12 +30,12 @@ todolist-collection-menu-plan = 为此分类所有文献批量生成研读清单
 todolist-toolbar-tooltip = 打开 Zotero TaskFlow 任务工作台 (Ctrl+Alt+T)
 todolist-reader-add-task = 将选中文本/批注转为研读待办 (Ctrl+Shift+T)
 todolist-item-pane-header =
-    .label = 学术待办
-    .tooltiptext = TaskFlow 学术待办与研读任务
+    .label = Zotero TaskFlow待办事项
+    .tooltiptext = Zotero TaskFlow待办事项与研读任务
 todolist-item-pane-sidenav =
-    .title = 打开学术待办
-    .aria-label = 学术待办
-    .tooltiptext = 打开学术待办
+    .title = 打开 Zotero TaskFlow待办事项
+    .aria-label = Zotero TaskFlow待办事项
+    .tooltiptext = 打开 Zotero TaskFlow待办事项
 todolist-item-pane-count =
     { $count ->
         [0] 此文献暂无待办事项

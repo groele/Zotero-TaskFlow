@@ -1,5 +1,14 @@
 # Changelog
 
+## 12.8.0 - 2026-10-30
+
+- Harden the item-linked literature card: escape year and page values before inserting them into HTML.
+- Rename the Zotero item-pane section, its side-nav entry, tooltips and the TaskFlow tab title from "学术待办"/"Academic Tasks" to "Zotero TaskFlow待办事项"/"Zotero TaskFlow Tasks".
+- Make the item-pane quick-create row prominent: visible "快速新建待办" label, accent-bordered larger field, clearer placeholder and a solid "添加" submit button (class names and accessible labels unchanged).
+- Declutter the item-pane empty state: remove the duplicate "暂无研读任务" title and the duplicate bottom "精读清单" button, and correct the hint to name the real "添加到论文研读" button.
+- Label the new-task priority choices as "高优先/中优先/低优先" and give the selector a tooltip.
+- Add a repository-level AGENTS.md documenting build, test, versioning and release constraints.
+
 ## 12.7.3 - 2026-10-30
 
 - Let long item-pane task titles grow to their full height instead of overflowing Zotero native button sizing into controls and reading steps.
