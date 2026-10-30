@@ -54,3 +54,7 @@ todolist-item-pane-sync-note = 📝 Sync to Child Note
 
 taskflow-item-pane-progress =
     .aria-label = Linked task completion
+
+taskflow-toolbar-status =
+    .tooltiptext = Open TaskFlow: { $count } unfinished, { $overdue } overdue (Ctrl+Alt+T)
+    .aria-label = Open TaskFlow: { $count } unfinished, { $overdue } overdue (Ctrl+Alt+T)

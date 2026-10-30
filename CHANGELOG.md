@@ -1,5 +1,11 @@
 # Changelog
 
+## 12.7.0 - 2026-10-30
+
+### Added
+- Show a non-interactive toolbar badge for unfinished parent tasks: hidden at zero and capped at 99+. Localized tooltips expose full unfinished/overdue counts; data changes refresh all main windows without polling.
+- Preserve the existing colored icons and geometry. Toolbar badge styles and pending startup refreshes clean up with their window.
+
 ## 12.6.9 - 2026-10-29
 
 ### Changed

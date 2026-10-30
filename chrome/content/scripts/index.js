@@ -502,6 +502,10 @@
     },
 
     notifyDataChanged() {
+      for (const win of injectedElements.keys()) {
+        try { if (!win.closed) this.updateToolbarBadge(win.document, this._cachedData); }
+        catch (error) { Zotero.logError?.('[TaskFlow] Toolbar count refresh failed: ' + error); }
+      }
       for (const client of this._uiClients || []) {
         try {
           if (client.closed) { this._uiClients.delete(client); continue; }
@@ -2620,6 +2624,24 @@
       injectedElements.set(window, windowElements);
     },
 
+    updateToolbarBadge(doc, data) {
+      const button = doc?.getElementById('todolist-toolbar-button');
+      if (!button) return;
+      const today = this.localDateString(new Date());
+      const pending = (data?.tasks || []).filter(task => task && !task.completed);
+      const count = pending.length;
+      const overdue = pending.filter(task => task.dueDate && task.dueDate < today).length;
+      if (count) button.setAttribute('data-taskflow-count', count > 99 ? '99+' : String(count));
+      else button.removeAttribute('data-taskflow-count');
+      if (doc.l10n?.setAttributes) {
+        doc.l10n.setAttributes(button, 'taskflow-toolbar-status', { count, overdue });
+      } else {
+        const text = `TaskFlow: ${count} unfinished, ${overdue} overdue (Ctrl+Alt+T)`;
+        button.setAttribute('tooltiptext', text);
+        button.setAttribute('aria-label', text);
+      }
+    },
+
     injectToolbarButton(window, windowElements, retryCount = 0, retryState = { cancelled: false, timers: new Set() }) {
       if (retryState.cancelled) return;
       if (!window || !window.document) return;
@@ -2688,6 +2710,24 @@
         };
 
         btn.addEventListener('command', trigger);
+        btn.addEventListener('mouseenter', () => this.updateToolbarBadge(doc, this._cachedData));
+      }
+      btn.setAttribute('image', `${CHROME_ROOT}icons/todolist.svg`);
+      if (!doc.getElementById('taskflow-toolbar-style')) {
+        const style = doc.createElementNS('http://www.w3.org/1999/xhtml', 'style');
+        style.id = 'taskflow-toolbar-style';
+        style.textContent = `
+          #todolist-toolbar-button { position:relative; }
+          #todolist-toolbar-button[data-taskflow-count]::after {
+            content:attr(data-taskflow-count); position:absolute; top:0; inset-inline-end:-2px;
+            min-width:13px; height:13px; padding:0 3px; box-sizing:border-box; border-radius:7px;
+            font:600 9px/13px system-ui,sans-serif; text-align:center;
+            color:light-dark(#254e7b,#c7def8); background:light-dark(#dceaf9,#294560);
+            border:1px solid var(--material-background,Canvas); pointer-events:none;
+          }
+        `;
+        (doc.head || doc.documentElement).appendChild(style);
+        windowElements.push(style);
       }
 
       // Find the proper anchor: the LAST action button in the toolbar before the search box spacer
@@ -2744,6 +2784,14 @@
 
       if (!windowElements.includes(btn)) {
         windowElements.push(btn);
+      }
+      this.updateToolbarBadge(doc, this._cachedData);
+      if (!this._cachedData) {
+        this.loadData().then(data => {
+          if (!retryState.cancelled && !window.closed && doc.getElementById(btn.id) === btn) {
+            this.updateToolbarBadge(doc, this._cachedData || data);
+          }
+        }).catch(error => Zotero.logError?.('[TaskFlow] Toolbar task count failed: ' + error));
       }
 
       // Re-position safeguard after other extensions finish initializing
@@ -2851,6 +2899,7 @@
         'todolist-reader-context-create',
         'todolist-toolbar-button',
         'todolist-tab-style',
+        'taskflow-toolbar-style',
       ];
       for (const id of allTodolistIds) {
         try {

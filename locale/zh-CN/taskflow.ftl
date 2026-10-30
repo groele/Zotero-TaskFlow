@@ -48,3 +48,7 @@ todolist-item-pane-sync-note = 📝 同步为文献笔记
 
 taskflow-item-pane-progress =
     .aria-label = 关联任务完成进度
+
+taskflow-toolbar-status =
+    .tooltiptext = 打开 TaskFlow：{ $count } 项未完成，其中 { $overdue } 项已逾期（Ctrl+Alt+T）
+    .aria-label = 打开 TaskFlow：{ $count } 项未完成，其中 { $overdue } 项已逾期（Ctrl+Alt+T）
