@@ -241,7 +241,7 @@
           .td-pane-wrap .td-reading-profile select { flex:1; padding:4px 6px; border:1px solid var(--td-line); border-radius:4px; background:transparent; color:var(--fill-primary,CanvasText); }
           .td-pane-wrap .td-empty-card { display:flex; flex-direction:column; align-items:flex-start; gap:6px; padding:12px 0; }
           .td-pane-wrap .td-empty-title { font-weight:500; }
-          .td-pane-wrap .td-btn-milestone-primary { margin-top:4px; }
+          .td-pane-wrap .td-btn-milestone-primary { align-self:stretch; width:100%; height:auto; min-height:36px; margin:4px 0 0; padding:8px 10px; }
           .td-pane-wrap .td-task-list { display:flex; flex-direction:column; min-width:0; }
           .td-pane-wrap .td-task-card { display:flex; flex-direction:column; gap:6px; min-width:0; padding:12px 0; border-block-end:1px solid var(--td-line); }
           .td-pane-wrap .td-task-row { display:flex; align-items:flex-start; gap:7px; min-width:0; }
@@ -249,7 +249,8 @@
           .td-pane-wrap .td-prio-high { background:var(--color-red,#c43b3b); }
           .td-pane-wrap .td-prio-low { opacity:.45; }
           .td-pane-wrap .td-checkbox { flex:0 0 auto; width:15px; height:15px; margin:3px 0 0; accent-color:var(--color-accent,Highlight); }
-          .td-pane-wrap .td-task-title { flex:1 1 0; text-align:start; padding:0; border:0; background:transparent; overflow-wrap:anywhere; line-height:1.5; }
+          /* Zotero's native button height must not constrain a multiline title. */
+          .td-pane-wrap .td-task-title { flex:1 1 0; min-width:0; height:auto; min-height:0; max-height:none; margin:0; text-align:start; padding:0; border:0; background:transparent; white-space:normal; overflow-wrap:anywhere; line-height:1.5; }
           .td-pane-wrap .td-task-delete { flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; height:25px; margin:-4px 0 0 2px; padding:0 7px; border:1px solid color-mix(in srgb,var(--color-red,#c43b3b) 24%,transparent); border-radius:5px; color:var(--color-red,#c43b3b); background:color-mix(in srgb,var(--color-red,#c43b3b) 7%,transparent); font-size:.85em; }
           .td-pane-wrap .td-task-delete:hover:not(:disabled) { border-color:color-mix(in srgb,var(--color-red,#c43b3b) 42%,transparent); background:color-mix(in srgb,var(--color-red,#c43b3b) 13%,transparent); }
           .td-pane-wrap .is-done { text-decoration:line-through; color:var(--fill-secondary,GrayText); }
@@ -1959,8 +1960,8 @@
                 taskCard.dataset.taskId = t.id;
 
                 const row = createEl('div', 'td-task-row');
-                // Keep the title and Zotero jump together; secondary controls
-                // wrap below rather than pushing navigation outside the pane.
+                // Keep the title and removal together. Navigation and secondary
+                // controls wrap on their own row to leave room for long titles.
                 const controls = createEl('div', 'td-task-controls');
 
                 // Priority dot
@@ -2043,7 +2044,7 @@
                     this.locateLiteratureItem(t.zoteroUri || t.zoteroItemKey, t.zoteroLibraryID, Zotero.getMainWindow?.())
                       .catch(error => this.showNotice('无法跳转文献', String(error)));
                   });
-                  row.appendChild(locateButton);
+                  controls.appendChild(locateButton);
                 }
 
                 // Due date badge

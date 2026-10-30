@@ -1,5 +1,10 @@
 # Changelog
 
+## 12.7.3 - 2026-10-30
+
+- Let long item-pane task titles grow to their full height instead of overflowing Zotero native button sizing into controls and reading steps.
+- Move the Zotero locate action below the title and make the generate-reading-checklist button fill its own row with a larger click target.
+
 ## 12.7.2 - 2026-10-30
 
 - Fix standalone TaskFlow windows failing to recover the Zotero host instance, which prevented initialization and made the window-mode button appear inert.

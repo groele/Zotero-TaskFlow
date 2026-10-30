@@ -16,7 +16,7 @@
   "githubDescription": "Turn literature reading into trackable tasks and plans. Part of Zotero Flow.",
   "repository": "https://github.com/groele/Zotero-TaskFlow",
   "addonID": "todolist@groele.org",
-  "version": "12.7.2",
+  "version": "12.7.3",
   "releaseStatus": "stable",
   "license": "MIT"
 }
