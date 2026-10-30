@@ -1,4 +1,4 @@
-// Zotero TaskFlow - Default Preferences (v12.7.0)
+// Zotero TaskFlow - Default Preferences (v12.7.1)
 // Group 1: Window Modes & Multi-window Layout
 pref("extensions.taskflow.windowMode", "tab");
 pref("extensions.taskflow.subwindowAlwaysOnTop", false);

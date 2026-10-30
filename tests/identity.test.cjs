@@ -15,17 +15,22 @@ test('manifest.json and package.json declare the same candidate version and todo
   assert.equal(pkg.version, manifest.version);
 });
 
-test('published update.json remains separate from an unpublished local candidate', () => {
+test('published update.json matches the stable package for both compatible add-on IDs', () => {
   const update = JSON.parse(read('update.json'));
   const version = JSON.parse(read('manifest.json')).version;
   const product = JSON.parse(read('docs/brand/product.json'));
-  const isLocalCandidate = product.releaseStatus === 'candidate' && product.version === version;
   assert(update.addons['taskflow@groele.org']);
   const taskflowVersion = update.addons['taskflow@groele.org'].updates[0].version;
-  if (isLocalCandidate) assert.notEqual(taskflowVersion, version);
-  else assert.equal(taskflowVersion, version);
+  assert.equal(product.releaseStatus, 'stable');
+  assert.equal(product.version, version);
+  assert.equal(taskflowVersion, version);
   assert(update.addons['todolist@groele.org']);
   assert.equal(update.addons['todolist@groele.org'].updates[0].version, taskflowVersion);
+  for (const addonId of ['taskflow@groele.org', 'todolist@groele.org']) {
+    const entry = update.addons[addonId].updates[0];
+    assert.equal(entry.update_link, `https://github.com/groele/Zotero-TaskFlow/releases/download/v${version}/zotero-taskflow-${version}.xpi`);
+    assert.equal(update.addons[addonId].updates[0].update_hash, update.addons['taskflow@groele.org'].updates[0].update_hash);
+  }
 });
 
 test('chrome.manifest registers both taskflow and todolist namespaces', () => {

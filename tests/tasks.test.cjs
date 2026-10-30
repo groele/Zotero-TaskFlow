@@ -13,7 +13,9 @@ for (const file of ['index.html', 'sidepanel.html']) {
     assert.equal(task.academicType, 'writing');
     assert.equal(task.category, '论文写作');
     const button = p.doc.querySelector('.task-action.delete');
-    assert.equal(button.textContent.trim(), '删除');
+    assert.equal(button.textContent.trim(), '移除');
+    assert(button.closest('.task-title-row'), 'remove action should stay visible beside the task title');
+    assert.match(button.title, /不删除关联的 Zotero 文献/);
     button.click();
     await waitFor(() => p.TaskManager.getTasks().length === 0 && p.doc.getElementById('toast-message').textContent === '任务已删除');
     assert.equal((await p.Storage.getTasks()).length, 0);

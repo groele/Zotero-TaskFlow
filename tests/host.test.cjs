@@ -71,7 +71,8 @@ test('native side-pane deletion is visible, preserves newer tasks, and supports 
   t.after(() => { pane.onDestroy({ body }); clearTimeout(native.host._paneUndoTimer); });
   await refresh();
   const deleteButton = body.querySelector('.td-task-delete');
-  assert.equal(deleteButton.textContent, '删除');
+  assert.equal(deleteButton.textContent, '移除');
+  assert.match(deleteButton.title, /不删除 Zotero 文献/);
   await native.host.saveData({ taskChanges: { added: [{ id: 'b', title: 'Newer task', completed: false, zoteroItemKey: 'PAPER' }] } });
   deleteButton.click();
   await waitFor(() => native.disk().tasks.length === 1);

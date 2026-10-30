@@ -50,5 +50,5 @@ taskflow-item-pane-progress =
     .aria-label = 关联任务完成进度
 
 taskflow-toolbar-status =
-    .tooltiptext = 打开 TaskFlow：{ $count } 项未完成，其中 { $overdue } 项已逾期（Ctrl+Alt+T）
-    .aria-label = 打开 TaskFlow：{ $count } 项未完成，其中 { $overdue } 项已逾期（Ctrl+Alt+T）
+    .tooltiptext = 打开 TaskFlow：{ $count } 项待办/进行中（不含逾期）；另有 { $overdue } 项已逾期（Ctrl+Alt+T）
+    .aria-label = 打开 TaskFlow：{ $count } 项待办/进行中（不含逾期）；另有 { $overdue } 项已逾期（Ctrl+Alt+T）

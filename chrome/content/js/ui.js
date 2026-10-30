@@ -1718,11 +1718,14 @@ const UI = {
     card.innerHTML = `
       <button type="button" class="task-checkbox ${task.completed ? 'checked' : ''}" role="checkbox" aria-checked="${Boolean(task.completed)}" aria-label="${task.completed ? '标记任务为未完成' : '标记任务为已完成'}" title="${task.completed ? '标记为未完成' : '标记为已完成'}"></button>
       <div class="task-content">
-        <div class="task-title">
-          ${academicTypeHtml}
-          ${this.highlightText(task.title)}
-          ${reminderHtml}
-          ${repeatHtml}
+        <div class="task-title-row">
+          <div class="task-title">
+            ${academicTypeHtml}
+            ${this.highlightText(task.title)}
+            ${reminderHtml}
+            ${repeatHtml}
+          </div>
+          <button type="button" class="task-action delete task-quick-remove" aria-label="从 TaskFlow 移除此任务并保留关联的 Zotero 文献" title="仅移除 TaskFlow 任务，不删除关联的 Zotero 文献">移除</button>
         </div>
         ${task.description ? `<div class="task-description">${this.highlightText(task.description)}</div>` : ''}
         ${zoteroBadgeHtml}
@@ -1772,12 +1775,6 @@ const UI = {
         <button class="task-action edit" title="编辑">
           <svg viewBox="0 0 24 24" width="16" height="16">
             <path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-          </svg>
-        </button>
-        <button type="button" class="task-action delete" title="删除任务" aria-label="删除任务">
-          <span>删除</span>
-          <svg viewBox="0 0 24 24" width="16" height="16">
-            <path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
           </svg>
         </button>
       </div>

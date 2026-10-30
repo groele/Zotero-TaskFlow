@@ -250,12 +250,12 @@
           .td-pane-wrap .td-prio-low { opacity:.45; }
           .td-pane-wrap .td-checkbox { flex:0 0 auto; width:15px; height:15px; margin:3px 0 0; accent-color:var(--color-accent,Highlight); }
           .td-pane-wrap .td-task-title { flex:1 1 0; text-align:start; padding:0; border:0; background:transparent; overflow-wrap:anywhere; line-height:1.5; }
+          .td-pane-wrap .td-task-delete { flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; height:25px; margin:-4px 0 0 2px; padding:0 7px; border:1px solid color-mix(in srgb,var(--color-red,#c43b3b) 24%,transparent); border-radius:5px; color:var(--color-red,#c43b3b); background:color-mix(in srgb,var(--color-red,#c43b3b) 7%,transparent); font-size:.85em; }
+          .td-pane-wrap .td-task-delete:hover:not(:disabled) { border-color:color-mix(in srgb,var(--color-red,#c43b3b) 42%,transparent); background:color-mix(in srgb,var(--color-red,#c43b3b) 13%,transparent); }
           .td-pane-wrap .is-done { text-decoration:line-through; color:var(--fill-secondary,GrayText); }
           .td-pane-wrap .td-task-locate { flex:0 0 auto; padding:1px 4px; font-size:.85em; color:var(--fill-secondary,GrayText); background:transparent; border:0; border-radius:3px; }
           .td-pane-wrap .td-task-controls { display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; padding-inline-start:26px; color:var(--fill-secondary,GrayText); font-size:.85em; }
           .td-pane-wrap :is(.td-task-controls button,.td-reschedule summary,.td-subtask-toggle) { border:0; border-radius:3px; background:transparent; padding:2px 3px; font:inherit; cursor:pointer; }
-          .td-pane-wrap .td-task-delete { color:var(--fill-secondary,GrayText); }
-          .td-pane-wrap .td-task-delete:hover { color:var(--color-red,#c43b3b); }
           .td-pane-wrap .td-badge-date { line-height:1.5; }
           .td-pane-wrap .td-badge-date.is-overdue { color:var(--color-red,#c43b3b); }
           .td-pane-wrap .td-reschedule[open] { flex-basis:100%; }
@@ -2001,6 +2001,37 @@
                 });
                 row.appendChild(titleSpan);
 
+                // Keep task removal directly on the task row; this removes only
+                // the TaskFlow record, never the linked Zotero library item.
+                const delBtn = createEl('button', 'td-task-delete');
+                delBtn.type = 'button';
+                delBtn.textContent = '移除';
+                delBtn.setAttribute('aria-label', `从 TaskFlow 移除任务并保留 Zotero 文献：${t.title}`);
+                delBtn.title = '仅移除此 TaskFlow 任务，不删除 Zotero 文献';
+                delBtn.addEventListener('click', async (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (delBtn.disabled) return;
+                  delBtn.disabled = true;
+                  try {
+                    await this.saveData({ taskChanges: { deleted: [t.id] } });
+                    this._paneDeleted ||= [];
+                    this._paneDeleted.push(this.cloneData(t));
+                    clearTimeout(this._paneUndoTimer);
+                    this._paneUndoTimer = setTimeout(() => { this._paneDeleted = []; this.notifyDataChanged(); }, 8000);
+                  } catch (error) {
+                    delBtn.disabled = false;
+                    this.showNotice('删除失败', String(error));
+                    return;
+                  }
+                  await this.tagItemOnTaskEvent(target.key, 'complete_check', target.libraryID);
+                  if (this.getPref('autoSyncChildNote', true)) {
+                    await this.syncTasksToChildNote(target);
+                  }
+                  state?.refresh?.();
+                });
+                row.appendChild(delBtn);
+
                 if (t.zoteroItemKey) {
                   const locateButton = createEl('button', 'td-task-locate', '↗ Zotero');
                   locateButton.type = 'button';
@@ -2077,33 +2108,6 @@
                     subList.appendChild(subRow);
                   }
                 }
-
-                // Delete task button
-                const delBtn = createEl('button', 'td-task-delete', '删除');
-                delBtn.type = 'button';
-                delBtn.title = '删除此待办';
-                delBtn.addEventListener('click', async (e) => {
-                  e.stopPropagation();
-                  if (delBtn.disabled) return;
-                  delBtn.disabled = true;
-                  try {
-                    await this.saveData({ taskChanges: { deleted: [t.id] } });
-                    this._paneDeleted ||= [];
-                    this._paneDeleted.push(this.cloneData(t));
-                    clearTimeout(this._paneUndoTimer);
-                    this._paneUndoTimer = setTimeout(() => { this._paneDeleted = []; this.notifyDataChanged(); }, 8000);
-                  } catch (error) {
-                    delBtn.disabled = false;
-                    this.showNotice('删除失败', String(error));
-                    return;
-                  }
-                  await this.tagItemOnTaskEvent(target.key, 'complete_check', target.libraryID);
-                  if (this.getPref('autoSyncChildNote', true)) {
-                    await this.syncTasksToChildNote(target);
-                  }
-                  state?.refresh?.();
-                });
-                controls.appendChild(delBtn);
 
                 taskCard.appendChild(row);
                 const editBtn = createEl('button', 'td-task-edit', '编辑'); editBtn.type = 'button';
@@ -2628,15 +2632,18 @@
       const button = doc?.getElementById('todolist-toolbar-button');
       if (!button) return;
       const today = this.localDateString(new Date());
-      const pending = (data?.tasks || []).filter(task => task && !task.completed);
-      const count = pending.length;
-      const overdue = pending.filter(task => task.dueDate && task.dueDate < today).length;
+      const tasks = (data?.tasks || []).filter(task => task);
+      const overdue = tasks.filter(task => !task.completed && task.dueDate && task.dueDate < today).length;
+      const count = tasks.filter(task => {
+        if (task.completed || task.status === 'done' || (task.dueDate && task.dueDate < today)) return false;
+        return !task.status || task.status === 'todo' || task.status === 'in-progress';
+      }).length;
       if (count) button.setAttribute('data-taskflow-count', count > 99 ? '99+' : String(count));
       else button.removeAttribute('data-taskflow-count');
       if (doc.l10n?.setAttributes) {
         doc.l10n.setAttributes(button, 'taskflow-toolbar-status', { count, overdue });
       } else {
-        const text = `TaskFlow: ${count} unfinished, ${overdue} overdue (Ctrl+Alt+T)`;
+        const text = `TaskFlow: ${count} to do or in progress (excluding overdue), ${overdue} overdue (Ctrl+Alt+T)`;
         button.setAttribute('tooltiptext', text);
         button.setAttribute('aria-label', text);
       }

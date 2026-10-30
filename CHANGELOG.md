@@ -1,5 +1,11 @@
 # Changelog
 
+## 12.7.1 - 2026-10-30
+
+### Changed
+- Add a clearly labeled remove-task control beside task titles in the main list and Zotero item pane. It removes only the TaskFlow task, keeps the linked Zotero item, and retains the existing undo behavior.
+- Count only non-overdue to-do and in-progress tasks in the toolbar badge. Completed and overdue tasks are excluded; localized tooltip and accessible text report overdue tasks separately.
+
 ## 12.7.0 - 2026-10-30
 
 ### Added

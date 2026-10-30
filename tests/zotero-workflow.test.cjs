@@ -74,6 +74,23 @@ test('native sidebar exposes keyboard-accessible edit and date controls that per
   option.click(); await waitFor(() => native.disk().tasks[0].dueDate === date(10));
 });
 
+test('item-pane task removal is directly available and leaves the linked Zotero item untouched', async t => {
+  const item = paper();
+  const linked = { id: 'linked-task', title: 'Read the paper', zoteroItemKey: 'PAPER', zoteroLibraryID: 1,
+    zoteroItemTitle: 'Old paper title', zoteroUri: 'zotero://select/library/items/PAPER', completed: false };
+  const native = makeHost({ tasks: [linked], settings: {} });
+  referenceHost(native, [item]);
+  const { body } = await paneFixture(t, native, item);
+  const remove = body.querySelector('.td-task-delete');
+  assert(remove, 'task removal should be visible on the task title row');
+  assert.match(remove.getAttribute('aria-label'), /从 TaskFlow 移除任务/);
+  assert.match(remove.title, /不删除 Zotero 文献/);
+  remove.click();
+  await waitFor(() => native.disk().tasks.length === 0);
+  assert.equal(native.context.Zotero.Items.getByLibraryAndKey(1, 'PAPER'), item);
+  assert.equal(native.host._paneDeleted[0].id, linked.id, 'the existing 8-second undo path retains the task');
+});
+
 test('item-pane synchronous render keeps add and per-task Zotero jump buttons visible before async rendering', async t => {
   const item = paper(1, 'PAPER', 1);
   const linked = { id: 'linked-task', title: 'Read the paper', zoteroItemKey: 'PAPER', zoteroLibraryID: 1,
