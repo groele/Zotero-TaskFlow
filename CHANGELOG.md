@@ -1,5 +1,8 @@
 # Changelog
 
+## 12.8.2 - 2026-10-30
+
+- Soften quick-add submit button and container colors to align with sidebar's functional pastel palette.
 ## 12.8.1 - 2026-10-30
 
 - Fix layout overflow for the quick-add submit button in narrow item panes with nowrap and flex alignment.

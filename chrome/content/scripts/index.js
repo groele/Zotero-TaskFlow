@@ -285,12 +285,12 @@
           }
           /* Quick creation is the primary action: give it a visible label, field and solid submit button. */
           .td-pane-wrap .td-quick-label { display:block; margin:6px 0 -2px; font-weight:600; color:var(--fill-primary,CanvasText); }
-          .td-pane-wrap .td-quick-box { min-height:38px; padding:5px; border:1.5px solid color-mix(in srgb,var(--color-accent,Highlight) 55%,transparent); background:color-mix(in srgb,var(--color-accent,Highlight) 6%,transparent); }
+          .td-pane-wrap .td-quick-box { min-height:38px; padding:5px; border:1px solid color-mix(in srgb,var(--td-blue) 35%,transparent); background:color-mix(in srgb,var(--td-blue) 4%,transparent); }
           .td-pane-wrap .td-quick-box:focus-within { border-color:var(--color-accent,Highlight); box-shadow:0 0 0 2px color-mix(in srgb,var(--color-accent,Highlight) 28%,transparent); }
           .td-pane-wrap .td-quick-input { padding:6px 4px; font-size:1.05em; color:var(--fill-primary,CanvasText); }
           .td-pane-wrap .td-quick-input::placeholder { color:color-mix(in srgb,var(--fill-primary,CanvasText) 62%,transparent); }
-          .td-pane-wrap .td-quick-box button.td-quick-submit { flex:0 0 auto; width:auto; min-width:48px; height:28px; line-height:28px; padding:0 10px; border:1px solid var(--color-accent,Highlight); border-radius:5px; background:var(--color-accent,Highlight); color:var(--accent-white,#fff); font-size:0.95em; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:inline-flex; align-items:center; justify-content:center; }
-          .td-pane-wrap .td-quick-box button.td-quick-submit:hover:not(:disabled) { background:color-mix(in srgb,var(--color-accent,Highlight) 85%,black); }
+          .td-pane-wrap .td-quick-box button.td-quick-submit { flex:0 0 auto; width:auto; min-width:48px; height:28px; line-height:28px; padding:0 10px; border:1px solid color-mix(in srgb,var(--td-blue) 30%,transparent); border-radius:5px; background:color-mix(in srgb,var(--td-blue) 12%,transparent); color:var(--td-tone,var(--td-blue)); font-size:0.92em; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:inline-flex; align-items:center; justify-content:center; }
+          .td-pane-wrap .td-quick-box button.td-quick-submit:hover:not(:disabled) { background:color-mix(in srgb,var(--td-blue) 20%,transparent); border-color:color-mix(in srgb,var(--td-blue) 45%,transparent); }
           .td-pane-wrap .td-quick-box button.td-quick-submit:disabled { opacity:.55; }
           .td-pane-wrap .td-action-grid { gap:7px; }
           .td-pane-wrap .td-action-btn { padding:7px 9px; text-align:center; }
