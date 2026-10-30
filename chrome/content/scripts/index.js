@@ -510,6 +510,7 @@
       for (const client of this._uiClients || []) {
         try {
           if (client.closed) { this._uiClients.delete(client); continue; }
+          client.postMessage({ type: 'TASKFLOW_DATA_CHANGED', data: this.cloneData(this._cachedData) }, '*');
           client.postMessage({ type: 'TODOLIST_DATA_CHANGED', data: this.cloneData(this._cachedData) }, '*');
         } catch (_) { this._uiClients.delete(client); }
       }
@@ -1109,7 +1110,7 @@
       try {
         const fp = Cc['@mozilla.org/filepicker;1'].createInstance(Ci.nsIFilePicker);
         const win = window || Zotero.getMainWindow?.() || Services.wm.getMostRecentWindow('navigator:browser');
-        fp.init(win, '选择 Todolist JSON 备份文件导入', Ci.nsIFilePicker.modeOpen);
+        fp.init(win, '选择 TaskFlow JSON 备份文件导入', Ci.nsIFilePicker.modeOpen);
         fp.appendFilter('JSON Files (*.json)', '*.json');
 
         const res = await new Promise((resolve) => fp.open(resolve));
@@ -1164,7 +1165,7 @@
       const pending = total - completed;
       const litTasks = tasks.filter(t => t.zoteroItemKey);
 
-      let summary = `# 📋 Todolist 学术任务研读概览\n`;
+      let summary = `# 📋 TaskFlow 学术任务研读概览\n`;
       summary += `生成时间：${new Date().toLocaleString()}\n`;
       summary += `任务总数：${total} 项 | 已完成：${completed} 项 | 进行中：${pending} 项 | 文献关联：${litTasks.length} 篇\n`;
       summary += `总体完成率：${total > 0 ? Math.round((completed / total) * 100) : 0}%\n\n`;
@@ -1225,7 +1226,7 @@
           @media print { body { padding: 0; } }
         </style></head><body>`;
 
-        html += `<h1>Todolist 学术日程与研读清单</h1>`;
+        html += `<h1>TaskFlow 学术日程与研读清单</h1>`;
         html += `<div class="meta">打印时间：${new Date().toLocaleString()} | 共 ${tasks.length} 项 (已完成：${tasks.filter(t => t.completed).length})</div>`;
 
         tasks.forEach((t) => {
@@ -1255,7 +1256,7 @@
     switchWindowMode(mode, window = null) {
       try {
         if (Zotero.Prefs) {
-          Zotero.Prefs.set('extensions.todolist.windowMode', mode, true);
+          Zotero.Prefs.set('extensions.taskflow.windowMode', mode, true);
         }
       } catch (_) {}
 
@@ -1410,7 +1411,8 @@
       this._hostThemeChanged = () => {
         const theme = this.getHostTheme();
         for (const listener of this._themeListeners || []) { try { listener(theme); } catch (_) {} }
-        for (const client of this._uiClients || []) { try { client.postMessage({ type: 'TODOLIST_HOST_THEME', theme }, '*'); } catch (_) {} }
+        for (const client of this._uiClients || []) { try { client.postMessage({ type: 'TASKFLOW_HOST_THEME', theme }, '*');
+            client.postMessage({ type: 'TODOLIST_HOST_THEME', theme }, '*'); } catch (_) {} }
       };
       this._hostColorQuery?.addEventListener?.('change', this._hostThemeChanged);
     },
@@ -1568,7 +1570,7 @@
       if (typeof Zotero.ItemPaneManager?.registerSection !== 'function') return;
       try {
         const sectionStates = new WeakMap();
-        const icon = `${CHROME_ROOT}icons/todolist.svg`;
+        const icon = `${CHROME_ROOT}icons/taskflow.svg`;
 
         this.itemPaneSectionID = Zotero.ItemPaneManager.registerSection({
           paneID: 'todolist-item-pane',
@@ -2383,7 +2385,7 @@
           style.textContent = `
             tab[type="todolist"] .tab-icon,
             .tab[type="todolist"] .tab-icon {
-              list-style-image: url("${CHROME_ROOT}icons/todolist.svg") !important;
+              list-style-image: url("${CHROME_ROOT}icons/taskflow.svg") !important;
               width: 16px !important;
               height: 16px !important;
             }
@@ -2417,7 +2419,8 @@
         try {
           const data = event.data;
           if (!data || typeof data !== 'object') return;
-          if (typeof data.type !== 'string' || !data.type.startsWith('TODOLIST_')) return;
+          if (typeof data.type !== 'string' || (!data.type.startsWith('TASKFLOW_') && !data.type.startsWith('TODOLIST_'))) return;
+      const prefix = data.type.startsWith('TASKFLOW_') ? 'TASKFLOW_' : 'TODOLIST_';
 
           const sourceWin = event.source;
           const iframe = window.document.getElementById('todolist-tab-iframe');
@@ -2428,7 +2431,7 @@
           }
           if (!sourceWin && !iframe?.contentWindow) return;
 
-          if (data.type === 'TODOLIST_DIAGNOSTIC' && data.record) {
+          if ((data.type === 'TASKFLOW_DIAGNOSTIC' || data.type === 'TODOLIST_DIAGNOSTIC') && data.record) {
             this.recordDiagnostic(data.record);
             return;
           }
@@ -2448,7 +2451,7 @@
           };
 
           // A. Handshake Ready
-          if (data.type === 'TODOLIST_READY') {
+          if ((data.type === 'TASKFLOW_READY' || data.type === 'TODOLIST_READY')) {
             this._uiClients ||= new Set();
             if (sourceWin) this._uiClients.add(sourceWin);
             if (iframe) iframe._todolistReady = true;
@@ -2469,7 +2472,7 @@
           }
 
           // B. Storage Save Request
-          if (data.type === 'TODOLIST_STORAGE_SET' && data.payload) {
+          if ((data.type === 'TASKFLOW_STORAGE_SET' || data.type === 'TODOLIST_STORAGE_SET') && data.payload) {
             this.saveData(data.payload).then((saved) => {
               if (data.requestId) {
                 replyResult({
@@ -2484,33 +2487,33 @@
             return;
           }
 
-          if (data.type === 'TODOLIST_NOTIFY') {
+          if ((data.type === 'TASKFLOW_NOTIFY' || data.type === 'TODOLIST_NOTIFY')) {
             const success = (await this.showNotice(data.title || '任务提醒', data.body || '')) !== false;
             replyResult({ type: 'TODOLIST_NOTIFY_RESULT', requestId: data.requestId, success });
             return;
           }
 
           // C. Locate and select item in Zotero library pane
-          if (data.type === 'TODOLIST_LOCATE_ITEM' && data.key) {
+          if ((data.type === 'TASKFLOW_LOCATE_ITEM' || data.type === 'TODOLIST_LOCATE_ITEM') && data.key) {
             await this.locateLiteratureItem(data.key, data.libraryID, window);
             return;
           }
 
           // D. Open PDF Reader in Zotero (with optional page navigation)
-          if (data.type === 'TODOLIST_OPEN_PDF' && data.key) {
+          if ((data.type === 'TASKFLOW_OPEN_PDF' || data.type === 'TODOLIST_OPEN_PDF') && data.key) {
             await this.openTaskPdf({ zoteroPdfUri: data.key, zoteroLibraryID: data.libraryID,
               zoteroPage: data.page, zoteroAnnotationKey: data.annotationKey });
             return;
           }
 
           // E. Open Zotero Preferences pane
-          if (data.type === 'TODOLIST_OPEN_PREFERENCES') {
+          if ((data.type === 'TASKFLOW_OPEN_PREFERENCES' || data.type === 'TODOLIST_OPEN_PREFERENCES')) {
             await this.openPreferencesPane(window);
             return;
           }
 
           // F. Request active item from library or reader
-          if (data.type === 'TODOLIST_GET_ACTIVE_ITEM') {
+          if ((data.type === 'TASKFLOW_GET_ACTIVE_ITEM' || data.type === 'TODOLIST_GET_ACTIVE_ITEM')) {
             const activeItem = this.getCurrentActiveItem(window);
             replyResult({
               type: 'TODOLIST_GET_ACTIVE_ITEM_RESULT',
@@ -2520,7 +2523,7 @@
             return;
           }
 
-          if (data.type === 'TODOLIST_ADD_DROPPED_ITEMS') {
+          if ((data.type === 'TASKFLOW_ADD_DROPPED_ITEMS' || data.type === 'TODOLIST_ADD_DROPPED_ITEMS')) {
             try {
               const result = await this.addDroppedLiteratureTasks(data.itemIDs);
               replyResult({ type: 'TODOLIST_ADD_DROPPED_ITEMS_RESULT', requestId: data.requestId, success: true, result });
@@ -2532,7 +2535,7 @@
           }
 
           // G. Sync tasks to Zotero child note
-          if (data.type === 'TODOLIST_SYNC_NOTE' && data.key) {
+          if ((data.type === 'TASKFLOW_SYNC_NOTE' || data.type === 'TODOLIST_SYNC_NOTE') && data.key) {
             const item = resolveItemReference(data.key, data.libraryID);
             if (item) {
               const note = await this.syncTasksToChildNote(item);
@@ -2549,7 +2552,7 @@
           }
 
           // H. Get Zotero Collections
-          if (data.type === 'TODOLIST_GET_COLLECTIONS') {
+          if ((data.type === 'TASKFLOW_GET_COLLECTIONS' || data.type === 'TODOLIST_GET_COLLECTIONS')) {
             const collections = this.getZoteroCollections(data.libraryID);
             if (data.requestId) {
               replyResult({
@@ -2562,7 +2565,7 @@
           }
 
           // I. Create Collection Plan
-          if (data.type === 'TODOLIST_CREATE_COLLECTION_PLAN' && data.collectionID) {
+          if ((data.type === 'TASKFLOW_CREATE_COLLECTION_PLAN' || data.type === 'TODOLIST_CREATE_COLLECTION_PLAN') && data.collectionID) {
             const col = Zotero.Collections?.get?.(data.collectionID);
             if (col) {
               await this.createCollectionReadingPlan(col, window);
@@ -2571,37 +2574,37 @@
           }
 
           // J. Switch Window Mode (tab / window / subwindow)
-          if (data.type === 'TODOLIST_SWITCH_WINDOW_MODE' && data.mode) {
+          if ((data.type === 'TASKFLOW_SWITCH_WINDOW_MODE' || data.type === 'TODOLIST_SWITCH_WINDOW_MODE') && data.mode) {
             await this.switchWindowMode(data.mode, window);
             return;
           }
 
           // K. Export Data
-          if (data.type === 'TODOLIST_EXPORT_DATA') {
+          if ((data.type === 'TASKFLOW_EXPORT_DATA' || data.type === 'TODOLIST_EXPORT_DATA')) {
             await this.exportData(data.format || 'json');
             return;
           }
 
           // L. Import Data
-          if (data.type === 'TODOLIST_IMPORT_DATA') {
+          if ((data.type === 'TASKFLOW_IMPORT_DATA' || data.type === 'TODOLIST_IMPORT_DATA')) {
             await this.importDataFile(data.mode || 'merge', window);
             return;
           }
 
           // M. Clear All Data
-          if (data.type === 'TODOLIST_CLEAR_DATA') {
+          if ((data.type === 'TASKFLOW_CLEAR_DATA' || data.type === 'TODOLIST_CLEAR_DATA')) {
             await this.clearAllData(window);
             return;
           }
 
           // N. Copy Tasks Summary
-          if (data.type === 'TODOLIST_COPY_SUMMARY') {
+          if ((data.type === 'TASKFLOW_COPY_SUMMARY' || data.type === 'TODOLIST_COPY_SUMMARY')) {
             await this.copyTasksSummary(window);
             return;
           }
 
           // O. Print Tasks
-          if (data.type === 'TODOLIST_PRINT') {
+          if ((data.type === 'TASKFLOW_PRINT' || data.type === 'TODOLIST_PRINT')) {
             await this.printTasks(window);
             return;
           }
@@ -2688,7 +2691,7 @@
       const isTodolistButton = (button) =>
         button.id === 'todolist-toolbar-button' ||
         ((button.getAttribute('label') === 'TaskFlow' || button.getAttribute('label') === 'Todolist') &&
-          String(button.getAttribute('image') || '').includes('/icons/todolist.svg'));
+          String(button.getAttribute('image') || '').includes('/icons/taskflow.svg') || String(button.getAttribute('image') || '').includes('/icons/todolist.svg'));
 
       // Clean up any stale or misplaced duplicate buttons
       const existingButtons = Array.from(doc.querySelectorAll('toolbarbutton')).filter(isTodolistButton);
@@ -2705,7 +2708,7 @@
         btn.id = 'todolist-toolbar-button';
         btn.setAttribute('label', 'TaskFlow');
         btn.setAttribute('tooltiptext', '打开 TaskFlow 学术任务工作台 (Ctrl+Alt+T)');
-        btn.setAttribute('image', `${CHROME_ROOT}icons/todolist.svg`);
+        btn.setAttribute('image', `${CHROME_ROOT}icons/taskflow.svg`);
         btn.setAttribute('class', 'zotero-tb-button toolbarbutton-1 chromeclass-toolbar-additional');
         btn.setAttribute(
           'style',
@@ -2723,7 +2726,7 @@
         btn.addEventListener('command', trigger);
         btn.addEventListener('mouseenter', () => this.updateToolbarBadge(doc, this._cachedData));
       }
-      btn.setAttribute('image', `${CHROME_ROOT}icons/todolist.svg`);
+      btn.setAttribute('image', `${CHROME_ROOT}icons/taskflow.svg`);
       if (!doc.getElementById('taskflow-toolbar-style')) {
         const style = doc.createElementNS('http://www.w3.org/1999/xhtml', 'style');
         style.id = 'taskflow-toolbar-style';

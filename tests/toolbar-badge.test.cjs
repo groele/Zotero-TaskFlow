@@ -18,7 +18,7 @@ test('toolbar count includes only non-overdue todo and in-progress parent tasks'
   const {button,doc} = toolbar(t,native);
   await waitFor(() => button.getAttribute('data-taskflow-count') === '3');
   assert.match(button.getAttribute('tooltiptext'), /3 to do or in progress.*2 overdue/);
-  assert.match(button.getAttribute('image'), /icons\/todolist.svg$/);
+  assert.match(button.getAttribute('image'), /icons\/(?:taskflow|todolist)\.svg$/);
   const calls=[];doc.l10n={setAttributes:(...args)=>calls.push(args)};
   native.host.updateToolbarBadge(doc,{tasks:Array.from({length:103},(_,i)=>({completed:false,status:i%2?'todo':'in-progress'}))});
   assert.equal(button.getAttribute('data-taskflow-count'),'99+');

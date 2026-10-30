@@ -29,12 +29,12 @@ const ZoteroBridge = {
         window.addEventListener('unload', () => host.unregisterDataListener(this._dataListener), { once: true });
       }
       document.documentElement.classList.add('zotero-env');
-      this.sendToHost({ type: 'TODOLIST_READY' });
+      this.sendToHost({ type: 'TASKFLOW_READY' });
       console.log('[TaskFlow] Running in Zotero environment');
     }
 
     // Process initial options from window.arguments or window._todolistPending
-    const initialOptions = window.arguments?.[0]?.options || window._todolistPending;
+    const initialOptions = window.arguments?.[0]?.options || window._taskflowPending || window._todolistPending;
     if (initialOptions && initialOptions.mode && initialOptions.mode !== 'open') {
       this.handleHostNavigation(initialOptions);
     }
@@ -98,11 +98,11 @@ const ZoteroBridge = {
       }
 
       // Handle initial data handshake
-      if (data.type === 'TODOLIST_INIT_ERROR') {
+      if ((data.type === 'TASKFLOW_INIT_ERROR' || data.type === 'TODOLIST_INIT_ERROR')) {
         clearTimeout(this._readyTimer);
         this._rejectReady?.(new Error(data.error || 'Zotero 数据初始化失败'));
       }
-      if (data.type === 'TODOLIST_INIT_DATA') {
+      if ((data.type === 'TASKFLOW_INIT_DATA' || data.type === 'TODOLIST_INIT_DATA')) {
         if (data.hostTheme) this.setHostTheme(data.hostTheme);
         if (data.data && typeof Storage !== 'undefined') {
           Storage.acceptData(data.data);
@@ -114,11 +114,11 @@ const ZoteroBridge = {
         }
       }
 
-      if (data.type === 'TODOLIST_DATA_CHANGED' && data.data) Storage.acceptData(data.data);
-      if (data.type === 'TODOLIST_HOST_THEME') this.setHostTheme(data.theme);
+      if ((data.type === 'TASKFLOW_DATA_CHANGED' || data.type === 'TODOLIST_DATA_CHANGED') && data.data) Storage.acceptData(data.data);
+      if ((data.type === 'TASKFLOW_HOST_THEME' || data.type === 'TODOLIST_HOST_THEME')) this.setHostTheme(data.theme);
 
       // Handle direct navigation request from host
-      if (data.type === 'TODOLIST_NAVIGATE') {
+      if ((data.type === 'TASKFLOW_NAVIGATE' || data.type === 'TODOLIST_NAVIGATE')) {
         this.handleHostNavigation(data.options);
       }
     });
@@ -138,6 +138,7 @@ const ZoteroBridge = {
         const todolist = window.Zotero.TaskFlow || window.Zotero.Todolist;
         const mainWin = window.Zotero.getMainWindow ? window.Zotero.getMainWindow() : null;
         switch (msg.type) {
+          case 'TASKFLOW_READY':
           case 'TODOLIST_READY': {
             this.runHostAction(msg, async () => {
               const storedData = await todolist.loadData();
@@ -145,17 +146,20 @@ const ZoteroBridge = {
                 type: 'TODOLIST_INIT_DATA',
                 data: storedData,
                 hostTheme: todolist.getHostTheme?.(),
-                pending: window.arguments?.[0]?.options || window._todolistPending || null
+                pending: window.arguments?.[0]?.options || window._taskflowPending || window._todolistPending || null
               }, '*');
             });
             break;
           }
+          case 'TASKFLOW_SWITCH_WINDOW_MODE':
           case 'TODOLIST_SWITCH_WINDOW_MODE':
             this.runHostAction(msg, () => todolist.switchWindowMode?.(msg.mode, window));
             break;
+          case 'TASKFLOW_OPEN_PREFERENCES':
           case 'TODOLIST_OPEN_PREFERENCES':
             this.runHostAction(msg, () => todolist.openPreferencesPane?.(mainWin || window));
             break;
+          case 'TASKFLOW_LOCATE_ITEM':
           case 'TODOLIST_LOCATE_ITEM': {
             if (todolist.locateLiteratureItem) {
               this.runHostAction(msg, () => todolist.locateLiteratureItem(msg.key, msg.libraryID, mainWin));
@@ -168,26 +172,33 @@ const ZoteroBridge = {
             }
             break;
           }
+          case 'TASKFLOW_OPEN_PDF':
           case 'TODOLIST_OPEN_PDF': {
             this.runHostAction(msg, () => todolist.openTaskPdf({ zoteroPdfUri: msg.key, zoteroLibraryID: msg.libraryID,
               zoteroPage: msg.page, zoteroAnnotationKey: msg.annotationKey }));
             break;
           }
+          case 'TASKFLOW_EXPORT_DATA':
           case 'TODOLIST_EXPORT_DATA':
             this.runHostAction(msg, () => todolist.exportData?.(msg.format || 'json'));
             break;
+          case 'TASKFLOW_IMPORT_DATA':
           case 'TODOLIST_IMPORT_DATA':
             this.runHostAction(msg, () => todolist.importDataFile?.(msg.mode || 'merge', mainWin || window));
             break;
+          case 'TASKFLOW_CLEAR_DATA':
           case 'TODOLIST_CLEAR_DATA':
             this.runHostAction(msg, () => todolist.clearAllData?.(mainWin || window));
             break;
+          case 'TASKFLOW_COPY_SUMMARY':
           case 'TODOLIST_COPY_SUMMARY':
             this.runHostAction(msg, () => todolist.copyTasksSummary?.(mainWin || window));
             break;
+          case 'TASKFLOW_PRINT':
           case 'TODOLIST_PRINT':
             this.runHostAction(msg, () => todolist.printTasks?.(mainWin || window));
             break;
+          case 'TASKFLOW_NOTIFY':
           case 'TODOLIST_NOTIFY': {
             this.runHostAction(msg, async () => {
               const success = Boolean(todolist.showNotice) && (await todolist.showNotice(msg.title, msg.body)) !== false;
@@ -196,6 +207,7 @@ const ZoteroBridge = {
             });
             break;
           }
+          case 'TASKFLOW_SYNC_NOTE':
           case 'TODOLIST_SYNC_NOTE': {
             const item = todolist.resolveItemReference?.(msg.key, msg.libraryID);
             if (item) {
@@ -210,6 +222,7 @@ const ZoteroBridge = {
             }
             break;
           }
+          case 'TASKFLOW_GET_COLLECTIONS':
           case 'TODOLIST_GET_COLLECTIONS': {
             const collections = todolist.getZoteroCollections?.(msg.libraryID) || [];
             if (msg.requestId && this._requestCallbacks.has(msg.requestId)) {
@@ -219,6 +232,7 @@ const ZoteroBridge = {
             }
             break;
           }
+          case 'TASKFLOW_ADD_DROPPED_ITEMS':
           case 'TODOLIST_ADD_DROPPED_ITEMS': {
             this.runHostAction(msg, async () => {
               const result = await todolist.addDroppedLiteratureTasks(msg.itemIDs);
@@ -230,6 +244,7 @@ const ZoteroBridge = {
             });
             break;
           }
+          case 'TASKFLOW_GET_ACTIVE_ITEM':
           case 'TODOLIST_GET_ACTIVE_ITEM': {
             const activeItem = todolist.getCurrentActiveItem?.(mainWin || window);
             if (msg.requestId && this._requestCallbacks.has(msg.requestId)) {
@@ -255,7 +270,7 @@ const ZoteroBridge = {
   },
 
   failHostAction(msg, error) {
-    if (msg.type === 'TODOLIST_READY') {
+    if (msg.type === 'TASKFLOW_READY' || msg.type === 'TODOLIST_READY') {
       clearTimeout(this._readyTimer);
       this._rejectReady?.(error);
     }
@@ -283,7 +298,7 @@ const ZoteroBridge = {
         if (data.success) resolve(true);
         else reject(new Error(data.error || '提醒未能发送'));
       });
-      this.sendToHost({ type: 'TODOLIST_NOTIFY', title, body, requestId });
+      this.sendToHost({ type: 'TASKFLOW_NOTIFY', title, body, requestId });
     });
   },
 
@@ -299,7 +314,7 @@ const ZoteroBridge = {
         if (data.success && data.data) resolve(data.data);
         else reject(new Error(data.error || 'Zotero 保存失败'));
       });
-      this.sendToHost({ type: 'TODOLIST_STORAGE_SET', requestId, payload });
+      this.sendToHost({ type: 'TASKFLOW_STORAGE_SET', requestId, payload });
     });
   },
 
@@ -391,7 +406,7 @@ const ZoteroBridge = {
   },
 
   locateItem(key, libraryID) {
-    this.sendToHost({ type: 'TODOLIST_LOCATE_ITEM', key, libraryID });
+    this.sendToHost({ type: 'TASKFLOW_LOCATE_ITEM', key, libraryID });
   },
 
   applyWindowLayout() {
@@ -413,7 +428,7 @@ const ZoteroBridge = {
         if (data.success) resolve(data.result);
         else reject(new Error(data.error || '创建研读待办失败'));
       });
-      this.sendToHost({ type: 'TODOLIST_ADD_DROPPED_ITEMS', itemIDs, requestId });
+      this.sendToHost({ type: 'TASKFLOW_ADD_DROPPED_ITEMS', itemIDs, requestId });
     });
   },
 
@@ -426,19 +441,19 @@ const ZoteroBridge = {
   },
 
   openPdf(key, libraryID, page = null, annotationKey = null) {
-    this.sendToHost({ type: 'TODOLIST_OPEN_PDF', key, libraryID, page, annotationKey });
+    this.sendToHost({ type: 'TASKFLOW_OPEN_PDF', key, libraryID, page, annotationKey });
   },
 
   openPreferences() {
-    this.sendToHost({ type: 'TODOLIST_OPEN_PREFERENCES' });
+    this.sendToHost({ type: 'TASKFLOW_OPEN_PREFERENCES' });
   },
 
   switchWindowMode(mode) {
-    this.sendToHost({ type: 'TODOLIST_SWITCH_WINDOW_MODE', mode });
+    this.sendToHost({ type: 'TASKFLOW_SWITCH_WINDOW_MODE', mode });
   },
 
   exportData(format = 'json') {
-    this.sendToHost({ type: 'TODOLIST_EXPORT_DATA', format });
+    this.sendToHost({ type: 'TASKFLOW_EXPORT_DATA', format });
   },
 
   async syncChildNote(key, libraryID) {
@@ -453,7 +468,7 @@ const ZoteroBridge = {
         clearTimeout(timer);
         resolve(data);
       });
-      this.sendToHost({ type: 'TODOLIST_SYNC_NOTE', key, libraryID, requestId });
+      this.sendToHost({ type: 'TASKFLOW_SYNC_NOTE', key, libraryID, requestId });
     });
   },
 
@@ -469,12 +484,12 @@ const ZoteroBridge = {
         clearTimeout(timer);
         resolve(data.collections || []);
       });
-      this.sendToHost({ type: 'TODOLIST_GET_COLLECTIONS', libraryID, requestId });
+      this.sendToHost({ type: 'TASKFLOW_GET_COLLECTIONS', libraryID, requestId });
     });
   },
 
   createCollectionPlan(collectionID) {
-    this.sendToHost({ type: 'TODOLIST_CREATE_COLLECTION_PLAN', collectionID });
+    this.sendToHost({ type: 'TASKFLOW_CREATE_COLLECTION_PLAN', collectionID });
   },
 
   async getActiveItem() {
@@ -491,7 +506,7 @@ const ZoteroBridge = {
         resolve(data.item || null);
       });
 
-      this.sendToHost({ type: 'TODOLIST_GET_ACTIVE_ITEM', requestId });
+      this.sendToHost({ type: 'TASKFLOW_GET_ACTIVE_ITEM', requestId });
     });
   }
 };

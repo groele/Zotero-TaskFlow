@@ -142,9 +142,9 @@ test('bridge waits for handshake and accepts save success only after a host ackn
   win.dispatchEvent(new win.MessageEvent('message', { source: parent.window, data: { type: 'TODOLIST_INIT_DATA', data: { tasks: [{ id: 'a', title: 'Host task' }] } } }));
   assert.equal((await get).tasks.length, 1);
   const save = Storage.saveAll({ settings: { theme: 'dark' } }); let saved = false; save.then(() => { saved = true; });
-  await waitFor(() => messages.some(m => m.type === 'TODOLIST_STORAGE_SET'));
+  await waitFor(() => messages.some(m => m.type === 'TASKFLOW_STORAGE_SET' || m.type === 'TODOLIST_STORAGE_SET'));
   assert(!saved);
-  const request = messages.find(m => m.type === 'TODOLIST_STORAGE_SET');
+  const request = messages.find(m => m.type === 'TASKFLOW_STORAGE_SET' || m.type === 'TODOLIST_STORAGE_SET');
   win.dispatchEvent(new win.MessageEvent('message', { source: parent.window, data: { requestId: request.requestId, success: true,
     data: { tasks: [{ id: 'a', title: 'Host task' }], settings: { theme: 'dark' } } } }));
   assert.equal((await save).settings.theme, 'dark');

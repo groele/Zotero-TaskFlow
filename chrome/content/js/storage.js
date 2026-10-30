@@ -72,7 +72,7 @@ const Storage = {
         const notificationResult = TaskRules.applyNotificationAction(saved, patch.notificationAction);
         delete saved.notificationAction;
         if (typeof chrome !== 'undefined' && chrome.storage?.local) await chrome.storage.local.set(saved);
-        else for (const [key, value] of Object.entries(saved)) localStorage.setItem('todolist_' + key, JSON.stringify(value));
+        else for (const [key, value] of Object.entries(saved)) localStorage.setItem('taskflow_' + key, JSON.stringify(value));
         if (prepared) saved.importResult = { imported: prepared.imported };
         if (notificationResult) saved.notificationResult = notificationResult;
       }
