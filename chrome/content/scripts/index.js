@@ -1,6 +1,6 @@
 /**
- * Todolist for Zotero - Host Runtime Script
- * Seamlessly integrates Todolist with Zotero 10+ desktop:
+ * Zotero TaskFlow - Host Runtime Script
+ * Seamlessly integrates TaskFlow with Zotero 10+ desktop:
  * - Native Zotero Tab & Standalone Companion Window
  * - Tools menu, context menus, and main toolbar icon
  * - Item Pane Section (Literature detail inspector)
@@ -637,7 +637,7 @@
       task.zoteroPdfUri = `zotero://open-pdf/${groupID ? 'groups/' + groupID : 'library'}/items/${attachment.key}?annotation=${annotationKey}${page ? '&page=' + page : ''}`;
       const data = await this.loadData(); task.order = Math.max(-1, ...data.tasks.map(t => t.order || 0)) + 1;
       if (!forceInstant && this.getPref('readerShortcutAction', 'create_instant') === 'open_modal') {
-        this.openTodolist({ mode: 'open_modal_prefill', prefill: task }, Zotero.getMainWindow?.()); return;
+        this.openTaskFlow({ mode: 'open_modal_prefill', prefill: task }, Zotero.getMainWindow?.()); return;
       }
       const saved = await this.saveData({ taskChanges: { added: [task] }, deduplicateLiterature: true, syncLinkedItems: true });
       const created = saved.tasks.some(t => t.id === task.id);
@@ -661,6 +661,7 @@
     async syncTasksToChildNote(item, tasks = null, options = {}) {
       const target = getLiteratureItem(item);
       if (!target) return null;
+      if (typeof target.isEditable === 'function' && !target.isEditable()) return null;
 
       try {
         const data = await this.loadData();
@@ -715,7 +716,8 @@
             const noteItem = Zotero.Items.get(nid);
             if (noteItem && noteItem.isNote && noteItem.isNote()) {
               const content = noteItem.getNote();
-              if (content && (content.includes('[TaskFlow]') || content.includes('[Todolist]') || content.includes('TaskFlow') || content.includes('Todolist for Zotero'))) {
+              const hasTaskFlowTag = typeof noteItem.hasTag === 'function' && noteItem.hasTag('TaskFlow');
+              if (hasTaskFlowTag || (content && (content.includes('[TaskFlow]') || content.includes('TaskFlow')))) {
                 targetNote = noteItem;
                 break;
               }
@@ -725,6 +727,14 @@
 
         if (targetNote) {
           targetNote.setNote(noteHtml);
+          try {
+            if (typeof targetNote.hasTag === 'function' && !targetNote.hasTag('TaskFlow')) {
+              targetNote.addTag('TaskFlow');
+            }
+            if (typeof targetNote.hasTag === 'function' && targetNote.hasTag('Todolist')) {
+              targetNote.removeTag('Todolist');
+            }
+          } catch (_) {}
           await targetNote.saveTx();
         } else {
           const newNote = new Zotero.Item('note');
@@ -753,6 +763,7 @@
         const item = resolveItemReference(itemKey, libraryID);
         const target = getLiteratureItem(item);
         if (!target) return;
+        if (typeof target.isEditable === 'function' && !target.isEditable()) return;
 
         const autoTagOnCreate = this.getPref('autoTagOnCreate', true);
         const autoTagOnComplete = this.getPref('autoTagOnComplete', true);
@@ -878,7 +889,7 @@
           );
         }
 
-        this.openTodolist({ mode: 'create_from_collection', collectionName: collection.name }, window);
+        this.openTaskFlow({ mode: 'create_from_collection', collectionName: collection.name }, window);
       } catch (err) {
         Zotero.logError?.('[TaskFlow] createCollectionReadingPlan error: ' + err);
       }
@@ -890,7 +901,7 @@
       if (!sourceReader && (!tabs || !tabs.selectedTab || tabs.selectedTab.type !== 'reader')) {
         const selected = this.getSelectedRegularItems(win);
         if (selected.length > 0) {
-          this.openTodolist({ mode: 'create_from_item', item: serializeLiteratureItem(selected[0]) }, win);
+          this.openTaskFlow({ mode: 'create_from_item', item: serializeLiteratureItem(selected[0]) }, win);
           return;
         }
         this.showNotice('提示', '请在 PDF 阅读器中或文献列表中使用此快捷键');
@@ -991,7 +1002,7 @@
 
         const shortcutAction = this.getPref('readerShortcutAction', 'create_instant');
         if (shortcutAction === 'open_modal') {
-          this.openTodolist({ mode: 'open_modal_prefill', prefill: newTask }, window);
+          this.openTaskFlow({ mode: 'open_modal_prefill', prefill: newTask }, window);
           return;
         }
 
@@ -1265,7 +1276,7 @@
         : (Zotero.getMainWindow ? Zotero.getMainWindow() : Services.wm.getMostRecentWindow('navigator:browser'));
 
       if (mode === 'subwindow' || mode === 'window') {
-        // Close internal Todolist tab if open in main window to make mode switch clean
+        // Close internal TaskFlow tab if open in main window to make mode switch clean
         if (mainWin?.Zotero_Tabs?._tabs) {
           try {
             const existingTab = mainWin.Zotero_Tabs._tabs.find((t) => t && t.type === 'todolist');
@@ -1286,8 +1297,41 @@
             }
           }
         } catch (_) {}
-        this.openTodolist({ targetMode: 'tab' }, mainWin);
+        this.openTaskFlow({ targetMode: 'tab' }, mainWin);
       }
+    },
+
+    setElementVisibility(elem, visible) {
+      if (!elem) return;
+      elem.hidden = !visible;
+      if (visible) {
+        if (typeof elem.removeAttribute === 'function') elem.removeAttribute('hidden');
+        if (elem.style?.removeProperty) elem.style.removeProperty('display');
+      } else {
+        if (typeof elem.setAttribute === 'function') elem.setAttribute('hidden', 'true');
+        if (elem.style?.setProperty) elem.style.setProperty('display', 'none', 'important');
+      }
+    },
+
+    refreshContextMenuVisibility() {
+      try {
+        const showCreate = Boolean(this.getPref('itemContextMenuCreate', false));
+        const showBatch = Boolean(this.getPref('itemContextMenuBatch', false));
+        if (typeof Services !== 'undefined' && Services.wm?.getEnumerator) {
+          const windows = Services.wm.getEnumerator('navigator:browser');
+          while (windows.hasMoreElements()) {
+            const win = windows.getNext();
+            const doc = win?.document;
+            if (!doc) continue;
+            const createItem = doc.getElementById('todolist-itemmenu-create');
+            const batchItem = doc.getElementById('todolist-itemmenu-batch');
+            const separator = doc.getElementById('todolist-itemmenu-separator');
+            this.setElementVisibility(createItem, showCreate);
+            this.setElementVisibility(batchItem, showBatch);
+            this.setElementVisibility(separator, showCreate || showBatch);
+          }
+        }
+      } catch (_) {}
     },
 
     registerMenus() {
@@ -1310,10 +1354,17 @@
                   if (context && typeof context.setVisible === 'function') {
                     context.setVisible(show);
                   }
+                  if (context?.menuElem) {
+                    this.setElementVisibility(context.menuElem, show);
+                  }
+                  if (_event?.target && typeof _event.target.setAttribute === 'function') {
+                    this.setElementVisibility(_event.target, show);
+                  }
                 },
-                onCommand: (event) => {
+                onCommand: (event, context) => {
                   try {
-                    this.createTaskFromSelection(event?.target?.ownerDocument?.defaultView);
+                    const win = event?.target?.ownerDocument?.defaultView || Zotero.getMainWindow?.();
+                    return this.createTaskFromSelection(win, win?.document, null, context?.items);
                   } catch (err) {
                     Zotero.logError?.('[TaskFlow] Failed to create task: ' + err);
                   }
@@ -1327,9 +1378,18 @@
                   if (context && typeof context.setVisible === 'function') {
                     context.setVisible(show);
                   }
+                  if (context?.menuElem) {
+                    this.setElementVisibility(context.menuElem, show);
+                  }
+                  if (_event?.target && typeof _event.target.setAttribute === 'function') {
+                    this.setElementVisibility(_event.target, show);
+                  }
                 },
-                onCommand: event => this.addSelectedLiteratureTasks(event?.target?.ownerDocument?.defaultView)
-                  .catch(error => this.showNotice('批量加入失败', String(error)))
+                onCommand: (event, context) => {
+                  const win = event?.target?.ownerDocument?.defaultView || Zotero.getMainWindow?.();
+                  return this.addSelectedLiteratureTasks(win, context?.items)
+                    .catch(error => this.showNotice('批量加入失败', String(error)));
+                }
               },
             ],
           });
@@ -1545,8 +1605,15 @@
       return result;
     },
 
-    async addSelectedLiteratureTasks(window = null) {
-      const selected = this.getSelectedRegularItems(window || Zotero.getMainWindow?.()).filter(item => !item.deleted);
+    async addSelectedLiteratureTasks(window = null, items = null) {
+      let selected = [];
+      if (Array.isArray(items) && items.length) {
+        const seen = new Set();
+        selected = items.map(item => getLiteratureItem(item))
+          .filter(item => item && !item.deleted && !seen.has(item.id) && seen.add(item.id));
+      } else {
+        selected = this.getSelectedRegularItems(window || Zotero.getMainWindow?.()).filter(item => !item.deleted);
+      }
       if (!selected.length) { this.showNotice('请先选中文献', '可在文献列表中多选后批量加入。'); return { added: 0, skipped: 0 }; }
       return this.addLiteratureTasks(selected);
     },
@@ -2017,7 +2084,7 @@
                 titleSpan.type = 'button';
                 titleSpan.title = `${t.title} (点击在看板中查看详情)`;
                 titleSpan.addEventListener('click', () => {
-                  this.openTodolist({ mode: 'view_task', taskId: t.id }, Zotero.getMainWindow?.());
+                  this.openTaskFlow({ mode: 'view_task', taskId: t.id }, Zotero.getMainWindow?.());
                 });
                 row.appendChild(titleSpan);
 
@@ -2131,7 +2198,7 @@
 
                 taskCard.appendChild(row);
                 const editBtn = createEl('button', 'td-task-edit', '编辑'); editBtn.type = 'button';
-                editBtn.addEventListener('click', () => this.openTodolist({ mode: 'edit_task', taskId: t.id }, Zotero.getMainWindow?.()));
+                editBtn.addEventListener('click', () => this.openTaskFlow({ mode: 'edit_task', taskId: t.id }, Zotero.getMainWindow?.()));
                 controls.appendChild(editBtn);
                 if (!t.completed) {
                   const menu = createEl('details', 'td-reschedule');
@@ -2191,7 +2258,7 @@
             btnOpenBoard.type = 'button';
             btnOpenBoard.title = '在主标签页中打开 TaskFlow 任务看板';
             btnOpenBoard.addEventListener('click', () => {
-              this.openTodolist({ mode: 'filter_item', itemKey: target.key }, Zotero.getMainWindow?.());
+              this.openTaskFlow({ mode: 'filter_item', itemKey: target.key }, Zotero.getMainWindow?.());
             });
             actionGrid.appendChild(btnOpenBoard);
 
@@ -2258,7 +2325,7 @@
           const onLoad = () => {
             domWindow.removeEventListener('load', onLoad, false);
             pendingWindowLoads.delete(domWindow);
-            if (!domWindow.closed) Zotero.Todolist?.addToWindow(domWindow);
+            if (!domWindow.closed) (Zotero.TaskFlow || Zotero.Todolist)?.addToWindow(domWindow);
           };
           pendingWindowLoads.set(domWindow, onLoad);
           domWindow.addEventListener('load', onLoad, { once: true });
@@ -2272,7 +2339,7 @@
             const onLoad = pendingWindowLoads.get(domWindow);
             if (onLoad) domWindow.removeEventListener('load', onLoad, false);
             pendingWindowLoads.delete(domWindow);
-            Zotero.Todolist?.removeFromWindow(domWindow);
+            (Zotero.TaskFlow || Zotero.Todolist)?.removeFromWindow(domWindow);
           } catch (_) {}
         },
         onWindowTitleChange: () => {},
@@ -2319,7 +2386,7 @@
 
       // If this window is neither the main Zotero library window nor a reader window
       // (e.g. 插件市场, 偏好设置, 独立对话框等), immediately clean up any mistakenly
-      // injected Todolist toolbar buttons, menu items or styles and do NOT inject into it!
+      // injected TaskFlow toolbar buttons, menu items or styles and do NOT inject into it!
       if (!isMain && !isReader) {
         try {
           doc.getElementById('todolist-toolbar-button')?.remove();
@@ -2396,9 +2463,9 @@
           const updateItemMenuVisibility = () => {
             const showCreate = Boolean(this.getPref('itemContextMenuCreate', false));
             const showBatch = Boolean(this.getPref('itemContextMenuBatch', false));
-            createFromItem.hidden = !showCreate;
-            batchFromItems.hidden = !showBatch;
-            separator.hidden = !showCreate && !showBatch;
+            this.setElementVisibility(createFromItem, showCreate);
+            this.setElementVisibility(batchFromItems, showBatch);
+            this.setElementVisibility(separator, showCreate || showBatch);
           };
           itemMenu.addEventListener('popupshowing', updateItemMenuVisibility);
           windowElements.push({
@@ -2427,13 +2494,13 @@
       } catch (_) {}
 
       // 5. Global Keyboard Shortcuts:
-      // Ctrl+Alt+T / Cmd+Alt+T: Open Todolist Workspace
+      // Ctrl+Alt+T / Cmd+Alt+T: Open TaskFlow Workspace
       // Ctrl+Shift+T / Cmd+Shift+T: Convert Reader Selection / Page to Task
       const handleGlobalKeyDown = (e) => {
         if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === 't' || e.key === 'T')) {
           e.preventDefault?.();
           e.stopPropagation?.();
-          this.triggerTodolistOpen(window);
+          this.triggerTaskFlowOpen(window);
         } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 't' || e.key === 'T')) {
           e.preventDefault?.();
           e.stopPropagation?.();
@@ -2445,7 +2512,7 @@
         remove: () => window.removeEventListener('keydown', handleGlobalKeyDown, true),
       });
 
-      // 6. Host-level listener for Todolist iframe and window postMessages
+      // 6. Host-level listener for TaskFlow iframe and window postMessages
       const handleHostMessage = async (event) => {
         try {
           const data = event.data;
@@ -2751,7 +2818,7 @@
             e.preventDefault?.();
             e.stopPropagation?.();
           }
-          this.triggerTodolistOpen(window);
+          this.triggerTaskFlowOpen(window);
         };
 
         btn.addEventListener('command', trigger);
@@ -2799,7 +2866,7 @@
         child.getAttribute('collapsed') !== 'true'
       );
 
-      // Find the last visible button in the action group (places Todolist at the end of the plugin row)
+      // Find the last visible button in the action group (places TaskFlow at the end of the plugin row)
       const anchor = toolbarButtons.reverse().find((child) => {
         try {
           const style = window.getComputedStyle(child);
@@ -2932,7 +2999,7 @@
         injectedElements.delete(window);
       }
 
-      // Explicit cleanup of all Todolist DOM elements by ID
+      // Explicit cleanup of all TaskFlow DOM elements by ID
       const allTodolistIds = [
         'todolist-tools-menu',
         'todolist-tools-preferences',
@@ -2995,14 +3062,20 @@
       return selected[0] || null;
     },
 
-    createTaskFromSelection(window = null, doc = null, itemMenu = null) {
+    createTaskFromSelection(window = null, doc = null, itemMenu = null, items = null) {
       const win = window || (Zotero.getMainWindow ? Zotero.getMainWindow() : null);
       let targetItem = null;
 
+      if (Array.isArray(items) && items.length > 0) {
+        targetItem = getLiteratureItem(items[0]);
+      }
+
       // 1. Try getSelectedRegularItems
-      const selected = this.getSelectedRegularItems(win);
-      if (selected.length > 0) {
-        targetItem = selected[0];
+      if (!targetItem) {
+        const selected = this.getSelectedRegularItems(win);
+        if (selected.length > 0) {
+          targetItem = selected[0];
+        }
       }
 
       // 2. Fallback to triggerNode / popupNode from context menu
@@ -3029,10 +3102,10 @@
       if (targetItem) {
         const serialized = serializeLiteratureItem(targetItem);
         this.showNotice('已选取文献', `正在为《${serialized.title.slice(0, 22)}...》创建研读待办`);
-        this.openTodolist({ mode: 'create_from_item', item: serialized }, win);
+        this.openTaskFlow({ mode: 'create_from_item', item: serialized }, win);
       } else {
         this.showNotice('创建待办', '正在打开任务面板...');
-        this.openTodolist({ mode: 'open_modal_prefill', prefill: { category: '论文研读' } }, win);
+        this.openTaskFlow({ mode: 'open_modal_prefill', prefill: { category: '论文研读' } }, win);
       }
     },
 
@@ -3042,16 +3115,36 @@
       const result = await this.addLiteratureReadingTask(item, { profileID: selectedProfile });
       this.showNotice(result.created ? '精读清单已创建' : '该精读清单已存在',
         `${LiteratureWorkflow.profile(selectedProfile).label} · 截止 ${result.task.dueDate}`);
-      this.openTodolist({ mode: 'view_task', taskId: result.task.id }, window);
+      this.openTaskFlow({ mode: 'view_task', taskId: result.task.id }, window);
       return result;
     },
 
-    triggerTodolistOpen(window = null) {
+    triggerTaskFlowOpen(window = null) {
+      if (!this._inTriggerDispatch && typeof this.triggerTodolistOpen === 'function' && this.triggerTodolistOpen !== this.triggerTaskFlowOpen && this.triggerTodolistOpen._isAlias !== true) {
+        this._inTriggerDispatch = true;
+        try {
+          return this.triggerTodolistOpen(window);
+        } finally {
+          this._inTriggerDispatch = false;
+        }
+      }
       const win = window || (Zotero.getMainWindow ? Zotero.getMainWindow() : null);
-      this.openTodolist({ mode: 'open' }, win);
+      return this.openTaskFlow({ mode: 'open' }, win);
     },
 
-    openTodolist(options = {}, targetWindow = null) {
+    triggerTodolistOpen(window = null) {
+      return this.triggerTaskFlowOpen(window);
+    },
+
+    openTaskFlow(options = {}, targetWindow = null) {
+      if (!this._inOpenDispatch && typeof this.openTodolist === 'function' && this.openTodolist !== this.openTaskFlow && this.openTodolist._isAlias !== true) {
+        this._inOpenDispatch = true;
+        try {
+          return this.openTodolist(options, targetWindow);
+        } finally {
+          this._inOpenDispatch = false;
+        }
+      }
       try {
         const mainWin = (targetWindow && targetWindow.Zotero_Tabs)
           ? targetWindow
@@ -3075,7 +3168,7 @@
 
         const tabs = mainWin?.Zotero_Tabs || (Zotero.getMainWindow && Zotero.getMainWindow().Zotero_Tabs);
         if (tabs && typeof tabs.add === 'function') {
-          // Check if Todolist tab is already open
+          // Check if TaskFlow tab is already open
           if (Array.isArray(tabs._tabs)) {
             const existingTab = tabs._tabs.find((t) => t && t.type === 'todolist');
             if (existingTab) {
@@ -3151,10 +3244,14 @@
           return;
         }
       } catch (e) {
-        Zotero.logError?.('[TaskFlow] openTodolist error: ' + e);
+        Zotero.logError?.('[TaskFlow] openTaskFlow error: ' + e);
       }
 
       this.openStandaloneWindow(options, targetWindow, 'window');
+    },
+
+    openTodolist(options = {}, targetWindow = null) {
+      return this.openTaskFlow(options, targetWindow);
     },
 
     openStandaloneWindow(options = {}, targetWindow = null, windowType = 'window') {
@@ -3284,6 +3381,9 @@
     }
   };
 
+  Zotero.TaskFlow.openTodolist._isAlias = true;
+  Zotero.TaskFlow.triggerTodolistOpen._isAlias = true;
+  Zotero.Todolist = Zotero.TaskFlow;
 
   // Run initialization
   Zotero.TaskFlow.init();

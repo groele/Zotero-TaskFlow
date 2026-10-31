@@ -1,5 +1,6 @@
 taskflow-menu-open = Zotero TaskFlow Academic Workspace
 taskflow-item-menu-create = Add Reading Task for Selected Item
+taskflow-item-menu-batch = Batch Add Reading Tasks
 taskflow-item-menu-milestones = Generate Structured Reading Milestones
 taskflow-item-menu-filter = View Associated Tasks for This Item
 taskflow-item-menu-sync-note = Sync Tasks to Item Child Note
@@ -28,6 +29,7 @@ taskflow-item-pane-sync-note = 📝 Sync to Child Note
 # Compatibility aliases
 todolist-menu-open = Zotero TaskFlow Academic Workspace
 todolist-item-menu-create = Add Reading Task for Selected Item
+todolist-item-menu-batch = Batch Add Reading Tasks
 todolist-item-menu-milestones = Generate Structured Reading Milestones
 todolist-item-menu-filter = View Associated Tasks for This Item
 todolist-item-menu-sync-note = Sync Tasks to Item Child Note

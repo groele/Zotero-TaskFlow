@@ -187,6 +187,9 @@ window.TaskFlow_Preferences = (() => {
         if (typeof saveSettings !== 'function') throw new Error('待办数据服务尚未就绪');
         const host = Zotero.TaskFlow || Zotero.Todolist;
         await saveSettings.call(host, { settings: values });
+        if (Object.hasOwn(values, 'itemContextMenuCreate') || Object.hasOwn(values, 'itemContextMenuBatch')) {
+          try { host?.refreshContextMenuVisibility?.(); } catch (_) {}
+        }
       } catch (error) {
         for (const key of changed) {
           try {
@@ -212,6 +215,7 @@ window.TaskFlow_Preferences = (() => {
     } catch (error) {
       reportOperationError(window.Zotero, doc, '保存设置', error);
     } finally {
+      control.disabled = false;
       if (control.type === 'checkbox') control.checked = Boolean(getPref(key));
       else control.value = String(getPref(key));
     }

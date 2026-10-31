@@ -97,6 +97,8 @@ test('item context menu items honor itemContextMenuCreate and itemContextMenuBat
   doc.getElementById('zotero-itemmenu').dispatchEvent(new dom.window.Event('popupshowing'));
   assert.equal(createItem.hidden, true);
   assert.equal(batchItem.hidden, true);
+  assert.equal(createItem.getAttribute('hidden'), 'true');
+  assert.equal(batchItem.getAttribute('hidden'), 'true');
 });
 
 test('rescheduling runs on the latest snapshot, keeps reminders/time/subtasks, and re-arms notification', async () => {

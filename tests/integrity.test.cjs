@@ -164,7 +164,7 @@ test('native child notes and completion tags isolate matching keys by library an
   const tags = new Set(['待研读']);
   const item = { id: 2, key: 'SAME', libraryID: 2, title: 'Group paper', isRegularItem: () => true,
     getNotes: () => [3], hasTag: tag => tags.has(tag), addTag: tag => tags.add(tag), removeTag: tag => tags.delete(tag), saveTx: async () => {} };
-  const note = { isNote: () => true, getNote: () => '[Todolist]', setNote: text => { html = text; }, saveTx: async () => {} };
+  const note = { isNote: () => true, getNote: () => '[TaskFlow]', hasTag: tag => tag === 'TaskFlow', addTag: () => {}, removeTag: () => {}, setNote: text => { html = text; }, saveTx: async () => {} };
   native.context.Zotero.Items.get = id => id === 3 ? note : item;
   native.context.Zotero.Items.getByLibraryAndKey = () => item;
   native.host.getPref = (key, fallback) => ({ childNoteTitle: '<Custom>', childNoteIncludeSubtasks: false,

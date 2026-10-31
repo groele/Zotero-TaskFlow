@@ -242,6 +242,17 @@ test('settings omit unsupported controls, keep active options available, and sav
   assert.equal(win.document.getElementById('pref-readerSelectionQuickAdd').checked, false);
   assert.equal(win.document.getElementById('pref-itemContextMenuCreate').checked, false);
   assert.equal(win.document.getElementById('pref-itemContextMenuBatch').checked, false);
+  const createMenuCheck = win.document.getElementById('pref-itemContextMenuCreate');
+  createMenuCheck.checked = true;
+  createMenuCheck.dispatchEvent(new win.Event('change', { bubbles: true }));
+  await waitFor(() => prefValues.get('extensions.taskflow.itemContextMenuCreate') === true);
+  assert.equal(createMenuCheck.disabled, false);
+  assert.equal(createMenuCheck.checked, true);
+  createMenuCheck.checked = false;
+  createMenuCheck.dispatchEvent(new win.Event('change', { bubbles: true }));
+  await waitFor(() => prefValues.get('extensions.taskflow.itemContextMenuCreate') === false);
+  assert.equal(createMenuCheck.disabled, false);
+  assert.equal(createMenuCheck.checked, false);
   const timeControl = win.document.getElementById('pref-summaryTime');
   assert.equal(timeControl.type, 'time');
   timeControl.value = '08:30';

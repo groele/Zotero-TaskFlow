@@ -1,4 +1,4 @@
-// Zotero Bridge - Facilitates communication between Todolist UI and Zotero host
+// Zotero Bridge - Facilitates communication between TaskFlow UI and Zotero host
 
 const ZoteroBridge = {
   isZotero: false,
@@ -280,7 +280,7 @@ const ZoteroBridge = {
       callback({ success: false, error: String(error?.message || error) });
     }
     if (typeof Diagnostics !== 'undefined') Diagnostics.report('Zotero 桥接 ' + msg.type, error);
-    else console.error('[Todolist] Zotero bridge ' + msg.type, error);
+    else console.error('[TaskFlow] Zotero bridge ' + msg.type, error);
   },
 
   whenReady() { return this._readyPromise || Promise.resolve(); },
@@ -391,7 +391,7 @@ const ZoteroBridge = {
       });
     } else if (options.mode === 'edit_task' && options.taskId) {
       this.executeWhenReady(() => {
-        Promise.resolve(Modal.openEdit(options.taskId)).catch(error => console.error('[Todolist] 编辑任务失败', error));
+        Promise.resolve(Modal.openEdit(options.taskId)).catch(error => console.error('[TaskFlow] 编辑任务失败', error));
       });
     } else if (options.mode === 'view_task' && options.taskId) {
       this.executeWhenReady(() => {
