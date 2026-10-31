@@ -2733,6 +2733,20 @@
       injectedElements.set(window, windowElements);
     },
 
+    updateAllToolbarBadges() {
+      try {
+        if (typeof Services !== 'undefined' && Services.wm?.getEnumerator) {
+          const windows = Services.wm.getEnumerator('navigator:browser');
+          while (windows.hasMoreElements()) {
+            const win = windows.getNext();
+            if (win?.document && !win.closed) {
+              this.updateToolbarBadge(win.document, this._cachedData);
+            }
+          }
+        }
+      } catch (_) {}
+    },
+
     updateToolbarBadge(doc, data) {
       const button = doc?.getElementById('todolist-toolbar-button');
       if (!button) return;
@@ -2743,7 +2757,8 @@
         if (task.completed || task.status === 'done' || (task.dueDate && task.dueDate < today)) return false;
         return !task.status || task.status === 'todo' || task.status === 'in-progress';
       }).length;
-      if (count) button.setAttribute('data-taskflow-count', count > 99 ? '99+' : String(count));
+      const showBadge = Boolean(this.getPref('toolbarShowBadge', true));
+      if (showBadge && count) button.setAttribute('data-taskflow-count', count > 99 ? '99+' : String(count));
       else button.removeAttribute('data-taskflow-count');
       if (doc.l10n?.setAttributes) {
         doc.l10n.setAttributes(button, 'taskflow-toolbar-status', { count, overdue });

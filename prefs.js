@@ -10,6 +10,7 @@ pref("extensions.taskflow.theme", "zotero");
 pref("extensions.taskflow.showCompleted", true);
 pref("extensions.taskflow.sortOrder", "dueDate");
 pref("extensions.taskflow.showWelcomeOnStartup", true);
+pref("extensions.taskflow.toolbarShowBadge", true);
 
 // Group 3: Literature ItemPane Sidebar
 pref("extensions.taskflow.enableItemPane", true);

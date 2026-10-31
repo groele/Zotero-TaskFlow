@@ -53,3 +53,18 @@ test('saved task changes update both window badges and window removal cleans up 
   await native.host.saveData({taskChanges:{updated:[{id:'shared',changes:{completed:true}}]}});
   assert.equal(b.button.hasAttribute('data-taskflow-count'),false);
 });
+
+test('toolbarShowBadge preference toggles toolbar badge visibility', async t => {
+  const native = makeHost({ tasks: [{ id: 'a', status: 'todo', completed: false }], settings: {}, customTags: [] });
+  const { button, doc } = toolbar(t, native);
+  await waitFor(() => button.getAttribute('data-taskflow-count') === '1');
+
+  native.host.getPref = (key, fallback) => key === 'toolbarShowBadge' ? false : fallback;
+  native.host.updateToolbarBadge(doc, { tasks: [{ id: 'a', status: 'todo', completed: false }] });
+  assert.equal(button.hasAttribute('data-taskflow-count'), false);
+
+  native.host.getPref = (key, fallback) => key === 'toolbarShowBadge' ? true : fallback;
+  native.host.updateToolbarBadge(doc, { tasks: [{ id: 'a', status: 'todo', completed: false }] });
+  assert.equal(button.getAttribute('data-taskflow-count'), '1');
+});
+

@@ -239,6 +239,14 @@ test('settings omit unsupported controls, keep active options available, and sav
     assert.equal(win.document.getElementById(`pref-${key}`).disabled, false, key);
   }
   assert.equal(win.document.getElementById('pref-defaultView').disabled, false);
+  assert.equal(win.document.getElementById('pref-toolbarShowBadge').disabled, false);
+  assert.equal(win.document.getElementById('pref-toolbarShowBadge').checked, true);
+  const badgeCheck = win.document.getElementById('pref-toolbarShowBadge');
+  badgeCheck.checked = false;
+  badgeCheck.dispatchEvent(new win.Event('change', { bubbles: true }));
+  await waitFor(() => prefValues.get('extensions.taskflow.toolbarShowBadge') === false);
+  assert.equal(badgeCheck.disabled, false);
+  assert.equal(badgeCheck.checked, false);
   assert.equal(win.document.getElementById('pref-readerSelectionQuickAdd').checked, false);
   assert.equal(win.document.getElementById('pref-itemContextMenuCreate').checked, false);
   assert.equal(win.document.getElementById('pref-itemContextMenuBatch').checked, false);

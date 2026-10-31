@@ -23,6 +23,7 @@ window.TaskFlow_Preferences = (() => {
     showCompleted: true,
     sortOrder: 'dueDate',
     showWelcomeOnStartup: true,
+    toolbarShowBadge: true,
 
     // ItemPane Sidebar & Context Menus
     enableItemPane: true,
@@ -100,6 +101,7 @@ window.TaskFlow_Preferences = (() => {
       ]],
       ['showCompleted', '默认在列表中显示已完成项', 'check'],
       ['showWelcomeOnStartup', '首次启动时显示使用技巧提示', 'check'],
+      ['toolbarShowBadge', '在主工具栏图标上显示未完成待办数量角标', 'check'],
     ],
     literature: [
       ['enableItemPane', '在文献右侧详情栏中展示“Zotero TaskFlow待办事项”区域（重启 Zotero 后生效）', 'check'],
@@ -189,6 +191,9 @@ window.TaskFlow_Preferences = (() => {
         await saveSettings.call(host, { settings: values });
         if (Object.hasOwn(values, 'itemContextMenuCreate') || Object.hasOwn(values, 'itemContextMenuBatch')) {
           try { host?.refreshContextMenuVisibility?.(); } catch (_) {}
+        }
+        if (Object.hasOwn(values, 'toolbarShowBadge')) {
+          try { host?.updateAllToolbarBadges?.(); } catch (_) {}
         }
       } catch (error) {
         for (const key of changed) {
