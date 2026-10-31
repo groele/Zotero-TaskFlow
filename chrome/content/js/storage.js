@@ -9,7 +9,13 @@ const Storage = {
   _taskSnapshot: [],
   _listeners: new Set(),
   _saveQueue: Promise.resolve(),
-  clone(value) { return JSON.parse(JSON.stringify(value)); },
+  clone(value) {
+    if (value === undefined || value === null) return value;
+    if (typeof structuredClone === 'function') {
+      try { return structuredClone(value); } catch (_) {}
+    }
+    return JSON.parse(JSON.stringify(value));
+  },
   isZotero() {
     return Boolean((typeof ZoteroBridge !== 'undefined' && ZoteroBridge.isZotero) || this.getZoteroInstance());
   },
@@ -26,7 +32,7 @@ const Storage = {
   },
   subscribe(listener) { this._listeners.add(listener); return () => this._listeners.delete(listener); },
   acceptData(data) {
-    if (data.revision && this._zoteroCache?.revision > data.revision) return;
+    if (data.revision && this._zoteroCache?.revision >= data.revision) return;
     data = { ...data, tasks: data.tasks || [], settings: { ...this.defaultSettings, ...data.settings },
       customTags: data.customTags || [] };
     if (this._zoteroCache && (data.tasksGeneration || 0) !== (this._zoteroCache.tasksGeneration || 0) &&

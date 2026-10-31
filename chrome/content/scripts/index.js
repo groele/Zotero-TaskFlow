@@ -320,7 +320,13 @@
 
     serializeLiteratureItem,
 
-    cloneData(data) { return JSON.parse(JSON.stringify(data)); },
+    cloneData(data) {
+      if (!data) return data;
+      if (typeof structuredClone === 'function') {
+        try { return structuredClone(data); } catch (_) {}
+      }
+      return JSON.parse(JSON.stringify(data));
+    },
 
     async loadData() {
       if (this._cachedData) return this.cloneData(this._cachedData);

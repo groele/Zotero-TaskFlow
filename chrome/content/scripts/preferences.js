@@ -6,7 +6,7 @@ window.TaskFlow_Preferences = (() => {
   function reportOperationError(zot, doc, action, error) {
     zot?.logError?.('[TaskFlow] ' + action + ': ' + error);
     const host = zot?.TaskFlow || zot?.Todolist;
-    Promise.resolve(host?.recordDiagnostic?.({ action, message: String(error?.message || error), stack: error?.stack })).catch(() => {});
+    Promise.resolve(host?.recordDiagnostic?.({ action, message: String(error?.message || error), stack: error?.stack })).catch(() => { });
     const status = getEl(doc, 'taskflow-pref-status');
     if (status) status.textContent = `${action}失败：${String(error?.message || error)}`;
   }
@@ -190,10 +190,10 @@ window.TaskFlow_Preferences = (() => {
         const host = Zotero.TaskFlow || Zotero.Todolist;
         await saveSettings.call(host, { settings: values });
         if (Object.hasOwn(values, 'itemContextMenuCreate') || Object.hasOwn(values, 'itemContextMenuBatch')) {
-          try { host?.refreshContextMenuVisibility?.(); } catch (_) {}
+          try { host?.refreshContextMenuVisibility?.(); } catch (_) { }
         }
         if (Object.hasOwn(values, 'toolbarShowBadge')) {
-          try { host?.updateAllToolbarBadges?.(); } catch (_) {}
+          try { host?.updateAllToolbarBadges?.(); } catch (_) { }
         }
       } catch (error) {
         for (const key of changed) {
@@ -205,7 +205,7 @@ window.TaskFlow_Preferences = (() => {
       }
     };
     const result = preferenceQueue.then(run);
-    preferenceQueue = result.catch(() => {});
+    preferenceQueue = result.catch(() => { });
     return result;
   }
 

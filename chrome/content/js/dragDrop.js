@@ -264,7 +264,6 @@ const DragDrop = {
 
     const updated = await TaskManager.moveTaskToKanbanColumn(taskId, column, targetTaskId);
     if (updated) {
-      UI.renderKanban();
       UI.updateHeaderProgress();
       UI.notifyServiceWorker();
       UI.showToast(currentStatus !== column ? '任务状态已更新' : '任务顺序已更新');

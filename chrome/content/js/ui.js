@@ -412,7 +412,6 @@ const UI = {
             if (current) { current.value = title; current.disabled = false; current.focus(); }
             return;
           }
-          this.render();
           const card = [...document.querySelectorAll('.task-card')].find(el => el.dataset.taskId === taskId);
           const newInput = card?.querySelector('.card-add-subtask-input');
           if (newInput) newInput.focus();
@@ -717,8 +716,41 @@ const UI = {
     if (subtaskCheckbox) {
       e.stopPropagation();
       const subtaskId = subtaskCheckbox.dataset.subtaskId;
-      await TaskManager.toggleSubtask(taskId, subtaskId);
-      this.render();
+      const subtaskItem = subtaskCheckbox.closest('.card-subtask-item');
+      const wasChecked = subtaskCheckbox.classList.contains('checked');
+      const targetChecked = !wasChecked;
+
+      // Optimistic visual feedback
+      subtaskCheckbox.classList.toggle('checked', targetChecked);
+      subtaskCheckbox.setAttribute('aria-checked', String(targetChecked));
+      subtaskCheckbox.setAttribute('aria-label', targetChecked ? '标记子任务为未完成' : '标记子任务为已完成');
+      if (subtaskItem) {
+        subtaskItem.classList.toggle('completed', targetChecked);
+      }
+
+      // Update subtask progress bar on the card if present
+      const parentTask = TaskManager.getTaskById?.(taskId) || TaskManager._tasks?.find(t => t.id === taskId);
+      const card = subtaskCheckbox.closest('.task-card');
+      if (card && parentTask?.subtasks) {
+        const completedCount = parentTask.subtasks.filter(s => s.id === subtaskId ? targetChecked : s.completed).length;
+        const total = parentTask.subtasks.length;
+        const pct = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+        const progressText = card.querySelector('.subtask-progress-text');
+        const progressFill = card.querySelector('.subtask-progress-fill');
+        if (progressText) progressText.textContent = `子任务 ${completedCount}/${total}`;
+        if (progressFill) progressFill.style.width = `${pct}%`;
+      }
+
+      try {
+        await TaskManager.toggleSubtask(taskId, subtaskId);
+      } catch (error) {
+        // Rollback on failure
+        subtaskCheckbox.classList.toggle('checked', wasChecked);
+        subtaskCheckbox.setAttribute('aria-checked', String(wasChecked));
+        subtaskCheckbox.setAttribute('aria-label', wasChecked ? '标记子任务为未完成' : '标记子任务为已完成');
+        if (subtaskItem) subtaskItem.classList.toggle('completed', wasChecked);
+        this.showToast('更新子任务失败，请重试');
+      }
       return;
     }
 
@@ -727,8 +759,14 @@ const UI = {
     if (deleteSubtaskBtn) {
       e.stopPropagation();
       const subtaskId = deleteSubtaskBtn.dataset.subtaskId;
-      await TaskManager.deleteSubtask(taskId, subtaskId);
-      this.render();
+      const subtaskItem = deleteSubtaskBtn.closest('.card-subtask-item');
+      if (subtaskItem) subtaskItem.style.opacity = '0.35';
+      try {
+        await TaskManager.deleteSubtask(taskId, subtaskId);
+      } catch (error) {
+        if (subtaskItem) subtaskItem.style.opacity = '1';
+        this.showToast('删除子任务失败，请重试');
+      }
       return;
     }
 
@@ -958,22 +996,49 @@ const UI = {
     }
   },
 
-  // Handle toggle complete
+  // Handle toggle complete with optimistic UI feedback
   async handleToggleComplete(taskId, taskCard) {
-    const task = await TaskManager.toggleComplete(taskId);
-    this.render();
-    const updatedCard = Array.from(document.querySelectorAll('.task-card, .kanban-task'))
-      .find(card => card.dataset.taskId === taskId);
-    const checkbox = updatedCard?.querySelector('.task-checkbox, .kanban-task-checkbox');
-    checkbox?.classList.add('just-checked');
-    setTimeout(() => checkbox?.classList.remove('just-checked'), 220);
+    const card = taskCard || Array.from(document.querySelectorAll('.task-card, .kanban-task'))
+      .find(c => c.dataset.taskId === taskId);
+    const checkbox = card?.querySelector('.task-checkbox, .kanban-task-checkbox');
 
-    if (task && task.completed) {
-      this.triggerSparkles(checkbox);
+    const inMemoryTask = TaskManager.getTaskById?.(taskId) || TaskManager._tasks?.find(t => t.id === taskId);
+    const targetCompleted = inMemoryTask ? !inMemoryTask.completed : true;
+
+    // Instant optimistic visual feedback
+    if (card) {
+      card.classList.toggle('completed', targetCompleted);
+    }
+    if (checkbox) {
+      checkbox.classList.toggle('checked', targetCompleted);
+      checkbox.setAttribute('aria-checked', String(targetCompleted));
+      checkbox.setAttribute('aria-label', targetCompleted ? '标记任务为未完成' : '标记任务为已完成');
+      checkbox.title = targetCompleted ? '标记为未完成' : '标记为已完成';
+      checkbox.classList.add('just-checked');
+      setTimeout(() => checkbox?.classList.remove('just-checked'), 220);
+      if (targetCompleted) {
+        this.triggerSparkles(checkbox);
+      }
     }
 
-    // Update badge
-    this.notifyServiceWorker();
+    try {
+      const task = await TaskManager.toggleComplete(taskId);
+      this.notifyServiceWorker();
+      return task;
+    } catch (error) {
+      // Revert optimistic changes on failure
+      if (card) {
+        card.classList.toggle('completed', !targetCompleted);
+      }
+      if (checkbox) {
+        checkbox.classList.toggle('checked', !targetCompleted);
+        checkbox.setAttribute('aria-checked', String(!targetCompleted));
+        checkbox.setAttribute('aria-label', !targetCompleted ? '标记任务为未完成' : '标记任务为已完成');
+        checkbox.title = !targetCompleted ? '标记为未完成' : '标记为已完成';
+      }
+      this.showToast('更新任务状态失败，请重试');
+      throw error;
+    }
   },
 
   // Handle delete task
@@ -982,25 +1047,24 @@ const UI = {
     if (this._deleting.has(taskId)) return false;
     this._deleting.add(taskId);
     try {
-    // Add exit animation
-    taskCard?.classList.add('removing');
+      // Add exit animation
+      taskCard?.classList.add('removing');
 
-    // Wait for animation
-    if (!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-      await new Promise(resolve => setTimeout(resolve, 150));
-    }
+      // Wait for animation
+      if (!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+        await new Promise(resolve => setTimeout(resolve, 150));
+      }
 
-    const deletedTask = await TaskManager.deleteTask(taskId);
-    if (!deletedTask) return false;
-    this.render();
+      const deletedTask = await TaskManager.deleteTask(taskId);
+      if (!deletedTask) return false;
 
-    // Show undo toast
-    this.showToast('任务已删除', true);
+      // Show undo toast
+      this.showToast('任务已删除', true);
 
-    // Update badge
-    this.notifyServiceWorker();
-    this.updateBatchBar();
-    return true;
+      // Update badge
+      this.notifyServiceWorker();
+      this.updateBatchBar();
+      return true;
     } catch (error) {
       taskCard?.classList.remove('removing');
       this.showToast('删除失败，请重试');
@@ -1013,7 +1077,6 @@ const UI = {
     const newTask = await TaskManager.duplicateTask(taskId);
     if (newTask) {
       this.showToast('任务已复制');
-      this.render();
     }
   },
 
@@ -1150,6 +1213,10 @@ const UI = {
     const todayCompleted = todayTasks.filter(t => t.completed).length;
     const percentage = todayTotal > 0 ? Math.round((todayCompleted / todayTotal) * 100) : 0;
 
+    const cacheKey = `${todayCompleted}/${todayTotal}/${percentage}`;
+    if (el.dataset.progressCache === cacheKey) return;
+    el.dataset.progressCache = cacheKey;
+
     el.innerHTML = `
       <div class="header-progress-text">今日 ${todayCompleted}/${todayTotal} (${percentage}%)</div>
       <div class="header-progress-bar">
@@ -1172,6 +1239,10 @@ const UI = {
 
     const allCategories = Array.from(new Set([...defaultCategories, ...taskCategories]));
     const currentValue = this.currentCategoryFilter || 'all';
+
+    const cacheKey = `${currentValue}:${allCategories.join('|')}`;
+    if (select.dataset.categoryCache === cacheKey) return;
+    select.dataset.categoryCache = cacheKey;
 
     const icons = {
       '工作': '💼',
@@ -1262,7 +1333,7 @@ const UI = {
     }
 
     emptyState.classList.add('hidden');
-    container.innerHTML = '';
+    const frag = document.createDocumentFragment();
 
     // Add quick add input
     const quickAdd = document.createElement('div');
@@ -1270,7 +1341,30 @@ const UI = {
     quickAdd.innerHTML = `
       <input type="text" id="quick-add-input" placeholder="快速添加任务，按 Enter 确认..." autocomplete="off">
     `;
-    container.appendChild(quickAdd);
+    frag.appendChild(quickAdd);
+
+    // Render each section
+    const sections = [
+      { key: 'overdue', title: '已逾期', icon: '⚠️', className: 'section-overdue' },
+      { key: 'today', title: '今天', icon: '📅', className: 'section-today' },
+      { key: 'upcoming', title: '即将到来', icon: '📋', className: 'section-upcoming' },
+      { key: 'completed', title: '已完成', icon: '✅', className: 'section-completed' }
+    ];
+
+    sections.forEach(section => {
+      const tasks = groups[section.key];
+      if (tasks.length === 0) return;
+
+      const sectionElement = this.createSectionElement(section, tasks);
+      frag.appendChild(sectionElement);
+    });
+
+    if (typeof container.replaceChildren === 'function') {
+      container.replaceChildren(frag);
+    } else {
+      container.innerHTML = '';
+      container.appendChild(frag);
+    }
 
     // Wire up quick add
     const quickAddInput = document.getElementById('quick-add-input');
@@ -1287,29 +1381,11 @@ const UI = {
             if (current) { current.value = title; current.disabled = false; current.focus(); }
             return;
           }
-          quickAddInput.value = '';
-          this.render();
           this.notifyServiceWorker();
           this.showToast('任务已添加');
         }
       });
     }
-
-    // Render each section
-    const sections = [
-      { key: 'overdue', title: '已逾期', icon: '⚠️', className: 'section-overdue' },
-      { key: 'today', title: '今天', icon: '📅', className: 'section-today' },
-      { key: 'upcoming', title: '即将到来', icon: '📋', className: 'section-upcoming' },
-      { key: 'completed', title: '已完成', icon: '✅', className: 'section-completed' }
-    ];
-
-    sections.forEach(section => {
-      const tasks = groups[section.key];
-      if (tasks.length === 0) return;
-
-      const sectionElement = this.createSectionElement(section, tasks);
-      container.appendChild(sectionElement);
-    });
 
     // Make task cards draggable
     container.querySelectorAll('.task-card').forEach(card => {
@@ -1556,12 +1632,14 @@ const UI = {
       sectionEl.classList.toggle('collapsed');
     });
 
-    // Render tasks
+    // Render tasks using DocumentFragment for atomic insertion
     const content = sectionEl.querySelector('.task-section-content');
+    const taskFrag = document.createDocumentFragment();
     tasks.forEach(task => {
       const taskCard = this.createTaskCard(task);
-      content.appendChild(taskCard);
+      taskFrag.appendChild(taskCard);
     });
+    content.appendChild(taskFrag);
 
     return sectionEl;
   },
@@ -1833,13 +1911,14 @@ const UI = {
           countEl.className = 'sidebar-filter-count';
           tab.appendChild(countEl);
         }
-        countEl.textContent = counts[filter];
-        countEl.dataset.count = String(counts[filter]);
+        const text = String(counts[filter]);
+        if (countEl.textContent !== text) {
+          countEl.textContent = text;
+          countEl.dataset.count = text;
+        }
         countEl.classList.toggle('has-count', counts[filter] > 0);
-        if (filter === 'overdue' && counts[filter] > 0) {
-          countEl.classList.add('has-overdue');
-        } else {
-          countEl.classList.remove('has-overdue');
+        if (filter === 'overdue') {
+          countEl.classList.toggle('has-overdue', counts[filter] > 0);
         }
       }
     });
