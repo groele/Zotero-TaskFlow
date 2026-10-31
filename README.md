@@ -6,11 +6,11 @@
 
 [简体中文](README.md) · [English](README.en.md)
 
-[![当前版本](https://img.shields.io/badge/version-14.1.0-245ac7?style=flat-square)](https://github.com/groele/Zotero-TaskFlow/releases/tag/v14.1.0)
+[![当前版本](https://img.shields.io/badge/version-14.1.1-245ac7?style=flat-square)](https://github.com/groele/Zotero-TaskFlow/releases/tag/v14.1.1)
 [![兼容范围](https://img.shields.io/badge/Zotero-10.0%20至%2012.*-059669?style=flat-square)](https://github.com/groele/Zotero-TaskFlow)
 [![开源协议](https://img.shields.io/badge/license-MIT-yellow?style=flat-square)](LICENSE)
 [![本地私有](https://img.shields.io/badge/storage-100%25%20Local%20Privacy-success?style=flat-square)](https://github.com/groele/Zotero-TaskFlow)
-[![发布下载](https://img.shields.io/badge/download-XPI%20Release-blue?style=flat-square)](https://github.com/groele/Zotero-TaskFlow/releases/download/v14.1.0/zotero-taskflow-14.1.0.xpi)
+[![发布下载](https://img.shields.io/badge/download-XPI%20Release-blue?style=flat-square)](https://github.com/groele/Zotero-TaskFlow/releases/download/v14.1.1/zotero-taskflow-14.1.1.xpi)
 
 [核心亮点](#highlights) · [快捷键速查](#shortcuts) · [快速开始](#quick-start) · [多维研读视图](#views) · [学术研读模板体系](#academic-templates) · [Zotero 深度联动](#integration) · [设置与使用偏好](#settings) · [数据存储与备份](#data) · [常见问题 FAQ](#troubleshooting) · [安装与更新](#installation) · [Zotero Flow 系列生态](#series) · [许可证与说明](#license)
 
@@ -186,7 +186,7 @@ TaskFlow 并非孤立的外部看板，而是深深扎根于 Zotero 宿主中：
 ## 📦 安装与更新
 
 ### 手动安装步骤
-1. 前往 [GitHub Releases](https://github.com/groele/Zotero-TaskFlow/releases/tag/v14.1.0) 下载最新安装包 [zotero-taskflow-14.1.0.xpi](https://github.com/groele/Zotero-TaskFlow/releases/download/v14.1.0/zotero-taskflow-14.1.0.xpi)。
+1. 前往 [GitHub Releases](https://github.com/groele/Zotero-TaskFlow/releases/tag/v14.1.1) 下载最新安装包 [zotero-taskflow-14.1.1.xpi](https://github.com/groele/Zotero-TaskFlow/releases/download/v14.1.1/zotero-taskflow-14.1.1.xpi)。
 2. 在 Zotero 中打开菜单 **工具 (Tools) → 插件 (Plugins / Add-ons)**。
 3. 点击右上角的齿轮图标 ⚙️，选择 **从文件安装插件 (Install Add-on From File...)**。
 4. 选择刚才下载的 `.xpi` 文件，点击安装并重启 Zotero。
@@ -208,13 +208,14 @@ TaskFlow 并非孤立的外部看板，而是深深扎根于 Zotero 宿主中：
 # 安装测试依赖
 npm ci
 
-# 运行全套 152 项集成与单元测试
+# 运行全套 153 项集成与单元测试
 npm test
 
 # 打包构建标准 XPI 并自动核验元数据与哈希
 python scripts/build-package.py
 ```
 
+- [v14.1.1 发布说明](docs/releases/v14.1.1.md)
 - [v14.1.0 发布说明](docs/releases/v14.1.0.md)
 - [品牌与产品规范](docs/brand/PRODUCT.md)
 - [标签与版本策略](docs/release-tag-policy.md)

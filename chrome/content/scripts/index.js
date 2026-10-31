@@ -2401,6 +2401,9 @@
             separator.hidden = !showCreate && !showBatch;
           };
           itemMenu.addEventListener('popupshowing', updateItemMenuVisibility);
+          windowElements.push({
+            remove: () => itemMenu.removeEventListener('popupshowing', updateItemMenuVisibility),
+          });
           updateItemMenuVisibility();
         }
       }

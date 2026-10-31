@@ -5,7 +5,7 @@
   <html:header class="todolist-pref-header">
     <html:div class="todolist-pref-title-row">
       <html:h1>Zotero TaskFlow</html:h1>
-      <html:span class="todolist-pref-version">v14.1.0</html:span>
+      <html:span class="todolist-pref-version">v14.1.1</html:span>
     </html:div>
   </html:header>
   <html:p id="todolist-pref-status" class="todolist-pref-status" role="status" aria-live="polite">正在加载设置项…</html:p>
@@ -54,7 +54,7 @@
     <html:div class="todolist-card-body">
       <html:p class="todolist-pref-desc">管理文献详情栏、子笔记、标签和 PDF 阅读器中的 TaskFlow 操作。</html:p>
 
-      <html:div class="todolist-pref-subheading">文献详情侧栏 (ItemPane)</html:div>
+      <html:div class="todolist-pref-subheading">文献详情侧栏与列表右键菜单</html:div>
       <html:div id="todolist-pref-literature" class="todolist-pref-content" />
 
       <html:div class="todolist-pref-subheading">文献子笔记多端云同步</html:div>
@@ -80,7 +80,7 @@
       <html:p class="todolist-pref-desc">在此添加与管理专属学术研读标签，并在任务编辑中即时调用：</html:p>
       <html:div id="todolist-pref-tags-list" class="todolist-pref-tags-container"></html:div>
       <html:div class="todolist-tag-creator-bar" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px;">
-        <html:input type="text" id="todolist-new-tag-name" class="todolist-control" style="max-width: 220px;" placeholder="标签名，如：导师审阅 / 顶会投稿" />
+        <html:input type="text" id="todolist-new-tag-name" class="todolist-control" style="max-width: 220px;" placeholder="标签名，如：导师审阅 / 顶会投稿" aria-label="新学术研读标签名称" />
         <html:div id="todolist-tag-color-palette" style="display: flex; gap: 6px; align-items: center;">
           <html:button type="button" class="todolist-pref-color-dot active" data-color="#ef4444" style="background:#ef4444;" title="红色" aria-label="红色" aria-pressed="true"></html:button>
           <html:button type="button" class="todolist-pref-color-dot" data-color="#f97316" style="background:#f97316;" title="橙色" aria-label="橙色" aria-pressed="false"></html:button>
@@ -106,7 +106,7 @@
 
       <html:div class="todolist-pref-subheading" style="margin-top: 18px;">数据导入与灾备恢复</html:div>
       <html:div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
-        <html:select id="todolist-import-mode" class="todolist-control" style="max-width: 220px;">
+        <html:select id="todolist-import-mode" class="todolist-control" style="max-width: 220px;" aria-label="数据导入合并模式">
           <html:option value="merge">智能合并 (保留现有并补充导入)</html:option>
           <html:option value="overwrite">完全覆盖 (清空现有并替换为备份)</html:option>
         </html:select>
@@ -138,9 +138,9 @@
   <html:footer class="todolist-pref-release-info" aria-label="版本信息">
     <html:div class="todolist-pref-release-title">版本信息</html:div>
     <html:dl>
-      <html:div><html:dt>版本说明</html:dt><html:dd>新增文献列表右键菜单开关（添加为待办/批量加入研读待办），默认保持关闭。</html:dd></html:div>
+      <html:div><html:dt>版本说明</html:dt><html:dd>优化设置页文献与右键菜单分组语义，增强无障碍标签支持与 DOM 监听器注销完整性。</html:dd></html:div>
       <html:div><html:dt>构建日期</html:dt><html:dd>2026-10-31</html:dd></html:div>
-      <html:div><html:dt>最新安装包</html:dt><html:dd><html:a href="https://github.com/groele/Zotero-TaskFlow/releases/download/v14.1.0/zotero-taskflow-14.1.0.xpi">下载 TaskFlow v14.1.0</html:a></html:dd></html:div>
+      <html:div><html:dt>最新安装包</html:dt><html:dd><html:a href="https://github.com/groele/Zotero-TaskFlow/releases/download/v14.1.1/zotero-taskflow-14.1.1.xpi">下载 TaskFlow v14.1.1</html:a></html:dd></html:div>
       <html:div><html:dt>项目仓库</html:dt><html:dd><html:a href="https://github.com/groele/Zotero-TaskFlow">GitHub 仓库</html:a></html:dd></html:div>
     </html:dl>
   </html:footer>
