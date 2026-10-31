@@ -1,6 +1,6 @@
 {
   "name": "zotero-taskflow",
-  "version": "14.0.3",
+  "version": "14.1.0",
   "description": "Turn literature reading into trackable tasks and plans.",
   "private": true,
   "scripts": {

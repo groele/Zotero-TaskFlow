@@ -1293,6 +1293,10 @@
     registerMenus() {
       if (Zotero.MenuManager && typeof Zotero.MenuManager.registerMenu === 'function') {
         try {
+          if (this._menuManagerId && Zotero.MenuManager.unregisterMenu) {
+            try { Zotero.MenuManager.unregisterMenu(this._menuManagerId); } catch (_) {}
+            this._menuManagerId = null;
+          }
           this._menuManagerId = Zotero.MenuManager.registerMenu({
             menuID: 'todolist-itemmenu-create',
             pluginID: ADDON_ID,
@@ -1301,6 +1305,12 @@
               {
                 menuType: 'menuitem',
                 label: '添加为待办',
+                onShowing: (_event, context) => {
+                  const show = Boolean(this.getPref('itemContextMenuCreate', false));
+                  if (context && typeof context.setVisible === 'function') {
+                    context.setVisible(show);
+                  }
+                },
                 onCommand: (event) => {
                   try {
                     this.createTaskFromSelection(event?.target?.ownerDocument?.defaultView);
@@ -1310,7 +1320,14 @@
                 },
               },
               {
-                menuType: 'menuitem', label: '批量加入研读待办',
+                menuType: 'menuitem',
+                label: '批量加入研读待办',
+                onShowing: (_event, context) => {
+                  const show = Boolean(this.getPref('itemContextMenuBatch', false));
+                  if (context && typeof context.setVisible === 'function') {
+                    context.setVisible(show);
+                  }
+                },
                 onCommand: event => this.addSelectedLiteratureTasks(event?.target?.ownerDocument?.defaultView)
                   .catch(error => this.showNotice('批量加入失败', String(error)))
               },
@@ -2373,7 +2390,18 @@
           batchFromItems.addEventListener('command', () => {
             this.addSelectedLiteratureTasks(window).catch(error => this.showNotice('批量加入失败', String(error)));
           });
-          itemMenu.appendChild(batchFromItems); windowElements.push(batchFromItems);
+          itemMenu.appendChild(batchFromItems);
+          windowElements.push(batchFromItems);
+
+          const updateItemMenuVisibility = () => {
+            const showCreate = Boolean(this.getPref('itemContextMenuCreate', false));
+            const showBatch = Boolean(this.getPref('itemContextMenuBatch', false));
+            createFromItem.hidden = !showCreate;
+            batchFromItems.hidden = !showBatch;
+            separator.hidden = !showCreate && !showBatch;
+          };
+          itemMenu.addEventListener('popupshowing', updateItemMenuVisibility);
+          updateItemMenuVisibility();
         }
       }
 

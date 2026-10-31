@@ -6,11 +6,11 @@
 
 [简体中文](README.md) · [English](README.en.md)
 
-[![Version](https://img.shields.io/badge/version-14.0.3-245ac7?style=flat-square)](https://github.com/groele/Zotero-TaskFlow/releases/tag/v14.0.3)
+[![Version](https://img.shields.io/badge/version-14.1.0-245ac7?style=flat-square)](https://github.com/groele/Zotero-TaskFlow/releases/tag/v14.1.0)
 [![Zotero Compatibility](https://img.shields.io/badge/Zotero-10.0%20to%2012.*-059669?style=flat-square)](https://github.com/groele/Zotero-TaskFlow)
 [![License](https://img.shields.io/badge/license-MIT-yellow?style=flat-square)](LICENSE)
 [![Local Privacy](https://img.shields.io/badge/storage-100%25%20Local%20Privacy-success?style=flat-square)](https://github.com/groele/Zotero-TaskFlow)
-[![Download XPI](https://img.shields.io/badge/download-XPI%20Release-blue?style=flat-square)](https://github.com/groele/Zotero-TaskFlow/releases/download/v14.0.3/zotero-taskflow-14.0.3.xpi)
+[![Download XPI](https://img.shields.io/badge/download-XPI%20Release-blue?style=flat-square)](https://github.com/groele/Zotero-TaskFlow/releases/download/v14.1.0/zotero-taskflow-14.1.0.xpi)
 
 [Key Highlights](#highlights) · [Keyboard Shortcuts](#shortcuts) · [Quick Start](#quick-start) · [Multi-Dimensional Views](#views) · [Academic Checklists](#academic-templates) · [Zotero Integration](#integration) · [Settings & Preferences](#settings) · [Data & Backup](#data) · [Troubleshooting FAQ](#troubleshooting) · [Installation & Updates](#installation) · [Zotero Flow Series](#series) · [License](#license)
 
@@ -131,6 +131,7 @@ TaskFlow integrates natively into the Zotero host:
 
 Configure behaviors under **Zotero → Settings → Zotero TaskFlow**:
 
+- **Item Context Menu Controls**: Toggles for "Add as Task" and "Batch Add Reading Tasks" in the library item context menu; disabled by default to keep context menus clean.
 - **Library Drag & Drop**: Drag items from your Zotero library into TaskFlow to batch-create reading tasks.
 - **Click-to-Locate Paper**: Clicking a task card or literature badge highlights the corresponding item in Zotero's main list.
 - **PDF Page Navigation**: When enabled, clicking a PDF task navigates directly to the exact page where the task was created.
@@ -183,7 +184,7 @@ Configure behaviors under **Zotero → Settings → Zotero TaskFlow**:
 ## 📦 Installation & Updates
 
 ### Manual Installation
-1. Download the latest release package [zotero-taskflow-14.0.3.xpi](https://github.com/groele/Zotero-TaskFlow/releases/download/v14.0.3/zotero-taskflow-14.0.3.xpi) from [GitHub Releases](https://github.com/groele/Zotero-TaskFlow/releases/tag/v14.0.3).
+1. Download the latest release package [zotero-taskflow-14.1.0.xpi](https://github.com/groele/Zotero-TaskFlow/releases/download/v14.1.0/zotero-taskflow-14.1.0.xpi) from [GitHub Releases](https://github.com/groele/Zotero-TaskFlow/releases/tag/v14.1.0).
 2. In Zotero, open **Tools → Plugins / Add-ons**.
 3. Click the gear icon ⚙️ in the upper right corner and select **Install Add-on From File...**.
 4. Select the `.xpi` file, confirm the installation, and restart Zotero.
@@ -212,7 +213,7 @@ npm test
 python scripts/build-package.py
 ```
 
-- [v14.0.3 Release Notes](docs/releases/v14.0.3.md)
+- [v14.1.0 Release Notes](docs/releases/v14.1.0.md)
 - [Product Specifications](docs/brand/PRODUCT.md)
 - [Release Tag Policy](docs/release-tag-policy.md)
 

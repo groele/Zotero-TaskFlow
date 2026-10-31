@@ -50,6 +50,55 @@ test('right-click batch menu uses the owning Zotero window and handles asynchron
   assert.equal(native.disk().tasks.length, 1);
 });
 
+test('item context menu items honor itemContextMenuCreate and itemContextMenuBatch preferences', async t => {
+  const native = makeHost();
+  let options;
+  native.context.Zotero.MenuManager = { registerMenu: value => { options = value; return 'menu'; } };
+  native.host.registerMenus();
+
+  const createMenu = options.menus.find(menu => menu.label === '添加为待办');
+  const batchMenu = options.menus.find(menu => menu.label === '批量加入研读待办');
+  assert.ok(createMenu && batchMenu);
+
+  // Default is false
+  let createVisible = null, batchVisible = null;
+  createMenu.onShowing(null, { setVisible: val => { createVisible = val; } });
+  batchMenu.onShowing(null, { setVisible: val => { batchVisible = val; } });
+  assert.equal(createVisible, false);
+  assert.equal(batchVisible, false);
+
+  // When enabled via prefs
+  const prefMap = new Map([
+    ['extensions.taskflow.itemContextMenuCreate', true],
+    ['extensions.taskflow.itemContextMenuBatch', true]
+  ]);
+  native.context.Zotero.Prefs.get = key => prefMap.get(key);
+  createMenu.onShowing(null, { setVisible: val => { createVisible = val; } });
+  batchMenu.onShowing(null, { setVisible: val => { batchVisible = val; } });
+  assert.equal(createVisible, true);
+  assert.equal(batchVisible, true);
+
+  // Also verify fallback DOM injection in addToWindow
+  native.host._menuManagerId = null;
+  const dom = new JSDOM('<body><div id="zotero-pane"><div id="zotero-itemmenu"></div></div></body>');
+  dom.window.ZoteroPane = {};
+  t.after(() => dom.window.close());
+  native.host.addToWindow(dom.window);
+  const doc = dom.window.document;
+  const createItem = doc.getElementById('todolist-itemmenu-create');
+  const batchItem = doc.getElementById('todolist-itemmenu-batch');
+  assert.ok(createItem && batchItem);
+  assert.equal(createItem.hidden, false);
+  assert.equal(batchItem.hidden, false);
+
+  // When reset to false
+  prefMap.set('extensions.taskflow.itemContextMenuCreate', false);
+  prefMap.set('extensions.taskflow.itemContextMenuBatch', false);
+  doc.getElementById('zotero-itemmenu').dispatchEvent(new dom.window.Event('popupshowing'));
+  assert.equal(createItem.hidden, true);
+  assert.equal(batchItem.hidden, true);
+});
+
 test('rescheduling runs on the latest snapshot, keeps reminders/time/subtasks, and re-arms notification', async () => {
   const native = makeHost({ tasks: [{ id: 'a', title: 'Reading', dueDate: date(7), dueTime: '09:30',
     reminder: { enabled: true, before: 30, notified: true }, subtasks: [{ id: 's', title: 'Question', completed: false }] }], settings: {} });

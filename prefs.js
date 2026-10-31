@@ -17,6 +17,8 @@ pref("extensions.taskflow.itemPaneShowProgressBar", true);
 pref("extensions.taskflow.itemPaneShowSubtasks", true);
 pref("extensions.taskflow.locateOnTaskClick", true);
 pref("extensions.taskflow.dragDropFromLibrary", true);
+pref("extensions.taskflow.itemContextMenuCreate", false);
+pref("extensions.taskflow.itemContextMenuBatch", false);
 
 // Group 4: Child Note Cloud Sync (Multi-Device Sync)
 pref("extensions.taskflow.autoSyncChildNote", true);

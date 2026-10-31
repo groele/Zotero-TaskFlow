@@ -24,12 +24,14 @@ window.TaskFlow_Preferences = (() => {
     sortOrder: 'dueDate',
     showWelcomeOnStartup: true,
 
-    // ItemPane Sidebar
+    // ItemPane Sidebar & Context Menus
     enableItemPane: true,
     itemPaneShowProgressBar: true,
     itemPaneShowSubtasks: true,
     locateOnTaskClick: true,
     dragDropFromLibrary: true,
+    itemContextMenuCreate: false,
+    itemContextMenuBatch: false,
 
     // Child Note Sync
     autoSyncChildNote: true,
@@ -105,6 +107,8 @@ window.TaskFlow_Preferences = (() => {
       ['itemPaneShowSubtasks', '在侧边详情栏中直接展开子任务里程碑与互动勾选框', 'check'],
       ['locateOnTaskClick', '点击待办卡片或文献徽标时，在 Zotero 文献库中高亮定位对应条目', 'check'],
       ['dragDropFromLibrary', '支持将文献条目直接从文献列表拖拽至待办看板创建研读任务', 'check'],
+      ['itemContextMenuCreate', '在文献列表右键菜单中显示“添加为待办”选项（默认关闭）', 'check'],
+      ['itemContextMenuBatch', '在文献列表右键菜单中显示“批量加入研读待办”选项（默认关闭）', 'check'],
     ],
     sync: [
       ['autoSyncChildNote', '自动将研读任务与进度同步为文献子笔记 (原生支持 Zotero 云端全平台多端同步)', 'check'],
