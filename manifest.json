@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Zotero TaskFlow",
-  "version": "14.2.1",
+  "version": "14.2.2",
   "description": "Turn literature reading into trackable tasks and plans.",
   "homepage_url": "https://github.com/groele/Zotero-TaskFlow",
   "author": "groele",
@@ -12,7 +12,7 @@
   "applications": {
     "zotero": {
       "id": "taskflow@groele.org",
-      "strict_min_version": "10.0.0",
+      "strict_min_version": "10.0",
       "strict_max_version": "12.*",
       "update_url": "https://raw.githubusercontent.com/groele/Zotero-TaskFlow/main/update.json"
     }
@@ -20,7 +20,7 @@
   "browser_specific_settings": {
     "zotero": {
       "id": "taskflow@groele.org",
-      "strict_min_version": "10.0.0",
+      "strict_min_version": "10.0",
       "strict_max_version": "12.*",
       "update_url": "https://raw.githubusercontent.com/groele/Zotero-TaskFlow/main/update.json"
     }

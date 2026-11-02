@@ -89,8 +89,8 @@ def main() -> int:
 
     for key in ("strict_min_version", "strict_max_version"):
         expected = manifest.get("applications", {}).get("zotero", {}).get(key)
-        if key == "strict_min_version" and expected != "10.0.0":
-            raise ValueError("This release line requires Zotero 10.0.0 or newer")
+        if key == "strict_min_version" and expected not in ("10.0", "10.0.0"):
+            raise ValueError("This release line requires Zotero 10.0 or newer")
         if expected != browser_zotero.get(key):
             raise ValueError(f"Manifest Zotero compatibility fields do not match: {key}")
         if matching_update and (expected != update_app.get(key) or expected != update_browser.get(key)):
