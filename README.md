@@ -215,8 +215,7 @@ npm test
 python scripts/build-package.py
 ```
 
-- [v14.1.1 发布说明](docs/releases/v14.1.1.md)
-- [v14.1.0 发布说明](docs/releases/v14.1.0.md)
+- [v14.2.1 发布说明](docs/releases/v14.2.1.md)
 - [品牌与产品规范](docs/brand/PRODUCT.md)
 - [标签与版本策略](docs/release-tag-policy.md)
 

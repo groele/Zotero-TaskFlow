@@ -213,8 +213,7 @@ npm test
 python scripts/build-package.py
 ```
 
-- [v14.1.1 Release Notes](docs/releases/v14.1.1.md)
-- [v14.1.0 Release Notes](docs/releases/v14.1.0.md)
+- [v14.2.1 Release Notes](docs/releases/v14.2.1.md)
 - [Product Specifications](docs/brand/PRODUCT.md)
 - [Release Tag Policy](docs/release-tag-policy.md)
 
