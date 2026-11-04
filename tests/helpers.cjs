@@ -61,6 +61,7 @@ function makeHost(seed = { tasks: [], settings: {}, customTags: [] }) {
       ItemPaneManager: { registerSection: options => { pane = options; return 'test-section'; } } } });
   vm.runInContext(read('chrome/content/js/taskRules.js'), context);
   vm.runInContext(read('chrome/content/js/literatureWorkflow.js'), context);
+  vm.runInContext(read('chrome/content/scripts/itemPane.js'), context);
   const runtime = read('chrome/content/scripts/index.js')
     .replace('  Zotero.TaskFlow.init();', '  // init is supplied by the fixture')
     .replace('  Zotero.Todolist.init();', '  // init is supplied by the fixture');

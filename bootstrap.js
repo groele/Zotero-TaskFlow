@@ -125,6 +125,7 @@ async function startup({ id, version, resourceURI, rootURI }, reason) {
 
     Services.scriptloader.loadSubScript(`${rootURI}chrome/content/js/taskRules.js`, ctx);
     Services.scriptloader.loadSubScript(`${rootURI}chrome/content/js/literatureWorkflow.js`, ctx);
+    Services.scriptloader.loadSubScript(${rootURI}chrome/content/scripts/itemPane.js, ctx);
     Services.scriptloader.loadSubScript(`${rootURI}chrome/content/scripts/index.js`, ctx);
   } catch (error) {
     Zotero?.logError?.('Failed to startup TaskFlow addon: ' + error);
