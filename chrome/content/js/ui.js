@@ -243,12 +243,7 @@ const UI = {
       setTimeout(() => document.addEventListener('click', closeHandler), 50);
     });
 
-    // Zotero native preferences
-    document.getElementById('btn-zotero-prefs')?.addEventListener('click', () => {
-      if (typeof ZoteroBridge !== 'undefined') {
-        ZoteroBridge.openPreferences();
-      }
-    });
+
 
     // Drag & drop literature from Zotero library pane (with internal drag protection & clean cleanup)
     const viewsContainer = document.querySelector('.views-container');

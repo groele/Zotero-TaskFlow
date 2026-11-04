@@ -103,6 +103,28 @@ window.TaskFlow_Preferences = (() => {
       ['showWelcomeOnStartup', '首次启动时显示使用技巧提示', 'check'],
       ['toolbarShowBadge', '在主工具栏图标上显示未完成待办数量角标', 'check'],
     ],
+    academic: [
+      ['defaultDueDays', '研读任务默认截止天数', 'select', [['3', '3 天'], ['7', '一周'], ['14', '两周'], ['30', '30 天']]],
+      ['readingProfile', '默认精读清单体系', 'select', [
+        ['general', '通用研读 (背景/方法/结果/讨论)'],
+        ['theory', '理论论文 (公理/引理/定理证明/推论)'],
+        ['experiment', '实验论文 (基准数据集/指标/消融实验)'],
+        ['review', '综述论文 (分类体系/演进脉络/未来方向)'],
+        ['algorithm', '算法与复现 (复杂度/伪代码/开源验证)']
+      ]],
+      ['defaultTaskType', '默认待办学术分类', 'select', [
+        ['literature_reading', '📖 论文研读与精读'],
+        ['writing', '✍️ 论文写作与修改'],
+        ['experiment', '🔬 实验设计与代码复现'],
+        ['submission', '⏰ 会议期刊截稿 DDL'],
+        ['peer_review', '📑 审稿与评阅']
+      ]],
+      ['defaultPriority', '新建任务默认优先级', 'select', [
+        ['high', '高优先级 (P1)'],
+        ['medium', '中优先级 (P2)'],
+        ['low', '低优先级 (P3)']
+      ]],
+    ],
     literature: [
       ['enableItemPane', '在文献右侧详情栏中展示“Zotero TaskFlow待办事项”区域（重启 Zotero 后生效）', 'check'],
       ['itemPaneShowProgressBar', '在侧边详情栏中展示研读完成度彩色进度条', 'check'],
@@ -111,6 +133,14 @@ window.TaskFlow_Preferences = (() => {
       ['dragDropFromLibrary', '支持将文献条目直接从文献列表拖拽至待办看板创建研读任务', 'check'],
       ['itemContextMenuCreate', '在文献列表右键菜单中显示“添加为待办”选项（默认关闭）', 'check'],
       ['itemContextMenuBatch', '在文献列表右键菜单中显示“批量加入研读待办”选项（默认关闭）', 'check'],
+    ],
+    reader: [
+      ['readerSelectionQuickAdd', '在 PDF 选区工具条和批注菜单中显示“加入研读待办”快捷操作（默认关闭）', 'check'],
+      ['readerShortcutAction', 'PDF 阅读器快捷键 (Ctrl+Shift+T) 行为', 'select', [
+        ['create_instant', '提取选中文字与页码后立即创建待办'],
+        ['open_modal', '打开待办编辑框以便调整']
+      ]],
+      ['pdfReaderJumpPage', '点击待办的 PDF 伴读按钮时自动跳转到对应页码', 'check'],
     ],
     sync: [
       ['autoSyncChildNote', '自动将研读任务与进度同步为文献子笔记 (原生支持 Zotero 云端全平台多端同步)', 'check'],
@@ -125,30 +155,6 @@ window.TaskFlow_Preferences = (() => {
       ['autoTagOnComplete', '文献所有研读待办均勾选完成时，自动打上“精读已完成”标签', 'check'],
       ['tagForCompleted', '已完成状态标签名', 'text'],
       ['autoTagFromItem', '从文献新建待办时自动继承文献在 Zotero 的标签', 'check'],
-    ],
-    academic: [
-      ['defaultDueDays', '研读任务默认截止天数', 'select', [['3', '3 天'], ['7', '一周'], ['14', '两周'], ['30', '30 天']]],
-      ['readingProfile', '默认精读清单', 'select', [['general', '通用研读'], ['theory', '理论论文'], ['experiment', '实验论文'], ['review', '综述论文'], ['algorithm', '算法与复现']]],
-      ['defaultTaskType', '默认待办学术类型', 'select', [
-        ['literature_reading', '📖 论文研读与精读'],
-        ['writing', '✍️ 论文写作与修改'],
-        ['experiment', '🔬 实验设计与代码复现'],
-        ['submission', '⏰ 会议期刊截稿 DDL'],
-        ['peer_review', '📑 审稿与评阅']
-      ]],
-      ['defaultPriority', '新建任务默认优先级', 'select', [
-        ['high', '高优先级 (P1)'],
-        ['medium', '中优先级 (P2)'],
-        ['low', '低优先级 (P3)']
-      ]],
-    ],
-    reader: [
-      ['readerSelectionQuickAdd', '在 PDF 选区工具条和批注菜单中显示“加入研读待办”快捷操作（默认关闭）', 'check'],
-      ['readerShortcutAction', 'PDF 阅读器快捷键 (Ctrl+Shift+T) 行为', 'select', [
-        ['create_instant', '提取选中文字与页码后立即创建待办'],
-        ['open_modal', '打开待办编辑框以便调整']
-      ]],
-      ['pdfReaderJumpPage', '点击待办的 PDF 伴读按钮时自动跳转到对应页码', 'check'],
     ],
     reminders: [
       ['dailySummary', '启用每日学术待办晨报提醒', 'check'],
@@ -394,11 +400,11 @@ window.TaskFlow_Preferences = (() => {
       try {
         renderGroup(doc, 'todolist-pref-window', FIELDS.window);
         renderGroup(doc, 'todolist-pref-view', FIELDS.view);
+        renderGroup(doc, 'todolist-pref-academic', FIELDS.academic);
         renderGroup(doc, 'todolist-pref-literature', FIELDS.literature);
+        renderGroup(doc, 'todolist-pref-reader', FIELDS.reader);
         renderGroup(doc, 'todolist-pref-sync', FIELDS.sync);
         renderGroup(doc, 'todolist-pref-tags', FIELDS.tags);
-        renderGroup(doc, 'todolist-pref-academic', FIELDS.academic);
-        renderGroup(doc, 'todolist-pref-reader', FIELDS.reader);
         renderGroup(doc, 'todolist-pref-reminders', FIELDS.reminders);
 
         // Render Custom Tags Manager

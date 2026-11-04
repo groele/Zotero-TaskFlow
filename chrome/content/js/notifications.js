@@ -53,7 +53,8 @@ const Notifications = {
     if (Storage.isZotero()) {
       return ZoteroBridge.notify(title, body);
     }
-    if (options.playSound !== false) {
+    const soundEnabled = typeof Storage !== 'undefined' && Storage.getPreference ? Storage.getPreference('enableSound', true) : true;
+    if (soundEnabled && options.playSound !== false) {
       this.playChime();
     }
 

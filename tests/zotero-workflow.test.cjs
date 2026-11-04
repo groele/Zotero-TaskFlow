@@ -394,3 +394,69 @@ test('follow-Zotero theme updates visible UI without storage writes and explicit
   await Promise.resolve(); assert.equal(p.doc.documentElement.dataset.theme, 'dark');
   native.context.Services = { wm: { getEnumerator: () => ({ hasMoreElements: () => false }) } }; await native.host.shutdown();
 });
+
+test('shutdown closes open standalone companion windows', async () => {
+  const native = makeHost();
+  let closedSub = false;
+  let closedWin = false;
+  const mockWins = [
+    { name: 'Todolist_SubWindow', close: () => { closedSub = true; }, location: { href: 'chrome://taskflow/content/index.html?mode=subwindow' } },
+    { name: 'Todolist_Window', close: () => { closedWin = true; }, location: { href: 'chrome://taskflow/content/index.html?mode=window' } },
+  ];
+  native.context.Services = {
+    wm: {
+      getEnumerator: (filter) => {
+        if (filter === null) {
+          let i = 0;
+          return {
+            hasMoreElements: () => i < mockWins.length,
+            getNext: () => mockWins[i++]
+          };
+        }
+        return { hasMoreElements: () => false, getNext: () => null };
+      }
+    }
+  };
+  await native.host.shutdown();
+  assert.equal(closedSub, true, 'Todolist_SubWindow should be closed on shutdown');
+  assert.equal(closedWin, true, 'Todolist_Window should be closed on shutdown');
+});
+
+test('CSV export escapes formula injection prefixes', async () => {
+  const native = makeHost({
+    tasks: [
+      { id: 't1', title: '=SUM(1+1)', description: '+cmd|/c calc', dueDate: '2026-11-04', priority: 'high', completed: false }
+    ]
+  });
+  let exportedContent = '';
+  native.context.Cc = {
+    '@mozilla.org/filepicker;1': {
+      createInstance: () => ({
+        init: () => {},
+        appendFilter: () => {},
+        open: (cb) => cb(1),
+        file: { path: '/fake/export.csv' }
+      })
+    }
+  };
+  native.context.Ci = {
+    nsIFilePicker: {
+      modeSave: 1,
+      returnOK: 1,
+      returnReplace: 2
+    }
+  };
+  native.context.Services = {
+    wm: {
+      getMostRecentWindow: () => null
+    }
+  };
+  native.context.IOUtils.writeUTF8 = async (path, content) => {
+    exportedContent = content;
+  };
+  const res = await native.host.exportData('csv');
+  if (native.logs.length) console.log('native logs:', native.logs);
+  assert.equal(res, '/fake/export.csv');
+  assert(exportedContent.includes(`"'=SUM(1+1)"`), 'Formula prefix = must be escaped with single quote');
+  assert(exportedContent.includes(`"'+cmd|/c calc"`), 'Formula prefix + must be escaped with single quote');
+});

@@ -873,8 +873,10 @@
             zoteroUri: meta.zoteroUri,
             zoteroPdfUri: meta.pdfUri,
             academicType: 'literature_reading',
-            subtasks: LiteratureWorkflow.steps(this.getPref('readingProfile', 'general'),
-              () => 'sub_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10))
+            subtasks: Boolean(this.getPref('academicPresets', true))
+              ? LiteratureWorkflow.steps(this.getPref('readingProfile', 'general'),
+                  () => 'sub_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10))
+              : []
           };
           data.tasks.push(mainTask);
           addedTasks.push(mainTask);
@@ -1028,7 +1030,7 @@
       try {
         const data = await this.loadData();
         const fp = Cc['@mozilla.org/filepicker;1'].createInstance(Ci.nsIFilePicker);
-        const win = Zotero.getMainWindow?.() || Services.wm.getMostRecentWindow('navigator:browser');
+        const win = Zotero.getMainWindow?.() || (typeof Services !== 'undefined' ? Services.wm?.getMostRecentWindow?.('navigator:browser') : null);
         const titleMap = {
           json: '导出 TaskFlow JSON 备份',
           csv: '导出 TaskFlow CSV 表格 (Excel 兼容)',
@@ -1060,7 +1062,11 @@
           if (format === 'json') {
             content = JSON.stringify(data, null, 2);
           } else if (format === 'csv') {
-            const escapeCsv = (str) => `"${String(str || '').replace(/"/g, '""')}"`;
+            const escapeCsv = (str) => {
+              let text = String(str ?? '');
+              if (/^[\s\u0000-\u001f]*[=+@-]/.test(text)) text = `'${text}`;
+              return `"${text.replace(/"/g, '""')}"`;
+            };
             const headers = ['标题', '学术分类', '状态', '优先级', '截止日期', '时间', '关联文献', '文献年份', 'PDF链接', '描述', '创建时间', '完成时间'];
             const rows = tasks.map((t) => [
               escapeCsv(t.title),
@@ -1126,7 +1132,7 @@
     async importDataFile(mode = 'merge', window = null) {
       try {
         const fp = Cc['@mozilla.org/filepicker;1'].createInstance(Ci.nsIFilePicker);
-        const win = window || Zotero.getMainWindow?.() || Services.wm.getMostRecentWindow('navigator:browser');
+        const win = window || Zotero.getMainWindow?.() || (typeof Services !== 'undefined' ? Services.wm?.getMostRecentWindow?.('navigator:browser') : null);
         fp.init(win, '选择 TaskFlow JSON 备份文件导入', Ci.nsIFilePicker.modeOpen);
         fp.appendFilter('JSON Files (*.json)', '*.json');
 
@@ -2279,9 +2285,19 @@
             const btnSyncNote = createEl('button', 'td-action-btn td-action-notes', '同步子笔记');
             btnSyncNote.type = 'button';
             btnSyncNote.title = '将本文献的所有研读待办同步导出为文献子笔记 (云端)';
+            const isTargetEditable = typeof target.isEditable !== 'function' || target.isEditable();
+            if (!isTargetEditable) {
+              btnSyncNote.disabled = true;
+              btnSyncNote.title = '此文献处于只读库或不可编辑状态，无法创建/同步子笔记';
+            }
             btnSyncNote.addEventListener('click', async () => {
-              await this.syncTasksToChildNote(target);
-              this.showNotice('同步成功', '已更新文献子笔记研读清单');
+              if (btnSyncNote.disabled) return;
+              const note = await this.syncTasksToChildNote(target);
+              if (note) {
+                this.showNotice('同步成功', '已更新文献子笔记研读清单');
+              } else {
+                this.showNotice('同步失败', '文献条目不可编辑或同步未完成');
+              }
             });
             actionGrid.appendChild(btnSyncNote);
 
@@ -3378,11 +3394,32 @@
         this._menuManagerId = null;
       }
 
+      // Close any open standalone companion windows (subwindow or window)
+      try {
+        if (typeof Services !== 'undefined' && Services.wm?.getEnumerator) {
+          const allWins = Services.wm.getEnumerator(null);
+          while (allWins && allWins.hasMoreElements()) {
+            const w = allWins.getNext();
+            if (!w) continue;
+            if (w.name === 'Todolist_SubWindow' || w.name === 'Todolist_Window') {
+              try { w.close(); } catch (_) {}
+            } else {
+              const href = String(w.location?.href || '');
+              if (href.includes('chrome://taskflow/content/index.html') || href.includes('chrome://todolist/content/index.html')) {
+                try { w.close(); } catch (_) {}
+              }
+            }
+          }
+        }
+      } catch (_) {}
+
       // Clean windows
-      const windows = Services.wm.getEnumerator('navigator:browser');
-      while (windows.hasMoreElements()) {
-        const win = windows.getNext();
-        this.removeFromWindow(win);
+      if (typeof Services !== 'undefined' && Services.wm?.getEnumerator) {
+        const windows = Services.wm.getEnumerator('navigator:browser');
+        while (windows && windows.hasMoreElements()) {
+          const win = windows.getNext();
+          this.removeFromWindow(win);
+        }
       }
 
       // Remove window listener

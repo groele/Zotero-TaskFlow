@@ -316,7 +316,8 @@ select.todolist-control { width: 100%; cursor: pointer; }
 }
 
 /* Release Notes / Diagnostic Section */
-.todolist-release-info {
+.todolist-release-info,
+.todolist-pref-release-info {
   margin-top: 14px;
   padding: 16px;
   border: 1px solid var(--flow-pref-border);
@@ -326,24 +327,60 @@ select.todolist-control { width: 100%; cursor: pointer; }
   line-height: 1.6;
 }
 
+.todolist-pref-release-title {
+  margin-bottom: 8px;
+  color: var(--flow-pref-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.todolist-release-info dl,
+.todolist-pref-release-info dl {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+}
+
+.todolist-release-info dl > div,
+.todolist-pref-release-info dl > div,
 .todolist-release-row {
   display: grid;
   grid-template-columns: minmax(6em, 8em) minmax(0, 1fr);
   gap: 8px;
   padding: 3px 0;
-  color: var(--flow-pref-muted);
+  border-bottom: 1px solid var(--flow-pref-divider);
 }
 
+.todolist-release-info dl > div:last-child,
+.todolist-pref-release-info dl > div:last-child,
+.todolist-release-row:last-child {
+  border-bottom: none;
+}
+
+.todolist-release-info dt,
+.todolist-pref-release-info dt,
 .todolist-release-label {
+  color: var(--flow-pref-muted);
   font-weight: 500;
-  color: var(--flow-pref-text);
 }
 
-.todolist-release-info a {
+.todolist-release-info dd,
+.todolist-pref-release-info dd,
+.todolist-release-value {
+  margin: 0;
+  color: var(--flow-pref-text);
+  overflow-wrap: anywhere;
+}
+
+.todolist-release-info a,
+.todolist-pref-release-info a {
   color: var(--flow-pref-accent);
   text-decoration: none;
 }
 
-.todolist-release-info a:hover {
+.todolist-release-info a:hover,
+.todolist-pref-release-info a:hover {
   text-decoration: underline;
 }
