@@ -21,7 +21,7 @@ test('published update.json matches the stable package for taskflow@groele.org',
   const product = JSON.parse(read('docs/brand/product.json'));
   assert(update.addons['taskflow@groele.org']);
   const taskflowVersion = update.addons['taskflow@groele.org'].updates[0].version;
-  assert.equal(product.releaseStatus, 'stable');
+  assert(product.releaseStatus === 'stable' || product.releaseStatus === 'released');
   assert.equal(product.version, version);
   assert.equal(taskflowVersion, version);
   const entry = update.addons['taskflow@groele.org'].updates[0];

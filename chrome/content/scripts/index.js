@@ -35,7 +35,10 @@
 
   const getLiteratureItem = (item) => {
     if (!item) return null;
-    let target = item;
+    let target = (typeof item === 'number' || typeof item === 'string')
+      ? (Zotero.Items?.get?.(item) || null)
+      : item;
+    if (!target) return null;
     try {
       if (target.topLevelItem && typeof target.topLevelItem.isRegularItem === 'function' && target.topLevelItem.isRegularItem()) {
         return target.topLevelItem;
@@ -517,7 +520,6 @@
         try {
           if (client.closed) { this._uiClients.delete(client); continue; }
           client.postMessage({ type: 'TASKFLOW_DATA_CHANGED', data: this.cloneData(this._cachedData) }, '*');
-          client.postMessage({ type: 'TODOLIST_DATA_CHANGED', data: this.cloneData(this._cachedData) }, '*');
         } catch (_) { this._uiClients.delete(client); }
       }
       for (const listener of this._dataListeners) {
@@ -2285,18 +2287,18 @@
             const btnSyncNote = createEl('button', 'td-action-btn td-action-notes', '同步子笔记');
             btnSyncNote.type = 'button';
             btnSyncNote.title = '将本文献的所有研读待办同步导出为文献子笔记 (云端)';
-            const isTargetEditable = typeof target.isEditable !== 'function' || target.isEditable();
-            if (!isTargetEditable) {
+            const isReadOnly = typeof target.isEditable === 'function' && !target.isEditable();
+            if (isReadOnly) {
               btnSyncNote.disabled = true;
-              btnSyncNote.title = '此文献处于只读库或不可编辑状态，无法创建/同步子笔记';
+              btnSyncNote.title = '只读文献无法同步子笔记';
             }
             btnSyncNote.addEventListener('click', async () => {
               if (btnSyncNote.disabled) return;
-              const note = await this.syncTasksToChildNote(target);
+              const note = await this.syncTasksToChildNote(target.id || target);
               if (note) {
                 this.showNotice('同步成功', '已更新文献子笔记研读清单');
               } else {
-                this.showNotice('同步失败', '文献条目不可编辑或同步未完成');
+                this.showNotice('跳过同步', '只读条目或未找到任务清单，跳过同步');
               }
             });
             actionGrid.appendChild(btnSyncNote);
@@ -3334,21 +3336,35 @@
         if (win && win.focus) win.focus();
 
         if (options && options.mode && options.mode !== 'open') {
+          if (!this._standaloneTimers) this._standaloneTimers = new Set();
+          let winClosed = false;
+          if (win && typeof win.addEventListener === 'function') {
+            win.addEventListener('unload', () => {
+              winClosed = true;
+            }, { once: true });
+          }
+          const scheduleDeliver = (attempt) => {
+            if (this._shuttingDown || winClosed || !win || win.closed) return;
+            const timerId = mainWin.setTimeout(() => {
+              this._standaloneTimers?.delete(timerId);
+              tryDeliver(attempt);
+            }, attempt === 0 ? 300 : 200);
+            this._standaloneTimers.add(timerId);
+          };
           const tryDeliver = (attempts = 0) => {
+            if (this._shuttingDown || winClosed || !win || win.closed) return;
             try {
-              if (win && !win.closed) {
-                if (win.ZoteroBridge?.handleHostNavigation) {
-                  win.ZoteroBridge.handleHostNavigation(options);
-                  return;
-                }
-                win.postMessage?.({ type: 'TODOLIST_NAVIGATE', options }, '*');
+              if (win.ZoteroBridge?.handleHostNavigation) {
+                win.ZoteroBridge.handleHostNavigation(options);
+                return;
               }
+              win.postMessage?.({ type: 'TODOLIST_NAVIGATE', options }, '*');
             } catch (_) {}
             if (attempts < 10) {
-              mainWin.setTimeout(() => tryDeliver(attempts + 1), 200);
+              scheduleDeliver(attempts + 1);
             }
           };
-          mainWin.setTimeout(() => tryDeliver(0), 300);
+          scheduleDeliver(0);
         }
       } catch (err) {
         Zotero.logError?.('[TaskFlow] openStandaloneWindow error: ' + err);
@@ -3394,6 +3410,14 @@
         this._menuManagerId = null;
       }
 
+      // Cancel standalone delivery timers
+      if (this._standaloneTimers) {
+        for (const timerId of this._standaloneTimers) {
+          try { clearTimeout(timerId); } catch (_) {}
+        }
+        this._standaloneTimers.clear();
+      }
+
       // Close any open standalone companion windows (subwindow or window)
       try {
         if (typeof Services !== 'undefined' && Services.wm?.getEnumerator) {
@@ -3401,13 +3425,18 @@
           while (allWins && allWins.hasMoreElements()) {
             const w = allWins.getNext();
             if (!w) continue;
-            if (w.name === 'Todolist_SubWindow' || w.name === 'Todolist_Window') {
+            const wName = String(w.name || '');
+            const wTitle = String(w.document?.title || '');
+            const href = String(w.location?.href || '');
+            if (
+              wName.includes('Todolist_SubWindow') ||
+              wName.includes('Todolist_Window') ||
+              wTitle.includes('Todolist_SubWindow') ||
+              wTitle.includes('Todolist_Window') ||
+              href.includes('chrome://taskflow/content/index.html') ||
+              href.includes('chrome://todolist/content/index.html')
+            ) {
               try { w.close(); } catch (_) {}
-            } else {
-              const href = String(w.location?.href || '');
-              if (href.includes('chrome://taskflow/content/index.html') || href.includes('chrome://todolist/content/index.html')) {
-                try { w.close(); } catch (_) {}
-              }
             }
           }
         }

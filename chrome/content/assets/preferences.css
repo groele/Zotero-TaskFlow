@@ -290,13 +290,26 @@ select.todolist-control { width: 100%; cursor: pointer; }
   background: color-mix(in srgb, var(--flow-pref-danger) 12%, transparent);
 }
 
-.todolist-pref-actions {
+.todolist-pref-tags-container,
+.todolist-tag-creator-bar,
+.todolist-export-grid,
+.todolist-import-bar,
+.todolist-shortcut-help {
+  margin-inline-start: 24px;
+}
+
+.todolist-pref-actions,
+.todolist-action-group {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   margin-top: 10px;
   margin-inline-start: 24px;
+}
+
+.todolist-action-group-danger {
+  margin-top: 8px;
 }
 
 .todolist-pref-callout {
@@ -327,6 +340,7 @@ select.todolist-control { width: 100%; cursor: pointer; }
   line-height: 1.6;
 }
 
+.todolist-release-title,
 .todolist-pref-release-title {
   margin-bottom: 8px;
   color: var(--flow-pref-text);

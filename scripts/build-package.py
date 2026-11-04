@@ -126,7 +126,9 @@ def main() -> int:
         if temp_target.exists():
             temp_target.unlink()
 
-    print(f"Built {target.name} ({target.stat().st_size} bytes, {len(files)} files)")
+    sha512_hash = hashlib.sha512(target.read_bytes()).hexdigest()
+    print(f"Built {target.name} ({target.stat().st_size} bytes, {len(files)} files, sha512:{sha512_hash})")
+    print(f"sha512:{sha512_hash}")
     return 0
 
 

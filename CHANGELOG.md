@@ -1,5 +1,15 @@
 # Changelog
 
+## 14.3.0 - 2026-11-04
+
+### Changed
+- Lifecycle shutdown closes all standalone companion windows (`Todolist_SubWindow`, `Todolist_Window`) and cleans up recursive delivery retry timers.
+- Align preferences UI controls with Workspace 4.2 Grid standards: unify action group classes, support release-info CSS classes, and indent Card 4 controls by 24px (40px golden line).
+- Guard read-only literature items in sidebar: disable "同步子笔记" button for non-editable items, prevent false-positive sync success notices, and support direct item ID lookups.
+- Deduplicate data change notifications: avoid 3x duplicate `postMessage` delivery when direct data listeners are registered.
+- Protect CSV exports against spreadsheet formula injection (`=`, `+`, `@`, `-` prefix escaping) in host export handler.
+- Upgrade update feed and package checksums to SHA-512 (`sha512:`), prune redundant historical feed entries, and expand sub-repository AGENTS.md documentation.
+
 ## 12.8.3 - 2026-10-30
 
 - Ensure "打开 PDF" consistently aligns side-by-side to the right of "同步子笔记" across both empty and populated states.

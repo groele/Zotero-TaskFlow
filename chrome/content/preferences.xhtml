@@ -5,7 +5,7 @@
   <html:header class="todolist-pref-header">
     <html:div class="todolist-pref-title-row">
       <html:h1>Zotero TaskFlow</html:h1>
-      <html:span class="todolist-pref-version">v14.2.3</html:span>
+      <html:span class="todolist-pref-version">v14.3.0</html:span>
     </html:div>
   </html:header>
   <html:p id="todolist-pref-status" class="todolist-pref-status" role="status" aria-live="polite">正在加载设置项…</html:p>
@@ -126,7 +126,7 @@
       </html:div>
 
       <html:div class="todolist-pref-subheading" style="margin-top: 18px;">数据导入与灾备恢复</html:div>
-      <html:div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+      <html:div class="todolist-import-bar" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
         <html:select id="todolist-import-mode" class="todolist-control" style="max-width: 220px;" aria-label="数据导入合并模式">
           <html:option value="merge">智能合并 (保留现有并补充导入)</html:option>
           <html:option value="overwrite">完全覆盖 (清空现有并替换为备份)</html:option>
@@ -145,14 +145,14 @@
       </html:div>
 
       <html:div class="todolist-pref-subheading">清单输出</html:div>
-      <html:div class="todolist-action-group">
+      <html:div class="todolist-action-group todolist-pref-actions">
         <html:button id="todolist-btn-print" type="button" class="todolist-pref-btn">🖨️ 打印学术清单</html:button>
         <html:button id="todolist-btn-copy-summary" type="button" class="todolist-pref-btn">📋 复制研读概览 (Markdown 组会汇报)</html:button>
       </html:div>
 
       <html:div class="todolist-pref-subheading todolist-pref-danger-heading" style="margin-top: 18px;">危险操作与偏好重置</html:div>
       <html:p class="todolist-pref-desc">恢复默认偏好只重置开关和选项；清空任务数据会永久删除全部任务及其进度。</html:p>
-      <html:div class="todolist-action-group todolist-action-group-danger">
+      <html:div class="todolist-action-group todolist-pref-actions todolist-action-group-danger">
         <html:button id="todolist-btn-clear-all" type="button" class="todolist-pref-btn todolist-pref-btn-danger">🗑️ 清空所有任务数据</html:button>
         <html:button id="todolist-btn-reset-defaults" type="button" class="todolist-pref-btn todolist-pref-btn-warning">🔄 恢复默认偏好设置</html:button>
       </html:div>
@@ -160,12 +160,12 @@
   </html:details>
 
   <!-- 底部版本信息区 -->
-  <html:footer class="todolist-pref-release-info" aria-label="版本信息">
-    <html:div class="todolist-pref-release-title">版本信息</html:div>
+  <html:footer class="todolist-pref-release-info todolist-release-info" aria-label="版本信息">
+    <html:div class="todolist-pref-release-title todolist-release-title">版本信息</html:div>
     <html:dl>
-      <html:div><html:dt>版本说明</html:dt><html:dd>重构设置面板架构为六大业务流转模块，修复独立伴随窗口生命周期关闭、只读文献子笔记防护与 CSV 注入安全隐患，完善 CSS 选择器样式继承。</html:dd></html:div>
+      <html:div><html:dt>版本说明</html:dt><html:dd>升级版本至 v14.3.0，闭环独立伴随窗口生命周期与定时器纳管，完善 4.2 网格对齐规范与样式选择器继承，强化只读条目子笔记防护与通知去重。</html:dd></html:div>
       <html:div><html:dt>构建日期</html:dt><html:dd>2026-11-04</html:dd></html:div>
-      <html:div><html:dt>最新安装包</html:dt><html:dd><html:a href="https://github.com/groele/Zotero-TaskFlow/releases/download/v14.2.3/zotero-taskflow-14.2.3.xpi">下载 TaskFlow v14.2.3</html:a></html:dd></html:div>
+      <html:div><html:dt>最新安装包</html:dt><html:dd><html:a href="https://github.com/groele/Zotero-TaskFlow/releases/download/v14.3.0/zotero-taskflow-14.3.0.xpi">下载 TaskFlow v14.3.0</html:a></html:dd></html:div>
       <html:div><html:dt>项目仓库</html:dt><html:dd><html:a href="https://github.com/groele/Zotero-TaskFlow">GitHub 仓库</html:a></html:dd></html:div>
     </html:dl>
   </html:footer>

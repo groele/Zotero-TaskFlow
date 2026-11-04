@@ -31,6 +31,13 @@ class MatchingUpdateEntryTests(unittest.TestCase):
             package.write_bytes(content)
             validate_update_hash({"update_hash": "sha256:" + hashlib.sha256(content).hexdigest()}, package)
 
+    def test_release_checksum_supports_sha512(self):
+        content = b"test xpi bytes"
+        with tempfile.TemporaryDirectory(dir=ROOT) as directory:
+            package = Path(directory) / "package.xpi"
+            package.write_bytes(content)
+            validate_update_hash({"update_hash": "sha512:" + hashlib.sha512(content).hexdigest()}, package)
+
     def test_release_checksum_mismatch_is_rejected(self):
         with tempfile.TemporaryDirectory(dir=ROOT) as directory:
             package = Path(directory) / "package.xpi"

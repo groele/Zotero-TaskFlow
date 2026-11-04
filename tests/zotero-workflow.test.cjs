@@ -460,3 +460,36 @@ test('CSV export escapes formula injection prefixes', async () => {
   assert(exportedContent.includes(`"'=SUM(1+1)"`), 'Formula prefix = must be escaped with single quote');
   assert(exportedContent.includes(`"'+cmd|/c calc"`), 'Formula prefix + must be escaped with single quote');
 });
+
+test('readonly item disables sync note button and syncTasksToChildNote returns null', async (t) => {
+  const native = makeHost();
+  const readonlyPaper = {
+    ...paper(10, 'RO_ITEM', 1),
+    isEditable: () => false
+  };
+  referenceHost(native, [readonlyPaper]);
+  const fixture = await paneFixture(t, native, readonlyPaper);
+  const syncBtn = fixture.body.querySelector('.td-action-notes');
+  assert(syncBtn, 'Sync button should exist in item pane');
+  assert.equal(syncBtn.disabled, true, 'Sync button should be disabled for readonly items');
+  assert.equal(syncBtn.title, '只读文献无法同步子笔记');
+
+  const res = await native.host.syncTasksToChildNote(readonlyPaper);
+  assert.equal(res, null, 'syncTasksToChildNote should return null for readonly items');
+
+  const resById = await native.host.syncTasksToChildNote(readonlyPaper.id);
+  assert.equal(resById, null, 'syncTasksToChildNote should return null for readonly item ID');
+});
+
+test('shutdown cancels pending standalone delivery timers', async () => {
+  const native = makeHost();
+  let cancelled = false;
+  native.host._standaloneTimers = new Set([12345]);
+  native.context.clearTimeout = (id) => {
+    if (id === 12345) cancelled = true;
+  };
+  native.context.Services = { wm: { getEnumerator: () => ({ hasMoreElements: () => false }) } };
+  await native.host.shutdown();
+  assert.equal(cancelled, true, 'Standalone timer should be cleared on shutdown');
+  assert.equal(native.host._standaloneTimers.size, 0);
+});

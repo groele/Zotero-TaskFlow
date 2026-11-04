@@ -24,6 +24,7 @@ const ZoteroBridge = {
         window.addEventListener('unload', () => unsubscribe?.(), { once: true });
       }
       if (host?.registerDataListener) {
+        this._hasDirectDataListener = true;
         this._dataListener = data => Storage.acceptData(data);
         host.registerDataListener(this._dataListener);
         window.addEventListener('unload', () => host.unregisterDataListener(this._dataListener), { once: true });
@@ -114,7 +115,11 @@ const ZoteroBridge = {
         }
       }
 
-      if ((data.type === 'TASKFLOW_DATA_CHANGED' || data.type === 'TODOLIST_DATA_CHANGED') && data.data) Storage.acceptData(data.data);
+      if ((data.type === 'TASKFLOW_DATA_CHANGED' || data.type === 'TODOLIST_DATA_CHANGED') && data.data) {
+        if (!this._hasDirectDataListener) {
+          Storage.acceptData(data.data);
+        }
+      }
       if ((data.type === 'TASKFLOW_HOST_THEME' || data.type === 'TODOLIST_HOST_THEME')) this.setHostTheme(data.theme);
 
       // Handle direct navigation request from host
