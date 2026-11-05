@@ -1,0 +1,46 @@
+/**
+ * Zotero TaskFlow - Configuration Constants
+ */
+export const ADDON_ID = 'taskflow@groele.org';
+export const CHROME_ROOT = 'chrome://taskflow/content/';
+
+export const DEFAULT_PREFS: Record<string, any> = {
+  windowMode: 'tab',
+  subwindowAlwaysOnTop: false,
+  subwindowCompactMode: true,
+  defaultView: 'list',
+  theme: 'zotero',
+  showCompleted: true,
+  sortOrder: 'dueDate',
+  showWelcomeOnStartup: true,
+  toolbarShowBadge: true,
+  enableItemPane: true,
+  itemPaneShowProgressBar: true,
+  itemPaneShowSubtasks: true,
+  locateOnTaskClick: true,
+  dragDropFromLibrary: true,
+  itemContextMenuCreate: false,
+  itemContextMenuBatch: false,
+  autoSyncChildNote: true,
+  childNoteTitle: '📝 [TaskFlow] 研读清单与进度',
+  childNoteIncludeSubtasks: true,
+  childNoteIncludeQuotes: true,
+  childNoteAutoUpdateOnSubtask: true,
+  autoTagOnCreate: true,
+  tagForPending: '待研读',
+  autoTagOnComplete: true,
+  tagForCompleted: '精读已完成',
+  autoTagFromItem: true,
+  academicPresets: true,
+  defaultTaskType: 'literature_reading',
+  defaultPriority: 'medium',
+  defaultDueDays: 7,
+  readingProfile: 'general',
+  readerShortcutAction: 'create_instant',
+  readerSelectionQuickAdd: false,
+  pdfReaderJumpPage: true,
+  enableSound: true,
+  dailySummary: false,
+  summaryTime: '09:00',
+  autoArchiveDays: 0,
+};

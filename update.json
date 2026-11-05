@@ -3,9 +3,9 @@
     "taskflow@groele.org": {
       "updates": [
         {
-          "version": "14.3.0",
-          "update_link": "https://github.com/groele/Zotero-TaskFlow/releases/download/v14.3.0/zotero-taskflow-14.3.0.xpi",
-          "update_hash": "sha512:b47589ca13cd765d1927144a8b32de2c39f22a0b4ee466475c4af947957b09daecdab4c798857f0e68d1ee944b000a46065787a7b71324a4893ac8907e81a15c",
+          "version": "14.4.0",
+          "update_link": "https://github.com/groele/Zotero-TaskFlow/releases/download/v14.4.0/zotero-taskflow-14.4.0.xpi",
+          "update_hash": "sha512:1517bf919309f9ff186e994edaed0109022f3c1b911d35cf27b264b871896edf5eb9762ebaa2a0db7320723ab29732984aa39c4bb45ebada447488349dd44f40",
           "applications": {
             "zotero": {
               "strict_min_version": "10.0",

@@ -1,5 +1,21 @@
 # Changelog
 
+## 14.4.0 - 2026-11-05
+
+### Added
+- Modern TypeScript + esbuild compilation pipeline: modularized host architecture into src/ (config.ts, 	askRules.ts, literatureWorkflow.ts, itemPane.ts, index.ts).
+- Standardized package scripts: unified cross-platform workflow with 
+pm run tsc, 
+pm run build:source, 
+pm run build, and 
+pm test.
+- Automated packaging and hash closure: scripts/build.mjs orchestrates TypeScript compilation, esbuild bundle generation (Firefox 140+ / Gecko 153+ target), XPI packaging, and SHA-512 verification.
+
+### Changed
+- Refactored legacy monolithic script loading into single modern IIFE host runtime bundle.
+- Streamlined clean build lifecycle and added comprehensive test coverage with 158 tests passing.
+
+
 ## 14.3.0 - 2026-11-04
 
 ### Changed
