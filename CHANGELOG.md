@@ -1,5 +1,15 @@
 # Changelog
 
+## 15.0.0 - 2026-11-05
+
+### Major Architectural Milestone
+- Migrated codebase to modern modular TypeScript (`src/`) and esbuild compilation pipeline.
+- Standardized package commands (`npm run tsc`, `npm run build:source`, `npm run build`, `npm test`) aligned with Zotero Flow engineering standards.
+- Production host build outputs pure Firefox 140+ / Gecko 153+ IIFE bundle `chrome/content/scripts/index.js`.
+- Fully decoupled domain rules (`taskRules.ts`), workflow rules (`literatureWorkflow.ts`), and item pane controls (`itemPane.ts`).
+- End-to-end automated verification with 158 tests passing and automated SHA-512 package checksum generation.
+
+
 ## 14.4.0 - 2026-11-05
 
 ### Added
