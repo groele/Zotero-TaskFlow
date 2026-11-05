@@ -5,7 +5,7 @@
         {
           "version": "15.0.0",
           "update_link": "https://github.com/groele/Zotero-TaskFlow/releases/download/v15.0.0/zotero-taskflow-15.0.0.xpi",
-          "update_hash": "sha512:263c3a931a406d1829556f1f28605dfccf9d8b702490ee9a5480af1291b232c95f947dc122c5e927ecc557f1d7fe0c99a7d7925ad3eefaf4dabe4865c9104e99",
+          "update_hash": "sha512:f65d44d0250b14aaa6aa85170e778602e759598f09bc75ec4639b2cf11cddce4374c2975d375569a6ad768d6bd1003373b5469fce034ab944a745c94a9175414",
           "applications": {
             "zotero": {
               "strict_min_version": "10.0",

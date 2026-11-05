@@ -41,3 +41,5 @@ export const LiteratureWorkflow: any = {
 if (typeof globalThis !== 'undefined' && !(globalThis as any).LiteratureWorkflow) {
   (globalThis as any).LiteratureWorkflow = LiteratureWorkflow;
 }
+
+

@@ -164,3 +164,46 @@ taskflow-pref-package-download-label = Package Download
 taskflow-pref-package-download-link = Download TaskFlow v15.0.0
 taskflow-pref-repository-label = Source Repository
 taskflow-pref-repository-link = GitHub Repository
+
+
+# Dynamic Controls Fluent Localization
+taskflow-pref-field-windowMode = Workspace Default Window Mode
+taskflow-pref-field-subwindowAlwaysOnTop = Companion Subwindow Always on Top (Floats above PDF Reader)
+taskflow-pref-field-subwindowCompactMode = Enable compact stream layout for companion window
+taskflow-pref-field-defaultView = Default Main View
+taskflow-pref-field-theme = Default Visual Theme
+taskflow-pref-field-sortOrder = Default Sort Order for Task Lists
+taskflow-pref-field-showCompleted = Show completed tasks in lists by default
+taskflow-pref-field-showWelcomeOnStartup = Show quick-start tips on first launch
+taskflow-pref-field-toolbarShowBadge = Show pending task count badge on main toolbar icon
+taskflow-pref-field-defaultDueDays = Default Due Days for Literature Reading Tasks
+taskflow-pref-field-readingProfile = Default Reading Milestone Template
+taskflow-pref-field-defaultTaskType = Default Academic Task Category
+taskflow-pref-field-defaultPriority = Default Priority for New Tasks
+taskflow-pref-field-enableItemPane = Show Zotero TaskFlow section in right-hand item pane (requires Zotero restart)
+taskflow-pref-field-itemPaneShowProgressBar = Show colored progress bar in item pane
+taskflow-pref-field-itemPaneShowSubtasks = Show subtask checklist and checkboxes in item pane
+taskflow-pref-field-locateOnTaskClick = Clicking linked literature task card locates and highlights item in main library
+taskflow-pref-field-dragDropFromLibrary = Allow drag-and-drop from library list into TaskFlow workspace to create tasks
+taskflow-pref-field-itemContextMenuCreate = Show "Add as Task" in item context menu
+taskflow-pref-field-itemContextMenuBatch = Show "Batch Add Reading Tasks" in multi-item context menu
+taskflow-pref-field-readerShortcutAction = Default action when pressing shortcut in PDF Reader selection
+taskflow-pref-field-readerSelectionQuickAdd = Show "Add to Tasks" button in PDF Reader selection popup
+taskflow-pref-field-pdfReaderJumpPage = Auto-jump to page and annotation quote when opening linked PDF attachment
+taskflow-pref-field-autoSyncChildNote = Enable automatic bidirectional sync between tasks and item child notes
+taskflow-pref-field-childNoteTitle = Title for auto-generated rich-text child note
+taskflow-pref-field-childNoteIncludeSubtasks = Include subtask checklist in child note
+taskflow-pref-field-childNoteIncludeQuotes = Include quotes and annotation excerpts in child note
+taskflow-pref-field-childNoteAutoUpdateOnSubtask = Auto-update child note checkboxes when subtasks are toggled in board
+taskflow-pref-field-autoTagOnCreate = Auto-add tag to Zotero item when reading task is created
+taskflow-pref-field-tagForPending = Tag name for pending reading items
+taskflow-pref-field-autoTagOnComplete = Auto-add tag to Zotero item when reading task is completed
+taskflow-pref-field-tagForCompleted = Tag name for completed reading items
+taskflow-pref-field-autoTagFromItem = Inherit item tags automatically when creating tasks
+taskflow-pref-field-enableSound = Play sound alert on task due, pomodoro finish, or task completion
+taskflow-pref-field-pomodoroFocus = Focus Sprint Duration (minutes)
+taskflow-pref-field-pomodoroShortBreak = Short Break Duration (minutes)
+taskflow-pref-field-pomodoroLongBreak = Long Break Duration (minutes)
+taskflow-pref-field-dailySummary = Deliver daily morning summary notification of due reading tasks
+taskflow-pref-field-summaryTime = Daily morning summary delivery time
+taskflow-pref-field-autoArchiveDays = Auto-archive completed tasks after specified days (0 = never)

@@ -15,6 +15,14 @@ declare let IOUtils: any;
 declare let Zotero_Tabs: any;
 declare let ChromeUtils: any;
 
+interface Window {
+  [key: string]: any;
+}
+
+interface HTMLElement {
+  [key: string]: any;
+}
+
 declare namespace JSX {
   interface IntrinsicElements {
     [elemName: string]: any;

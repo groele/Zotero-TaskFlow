@@ -1,121 +1,153 @@
-/**
- * Zotero TaskFlow - ItemPane Integration Module
- * Handles sidebar custom section rendering, progress bars, quick tasks, and subtask milestones.
- */
-(function (global) {
-  const ADDON_ID = 'taskflow@groele.org';
-  const CHROME_ROOT = 'chrome://taskflow/content/';
+(() => {
+  // src/config.ts
+  var ADDON_ID = "taskflow@groele.org";
+  var CHROME_ROOT = "chrome://taskflow/content/";
 
+  // src/literatureWorkflow.ts
+  var LiteratureWorkflow = {
+    profiles: {
+      general: { label: "通用研读", steps: ["通读摘要、引言与结论，明确研究问题", "梳理核心方法、主要结果与证据链", "检查关键图表、适用条件与局限性", "对照相关工作，记录可复用的方法或思路", "整理研读笔记、疑问与后续行动"] },
+      theory: { label: "理论论文", steps: ["明确研究问题、模型与物理假设", "逐步核查关键推导、符号与量纲", "检验极限情况、守恒关系与适用范围", "比较已有理论，提炼可检验预测", "整理推导笔记、局限与可复用计算"] },
+      experiment: { label: "实验论文", steps: ["明确实验问题、样品与测量条件", "梳理实验流程、仪器参数与对照组", "核查原始证据、误差来源与统计报告", "评估机制解释、可重复性与替代解释", "记录设备需求、实验启发与验证计划"] },
+      review: { label: "综述论文", steps: ["明确综述范围、分类框架与核心问题", "梳理代表工作、时间线与关键证据", "比较不同路线的共识、分歧与局限", "追踪关键原始文献并识别研究空白", "形成主题脉络图与后续阅读清单"] },
+      algorithm: { label: "算法与复现", steps: ["明确任务定义、输入输出与核心贡献", "梳理算法结构、目标函数与复杂度", "核查基线、消融、数据划分与评价指标", "检查代码、环境与最小复现实验", "记录复现结果、局限与迁移条件"] }
+    },
+    profile(id) {
+      return this.profiles[id] || this.profiles.general;
+    },
+    days(value = 7) {
+      return Number.isInteger(Number(value)) && Number(value) >= 1 && Number(value) <= 365 ? Number(value) : 7;
+    },
+    dateAfter(days = 7, from = /* @__PURE__ */ new Date()) {
+      const date = new Date(from);
+      date.setDate(date.getDate() + Number(days));
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    },
+    steps(profileID, generateId) {
+      return this.profile(profileID).steps.map((title, index) => ({ id: generateId(), title: `${index + 1}. ${title}`, completed: false }));
+    },
+    templates() {
+      return Object.entries(this.profiles).map(([id, profile]) => ({
+        id: id === "general" ? "paper-reading-milestones" : `paper-reading-${id}`,
+        name: `📖 ${profile.label}清单`,
+        icon: "📖",
+        task: {
+          title: `[精读] ${profile.label}`,
+          description: `按${profile.label}流程梳理问题、方法、证据与局限`,
+          priority: "medium",
+          category: "论文研读",
+          academicType: "literature_reading",
+          readingProfile: id,
+          subtasks: profile.steps.map((title, index) => ({ title: `${index + 1}. ${title}` }))
+        }
+      }));
+    },
+    samePending(task, candidate, userLibraryID, wholeItem = false) {
+      if (task.completed || task.zoteroItemKey !== candidate.zoteroItemKey || (task.zoteroLibraryID || userLibraryID) !== candidate.zoteroLibraryID) return false;
+      if (wholeItem) return !task.academicType || task.academicType === "literature_reading";
+      if (candidate.literatureWorkflowId && task.literatureWorkflowId === candidate.literatureWorkflowId) return true;
+      return candidate.literatureWorkflowId === "reading" && task.title === candidate.title && (!task.academicType || task.academicType === "literature_reading");
+    }
+  };
+  if (typeof globalThis !== "undefined" && !globalThis.LiteratureWorkflow) {
+    globalThis.LiteratureWorkflow = LiteratureWorkflow;
+  }
 
-  const itemSelectUri = (item) => {
-    if (!item) return '';
+  // src/itemPane.ts
+  var itemSelectUri = (item) => {
+    if (!item) return "";
     const key = item.key || item.id;
     const groupID = Zotero.Libraries?.get?.(item.libraryID)?.groupID;
-    return groupID
-      ? `zotero://select/groups/${groupID}/items/${key}`
-      : `zotero://select/library/items/${key}`;
+    return groupID ? `zotero://select/groups/${groupID}/items/${key}` : `zotero://select/library/items/${key}`;
   };
-
-  const serializeLiteratureItem = (item) => {
+  var serializeLiteratureItem = (item) => {
     const target = getLiteratureItem(item);
     if (!target) return null;
-
-    const title = (typeof target.getField === 'function' ? target.getField('title') : target.title) || '无标题文献';
-    const date = typeof target.getField === 'function' ? target.getField('date') : target.date;
-    let year = '';
+    const title = (typeof target.getField === "function" ? target.getField("title") : target.title) || "无标题文献";
+    const date = typeof target.getField === "function" ? target.getField("date") : target.date;
+    let year = "";
     if (date) {
       const match = String(date).match(/\b(19|20)\d{2}\b/);
       year = match ? match[0] : String(date).slice(0, 4);
     }
-
     let authors = [];
     try {
-      if (typeof target.getCreators === 'function') {
-        authors = target.getCreators().map((c) => c.lastName || c.name || `${c.firstName || ''} ${c.lastName || ''}`.trim()).filter(Boolean);
+      if (typeof target.getCreators === "function") {
+        authors = target.getCreators().map((c) => c.lastName || c.name || `${c.firstName || ""} ${c.lastName || ""}`.trim()).filter(Boolean);
       }
-    } catch (_) {}
-
-    const publication = typeof target.getField === 'function'
-      ? (target.getField('publicationTitle') || target.getField('proceedingsTitle') || target.getField('publisher') || '')
-      : '';
-
+    } catch (_) {
+    }
+    const publication = typeof target.getField === "function" ? target.getField("publicationTitle") || target.getField("proceedingsTitle") || target.getField("publisher") || "" : "";
     let tags = [];
     try {
-      if (typeof target.getTags === 'function') {
+      if (typeof target.getTags === "function") {
         tags = target.getTags().map((t) => t.tag || String(t)).filter(Boolean);
       }
-    } catch (_) {}
-
-    // Find main PDF attachment
+    } catch (_) {
+    }
     let pdfUri = null;
     try {
-      if (typeof target.getAttachments === 'function') {
+      if (typeof target.getAttachments === "function") {
         const attIds = target.getAttachments();
         for (const attId of attIds) {
           const att = Zotero.Items.get(attId);
-          if (att && ((typeof att.isPDFAttachment === 'function' && att.isPDFAttachment()) || att.contentType === 'application/pdf')) {
+          if (att && (typeof att.isPDFAttachment === "function" && att.isPDFAttachment() || att.contentType === "application/pdf")) {
             const groupID = Zotero.Libraries?.get?.(att.libraryID)?.groupID;
-            pdfUri = groupID
-              ? `zotero://open-pdf/groups/${groupID}/items/${att.key}`
-              : `zotero://open-pdf/library/items/${att.key}`;
+            pdfUri = groupID ? `zotero://open-pdf/groups/${groupID}/items/${att.key}` : `zotero://open-pdf/library/items/${att.key}`;
             break;
           }
         }
       }
-    } catch (_) {}
-
+    } catch (_) {
+    }
     return {
       key: target.key || String(target.id),
       id: target.id,
       libraryID: target.libraryID,
       title,
-      authors: authors.slice(0, 3).join(', ') + (authors.length > 3 ? ' 等' : ''),
+      authors: authors.slice(0, 3).join(", ") + (authors.length > 3 ? " 等" : ""),
       year,
       publication,
       tags,
       zoteroUri: itemSelectUri(target),
-      pdfUri,
+      pdfUri
     };
   };
-
-  const getLiteratureItem = (item) => {
+  var getLiteratureItem = (item) => {
     if (!item) return null;
-    let target = (typeof item === 'number' || typeof item === 'string')
-      ? (Zotero.Items?.get?.(item) || null)
-      : item;
+    let target = typeof item === "number" || typeof item === "string" ? Zotero.Items?.get?.(item) || null : item;
     if (!target) return null;
     try {
-      if (target.topLevelItem && typeof target.topLevelItem.isRegularItem === 'function' && target.topLevelItem.isRegularItem()) {
+      if (target.topLevelItem && typeof target.topLevelItem.isRegularItem === "function" && target.topLevelItem.isRegularItem()) {
         return target.topLevelItem;
       }
-    } catch (_) {}
-    if (typeof target.isAttachment === 'function' && target.isAttachment()) {
+    } catch (_) {
+    }
+    if (typeof target.isAttachment === "function" && target.isAttachment()) {
       if (target.parentItemID) {
         target = Zotero.Items.get(target.parentItemID) || target;
       }
     }
-    if (typeof target.isNote === 'function' && target.isNote()) {
+    if (typeof target.isNote === "function" && target.isNote()) {
       if (target.parentItemID) {
         target = Zotero.Items.get(target.parentItemID) || target;
       }
     }
     try {
-      if (target.topLevelItem && typeof target.topLevelItem.isRegularItem === 'function' && target.topLevelItem.isRegularItem()) {
+      if (target.topLevelItem && typeof target.topLevelItem.isRegularItem === "function" && target.topLevelItem.isRegularItem()) {
         return target.topLevelItem;
       }
-    } catch (_) {}
+    } catch (_) {
+    }
     return target;
   };
-
-  const TaskFlowItemPane = {
+  var TaskFlowItemPane = {
     ensureItemPaneStyles(doc) {
       if (!doc) return;
-      if (doc.getElementById('todolist-itempane-styles')) return;
+      if (doc.getElementById("todolist-itempane-styles")) return;
       try {
-        const style = doc.createElementNS
-          ? doc.createElementNS('http://www.w3.org/1999/xhtml', 'style')
-          : doc.createElement('style');
-        style.id = 'todolist-itempane-styles';
+        const style = doc.createElementNS ? doc.createElementNS("http://www.w3.org/1999/xhtml", "style") : doc.createElement("style");
+        style.id = "todolist-itempane-styles";
         style.textContent = `
           item-pane-custom-section[data-pane*="todolist-item-pane"],
           item-pane-custom-section[data-pane*="todolist-item-pane"] > collapsible-section,
@@ -219,22 +251,20 @@
         `;
         (doc.head || doc.documentElement || doc.body).appendChild(style);
       } catch (e) {
-        Zotero.logError?.('[TaskFlow] Failed to inject itemPane styles: ' + e);
+        Zotero.logError?.("[TaskFlow] Failed to inject itemPane styles: " + e);
       }
     },
-
     registerItemPaneSection(host) {
-      if (!host.getPref('enableItemPane', true)) return;
-      if (typeof Zotero.ItemPaneManager?.registerSection !== 'function') return;
+      if (!host.getPref("enableItemPane", true)) return;
+      if (typeof Zotero.ItemPaneManager?.registerSection !== "function") return;
       try {
-        const sectionStates = new WeakMap();
+        const sectionStates = /* @__PURE__ */ new WeakMap();
         const icon = `${CHROME_ROOT}icons/taskflow.svg`;
-
         host.itemPaneSectionID = Zotero.ItemPaneManager.registerSection({
-          paneID: 'todolist-item-pane',
+          paneID: "todolist-item-pane",
           pluginID: ADDON_ID,
-          header: { l10nID: 'todolist-item-pane-header', icon },
-          sidenav: { l10nID: 'todolist-item-pane-sidenav', icon },
+          header: { l10nID: "todolist-item-pane-header", icon },
+          sidenav: { l10nID: "todolist-item-pane-sidenav", icon },
           onInit: ({ doc, body, item, refresh }) => {
             const document = doc || body?.ownerDocument;
             if (document) {
@@ -246,14 +276,14 @@
               itemKey: target?.key || null,
               libraryID: target?.libraryID || null,
               renderVersion: 0,
-              quickDraft: '',
+              quickDraft: "",
               quickPriority: null,
-              expandedTasks: new Map(),
+              expandedTasks: /* @__PURE__ */ new Map(),
               saving: false,
               refresh,
               onDataChanged: () => {
                 Promise.resolve(refresh?.()).catch((err) => {
-                  Zotero.logError?.('[TaskFlow] ItemPane refresh failed: ' + err);
+                  Zotero.logError?.("[TaskFlow] ItemPane refresh failed: " + err);
                 });
               }
             };
@@ -276,7 +306,7 @@
             if (state) {
               if (state.itemKey !== target?.key || state.libraryID !== target?.libraryID) {
                 state.profileID = null;
-                state.quickDraft = '';
+                state.quickDraft = "";
                 state.quickPriority = null;
                 state.expandedTasks.clear();
               }
@@ -293,84 +323,87 @@
               Zotero.getMainWindow?.()?.ZoteroPane?.getSelectedItems?.()?.[0]
             );
             const state = sectionStates.get(body);
-            setSectionSummary?.('文献研读待办');
+            setSectionSummary?.("文献研读待办");
             body.replaceChildren();
-            const html = 'http://www.w3.org/1999/xhtml';
-            const createEl = (tag, className = '', text = null) => {
+            const html = "http://www.w3.org/1999/xhtml";
+            const createEl = (tag, className = "", text = null) => {
               const el = document.createElementNS ? document.createElementNS(html, tag) : document.createElement(tag);
               if (className) el.className = className;
-              if (text !== null && text !== undefined) el.textContent = text;
+              if (text !== null && text !== void 0) el.textContent = text;
               return el;
             };
-            const fallback = createEl('div', 'td-pane-wrap td-pane-fallback');
+            const fallback = createEl("div", "td-pane-wrap td-pane-fallback");
             const fallbackVersion = state ? ++state.renderVersion : 0;
-            const addButton = createEl('button', 'td-add-reading', '＋ 添加到论文研读');
-            addButton.type = 'button';
+            const addButton = createEl("button", "td-add-reading", "＋ 添加到论文研读");
+            addButton.type = "button";
             addButton.disabled = !target || Boolean(state?.saving);
-            addButton.setAttribute('aria-label', '添加到论文研读');
-            addButton.title = target ? '创建关联当前文献的研读待办，默认一周后截止' : '请先在 Zotero 文献库中选中一篇文献';
-            addButton.addEventListener('click', async () => {
+            addButton.setAttribute("aria-label", "添加到论文研读");
+            addButton.title = target ? "创建关联当前文献的研读待办，默认一周后截止" : "请先在 Zotero 文献库中选中一篇文献";
+            addButton.addEventListener("click", async () => {
               if (!target || addButton.disabled) return;
               addButton.disabled = true;
               try {
                 const result = await host.addLiteratureReadingTask(target);
-                host.showNotice(result.created ? '已加入论文研读' : '该文献已有关联待办',
-                  `截止日期：${result.task?.dueDate || '未设置'}`);
+                host.showNotice(
+                  result.created ? "已加入论文研读" : "该文献已有关联待办",
+                  `截止日期：${result.task?.dueDate || "未设置"}`
+                );
                 await state?.refresh?.();
               } catch (error) {
                 addButton.disabled = false;
-                host.showNotice('保存失败', String(error));
+                host.showNotice("保存失败", String(error));
               }
             });
             fallback.appendChild(addButton);
-
-            const fallbackTaskList = createEl('div', 'td-fallback-task-list');
+            const fallbackTaskList = createEl("div", "td-fallback-task-list");
             fallback.appendChild(fallbackTaskList);
             if (target) {
-              const renderFallbackTasks = tasks => {
+              const renderFallbackTasks = (tasks) => {
                 fallbackTaskList.replaceChildren();
                 if (tasks.length) {
                   for (const task of tasks) {
-                    const row = createEl('div', 'td-task-card td-task-card-fallback');
-                    const taskRow = createEl('div', 'td-task-row');
-                    const title = createEl('span', 'td-task-title-fallback', task.title || '未命名待办');
-                    title.style.cssText = 'flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;';
-                    const locate = createEl('button', 'td-task-locate', '↗ Zotero');
-                    locate.type = 'button';
-                    locate.title = '在 Zotero 文献库中定位这篇文献';
-                    locate.setAttribute('aria-label', `跳转到文献：${task.zoteroItemTitle || task.title || target.key}`);
-                    locate.addEventListener('click', event => {
+                    const row = createEl("div", "td-task-card td-task-card-fallback");
+                    const taskRow = createEl("div", "td-task-row");
+                    const title = createEl("span", "td-task-title-fallback", task.title || "未命名待办");
+                    title.style.cssText = "flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;";
+                    const locate = createEl("button", "td-task-locate", "↗ Zotero");
+                    locate.type = "button";
+                    locate.title = "在 Zotero 文献库中定位这篇文献";
+                    locate.setAttribute("aria-label", `跳转到文献：${task.zoteroItemTitle || task.title || target.key}`);
+                    locate.addEventListener("click", (event) => {
                       event.preventDefault();
                       event.stopPropagation();
-                      host.locateLiteratureItem(task.zoteroUri || task.zoteroItemKey, task.zoteroLibraryID,
-                        Zotero.getMainWindow?.()).catch(error => host.showNotice('无法跳转文献', String(error)));
+                      host.locateLiteratureItem(
+                        task.zoteroUri || task.zoteroItemKey,
+                        task.zoteroLibraryID,
+                        Zotero.getMainWindow?.()
+                      ).catch((error) => host.showNotice("无法跳转文献", String(error)));
                     });
                     taskRow.append(title, locate);
                     row.appendChild(taskRow);
                     fallbackTaskList.appendChild(row);
                   }
                 } else {
-                  fallbackTaskList.appendChild(createEl('div', 'td-add-hint', '当前文献还没有关联的研读待办。'));
+                  fallbackTaskList.appendChild(createEl("div", "td-add-hint", "当前文献还没有关联的研读待办。"));
                 }
               };
-              const matchesTarget = task => task.zoteroItemKey === target.key &&
-                (task.zoteroLibraryID || Zotero.Libraries.userLibraryID) === target.libraryID;
+              const matchesTarget = (task) => task.zoteroItemKey === target.key && (task.zoteroLibraryID || Zotero.Libraries.userLibraryID) === target.libraryID;
               renderFallbackTasks((host._cachedData?.tasks || []).filter(matchesTarget));
               if (!host._cachedData) {
-                host.loadData().then(data => {
+                host.loadData().then((data) => {
                   if (state && state.renderVersion !== fallbackVersion) return;
-                  if (body.querySelector('.td-pane-fallback') !== fallback) return;
+                  if (body.querySelector(".td-pane-fallback") !== fallback) return;
                   renderFallbackTasks((data.tasks || []).filter(matchesTarget));
-                }).catch(error => {
+                }).catch((error) => {
                   if (state && state.renderVersion !== fallbackVersion) return;
-                  if (body.querySelector('.td-pane-fallback') === fallback) {
-                    fallbackTaskList.replaceChildren(createEl('div', 'td-add-hint', '待办读取失败；添加按钮仍可使用，请重新选择条目重试。'));
+                  if (body.querySelector(".td-pane-fallback") === fallback) {
+                    fallbackTaskList.replaceChildren(createEl("div", "td-add-hint", "待办读取失败；添加按钮仍可使用，请重新选择条目重试。"));
                   }
-                  Zotero.logError?.('[TaskFlow] ItemPane fallback data load failed: ' + error);
+                  Zotero.logError?.("[TaskFlow] ItemPane fallback data load failed: " + error);
                 });
               }
             } else {
-              fallbackTaskList.appendChild(createEl('div', 'td-add-hint', '请在文献库中选中一篇文献以查看关联待办和跳转按钮。'));
+              fallbackTaskList.appendChild(createEl("div", "td-add-hint", "请在文献库中选中一篇文献以查看关联待办和跳转按钮。"));
             }
             body.appendChild(fallback);
           },
@@ -384,140 +417,120 @@
               Zotero.getMainWindow?.()?.ZoteroPane?.getSelectedItems?.()?.[0]
             );
             if (!target) return;
-
             const state = sectionStates.get(body);
             const renderVersion = state ? ++state.renderVersion : 0;
-            const html = 'http://www.w3.org/1999/xhtml';
-            const createEl = (tag, className = '', text = null) => {
-              const el = document.createElementNS
-                ? document.createElementNS(html, tag)
-                : document.createElement(tag);
+            const html = "http://www.w3.org/1999/xhtml";
+            const createEl = (tag, className = "", text = null) => {
+              const el = document.createElementNS ? document.createElementNS(html, tag) : document.createElement(tag);
               if (className) el.className = className;
-              if (text !== null && text !== undefined) {
+              if (text !== null && text !== void 0) {
                 el.textContent = text;
               }
               return el;
             };
-
             let data;
             try {
               data = await host.loadData();
             } catch (error) {
               if (state && renderVersion !== state.renderVersion) return;
-              body.appendChild(createEl('div', 'td-add-hint', '待办数据读取失败，请重新选择条目后重试。'));
-              Zotero.logError?.('[TaskFlow] ItemPane data load failed: ' + error);
+              body.appendChild(createEl("div", "td-add-hint", "待办数据读取失败，请重新选择条目后重试。"));
+              Zotero.logError?.("[TaskFlow] ItemPane data load failed: " + error);
               return;
             }
             if (state && renderVersion !== state.renderVersion) return;
             body.replaceChildren();
             const targetKey = target.key;
-            const tasks = (data.tasks || []).filter(t => t.zoteroItemKey === targetKey &&
-              (t.zoteroLibraryID || Zotero.Libraries.userLibraryID) === target.libraryID);
+            const tasks = (data.tasks || []).filter((t) => t.zoteroItemKey === targetKey && (t.zoteroLibraryID || Zotero.Libraries.userLibraryID) === target.libraryID);
             const uncompletedTasks = tasks.filter((t) => !t.completed);
             const total = tasks.length;
             const done = total - uncompletedTasks.length;
-            const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-
-            setSectionSummary?.(total ? `${total} 项待办 · ${done}/${total} 完成` : '展开后快速新建');
-
-            const wrapper = createEl('div', 'td-pane-wrap');
-
-            // 1. Header & Progress Card
-            const headerCard = createEl('div', 'td-header-card');
-            const headerTop = createEl('div', 'td-header-top');
-
-            let statusText = '暂无待办';
-            let badgeClass = 'td-status-badge td-status-empty';
+            const pct = total > 0 ? Math.round(done / total * 100) : 0;
+            setSectionSummary?.(total ? `${total} 项待办 · ${done}/${total} 完成` : "展开后快速新建");
+            const wrapper = createEl("div", "td-pane-wrap");
+            const headerCard = createEl("div", "td-header-card");
+            const headerTop = createEl("div", "td-header-top");
+            let statusText = "暂无待办";
+            let badgeClass = "td-status-badge td-status-empty";
             if (total > 0) {
               if (done === total) {
                 statusText = `研读已完成 (${done}/${total})`;
-                badgeClass = 'td-status-badge td-status-done';
+                badgeClass = "td-status-badge td-status-done";
               } else {
                 statusText = `研读进行中 (${done}/${total})`;
-                badgeClass = 'td-status-badge td-status-active';
+                badgeClass = "td-status-badge td-status-active";
               }
             }
-            const statusBadge = createEl('span', badgeClass, statusText);
+            const statusBadge = createEl("span", badgeClass, statusText);
             headerTop.appendChild(statusBadge);
-
             if (total > 0) {
-              const pctSpan = createEl('span', 'td-progress-pct', `${pct}%`);
+              const pctSpan = createEl("span", "td-progress-pct", `${pct}%`);
               headerTop.appendChild(pctSpan);
             }
             headerCard.appendChild(headerTop);
-
-            const showProgressBar = host.getPref('itemPaneShowProgressBar', true);
+            const showProgressBar = host.getPref("itemPaneShowProgressBar", true);
             if (total > 0 && showProgressBar) {
-              const track = createEl('div', 'td-progress-track');
-              track.setAttribute('role', 'progressbar');
-              track.setAttribute('data-l10n-id', 'taskflow-item-pane-progress');
-              track.setAttribute('aria-valuemin', '0');
-              track.setAttribute('aria-valuemax', String(total));
-              track.setAttribute('aria-valuenow', String(done));
-              const fill = createEl('div', 'td-progress-fill');
+              const track = createEl("div", "td-progress-track");
+              track.setAttribute("role", "progressbar");
+              track.setAttribute("data-l10n-id", "taskflow-item-pane-progress");
+              track.setAttribute("aria-valuemin", "0");
+              track.setAttribute("aria-valuemax", String(total));
+              track.setAttribute("aria-valuenow", String(done));
+              const fill = createEl("div", "td-progress-fill");
               fill.style.width = `${pct}%`;
               track.appendChild(fill);
               headerCard.appendChild(track);
             }
             wrapper.appendChild(headerCard);
-
-            // Keep quick creation in the first screen so it remains easy to
-            // reach even when this literature already has a long task list.
-            const quickBox = createEl('div', 'td-quick-box');
-
-            const prioSelect = createEl('select', 'td-prio-select');
-            prioSelect.setAttribute('aria-label', '新待办优先级');
-            prioSelect.title = '新待办优先级';
-            const defaultPrio = state?.quickPriority || host.getPref('defaultPriority', 'medium');
+            const quickBox = createEl("div", "td-quick-box");
+            const prioSelect = createEl("select", "td-prio-select");
+            prioSelect.setAttribute("aria-label", "新待办优先级");
+            prioSelect.title = "新待办优先级";
+            const defaultPrio = state?.quickPriority || host.getPref("defaultPriority", "medium");
             const priorities = [
-              { val: 'medium', label: '中优先' },
-              { val: 'high', label: '高优先' },
-              { val: 'low', label: '低优先' }
+              { val: "medium", label: "中优先" },
+              { val: "high", label: "高优先" },
+              { val: "low", label: "低优先" }
             ];
             for (const p of priorities) {
-              const opt = createEl('option', '', p.label);
+              const opt = createEl("option", "", p.label);
               opt.value = p.val;
               if (p.val === defaultPrio) opt.selected = true;
               prioSelect.appendChild(opt);
             }
-            prioSelect.addEventListener('change', () => { if (state) state.quickPriority = prioSelect.value; });
-
-            const quickInput = createEl('input', 'td-quick-input');
-            quickInput.type = 'text';
-            quickInput.value = state?.quickDraft || '';
-            quickInput.addEventListener('input', () => { if (state) state.quickDraft = quickInput.value; });
-            quickInput.setAttribute('aria-label', '新待办事项');
-            quickInput.placeholder = '输入待办内容，按 Enter 添加';
-            quickInput.id = 'td-quick-input';
-
-            const quickBtn = createEl('button', 'td-quick-submit', '添加');
-            quickBtn.type = 'button';
-            quickBtn.title = '添加待办任务';
-            quickBtn.setAttribute('aria-label', '添加待办任务');
+            prioSelect.addEventListener("change", () => {
+              if (state) state.quickPriority = prioSelect.value;
+            });
+            const quickInput = createEl("input", "td-quick-input");
+            quickInput.type = "text";
+            quickInput.value = state?.quickDraft || "";
+            quickInput.addEventListener("input", () => {
+              if (state) state.quickDraft = quickInput.value;
+            });
+            quickInput.setAttribute("aria-label", "新待办事项");
+            quickInput.placeholder = "输入待办内容，按 Enter 添加";
+            quickInput.id = "td-quick-input";
+            const quickBtn = createEl("button", "td-quick-submit", "添加");
+            quickBtn.type = "button";
+            quickBtn.title = "添加待办任务";
+            quickBtn.setAttribute("aria-label", "添加待办任务");
             quickInput.disabled = prioSelect.disabled = quickBtn.disabled = Boolean(state?.saving);
-
             const literatureTitle = serializeLiteratureItem(target).title;
-            const existingReadingTask = uncompletedTasks.find(task =>
-              (task.literatureWorkflowId === 'reading' || task.title === `研读：${literatureTitle}`) &&
-              (task.academicType || 'literature_reading') === 'literature_reading');
-            const addReadingBtn = createEl('button', 'td-add-reading', existingReadingTask ? '已加入论文研读' : '＋ 添加到论文研读');
-            addReadingBtn.type = 'button';
-            addReadingBtn.title = `为当前文献创建论文研读待办，默认 ${LiteratureWorkflow.days(host.getPref('defaultDueDays', 7))} 天后截止`;
-            addReadingBtn.setAttribute('aria-label', '添加到论文研读');
+            const existingReadingTask = uncompletedTasks.find((task) => (task.literatureWorkflowId === "reading" || task.title === `研读：${literatureTitle}`) && (task.academicType || "literature_reading") === "literature_reading");
+            const addReadingBtn = createEl("button", "td-add-reading", existingReadingTask ? "已加入论文研读" : "＋ 添加到论文研读");
+            addReadingBtn.type = "button";
+            addReadingBtn.title = `为当前文献创建论文研读待办，默认 ${LiteratureWorkflow.days(host.getPref("defaultDueDays", 7))} 天后截止`;
+            addReadingBtn.setAttribute("aria-label", "添加到论文研读");
             addReadingBtn.disabled = Boolean(existingReadingTask || state?.saving);
-            if (addReadingBtn.disabled) addReadingBtn.style.opacity = '0.65';
-            const addHint = createEl('div', 'td-add-hint', existingReadingTask
-              ? `已关联当前文献 · 截止日期：${existingReadingTask.dueDate || '未设置'}`
-              : `点击即可创建待办并关联当前文献 · 默认 ${LiteratureWorkflow.days(host.getPref('defaultDueDays', 7))} 天后截止`);
-            addHint.setAttribute('role', 'status');
-            addHint.setAttribute('aria-live', 'polite');
+            if (addReadingBtn.disabled) addReadingBtn.style.opacity = "0.65";
+            const addHint = createEl("div", "td-add-hint", existingReadingTask ? `已关联当前文献 · 截止日期：${existingReadingTask.dueDate || "未设置"}` : `点击即可创建待办并关联当前文献 · 默认 ${LiteratureWorkflow.days(host.getPref("defaultDueDays", 7))} 天后截止`);
+            addHint.setAttribute("role", "status");
+            addHint.setAttribute("aria-live", "polite");
             wrapper.appendChild(addReadingBtn);
             wrapper.appendChild(addHint);
-
             let saving = false;
             const handleQuickAdd = async (useLiteratureTitle = false) => {
-              if (saving || state?.saving || (useLiteratureTitle && existingReadingTask)) return;
-              const text = useLiteratureTitle ? '' : quickInput.value.trim();
+              if (saving || state?.saving || useLiteratureTitle && existingReadingTask) return;
+              const text = useLiteratureTitle ? "" : quickInput.value.trim();
               if (!useLiteratureTitle && !text) {
                 quickInput.focus();
                 return;
@@ -531,145 +544,132 @@
               prioSelect.disabled = true;
               try {
                 const result = await host.addLiteratureReadingTask(target, {
-                  title: text, priority: selectedPrio,
-                  academicType: useLiteratureTitle ? 'literature_reading' : host.getPref('defaultTaskType', 'literature_reading')
+                  title: text,
+                  priority: selectedPrio,
+                  academicType: useLiteratureTitle ? "literature_reading" : host.getPref("defaultTaskType", "literature_reading")
                 });
                 if (!useLiteratureTitle) {
-                  quickInput.value = '';
-                  if (state?.itemKey === target.key && state?.libraryID === target.libraryID) state.quickDraft = '';
+                  quickInput.value = "";
+                  if (state?.itemKey === target.key && state?.libraryID === target.libraryID) state.quickDraft = "";
                 }
-                host.showNotice(result.created ? '已加入待办事项' : '该文献已加入待办', `截止日期：${result.task.dueDate || '未设置'}`);
+                host.showNotice(result.created ? "已加入待办事项" : "该文献已加入待办", `截止日期：${result.task.dueDate || "未设置"}`);
               } catch (error) {
-                addHint.textContent = '保存失败，请重试。';
-                host.showNotice('保存失败', String(error));
+                addHint.textContent = "保存失败，请重试。";
+                host.showNotice("保存失败", String(error));
                 return;
               } finally {
                 saving = false;
                 if (state) state.saving = false;
                 addReadingBtn.disabled = Boolean(existingReadingTask);
-                addReadingBtn.style.opacity = addReadingBtn.disabled ? '0.65' : '1';
+                addReadingBtn.style.opacity = addReadingBtn.disabled ? "0.65" : "1";
                 quickBtn.disabled = false;
                 quickInput.disabled = false;
                 prioSelect.disabled = false;
               }
               await state?.refresh?.();
             };
-
-            addReadingBtn.addEventListener('click', () => {
-              handleQuickAdd(true).catch(error => Zotero.logError?.('[TaskFlow] Quick add refresh failed: ' + error));
+            addReadingBtn.addEventListener("click", () => {
+              handleQuickAdd(true).catch((error) => Zotero.logError?.("[TaskFlow] Quick add refresh failed: " + error));
             });
-
-            quickInput.addEventListener('keydown', (e) => {
-              if (e.key === 'Enter') {
+            quickInput.addEventListener("keydown", (e) => {
+              if (e.key === "Enter") {
                 e.preventDefault();
-                handleQuickAdd().catch(error => Zotero.logError?.('[TaskFlow] Quick add refresh failed: ' + error));
+                handleQuickAdd().catch((error) => Zotero.logError?.("[TaskFlow] Quick add refresh failed: " + error));
               }
             });
-            quickBtn.addEventListener('click', (e) => {
+            quickBtn.addEventListener("click", (e) => {
               e.preventDefault();
-              handleQuickAdd().catch(error => Zotero.logError?.('[TaskFlow] Quick add refresh failed: ' + error));
+              handleQuickAdd().catch((error) => Zotero.logError?.("[TaskFlow] Quick add refresh failed: " + error));
             });
-
-            const quickLabel = createEl('label', 'td-quick-label', '快速新建待办');
-            quickLabel.setAttribute('for', 'td-quick-input');
+            const quickLabel = createEl("label", "td-quick-label", "快速新建待办");
+            quickLabel.setAttribute("for", "td-quick-input");
             wrapper.appendChild(quickLabel);
             quickBox.appendChild(prioSelect);
             quickBox.appendChild(quickInput);
             quickBox.appendChild(quickBtn);
             wrapper.appendChild(quickBox);
-
-            const profileBox = createEl('label', 'td-reading-profile', '研读模板');
-            const profileSelect = createEl('select');
-            profileSelect.setAttribute('aria-label', '研读模板');
-            const selectedProfile = state?.profileID || tasks.find(task => task.readingProfile)?.readingProfile || host.getPref('readingProfile', 'general');
+            const profileBox = createEl("label", "td-reading-profile", "研读模板");
+            const profileSelect = createEl("select");
+            profileSelect.setAttribute("aria-label", "研读模板");
+            const selectedProfile = state?.profileID || tasks.find((task) => task.readingProfile)?.readingProfile || host.getPref("readingProfile", "general");
             for (const [id, profile] of Object.entries(LiteratureWorkflow.profiles)) {
-              const option = createEl('option', '', profile.label); option.value = id;
+              const option = createEl("option", "", profile.label);
+              option.value = id;
               option.selected = id === selectedProfile;
               profileSelect.appendChild(option);
             }
-            profileSelect.addEventListener('change', () => { if (state) state.profileID = profileSelect.value; });
-            profileBox.appendChild(profileSelect); wrapper.appendChild(profileBox);
-
-            // 2. Empty State Card
+            profileSelect.addEventListener("change", () => {
+              if (state) state.profileID = profileSelect.value;
+            });
+            profileBox.appendChild(profileSelect);
+            wrapper.appendChild(profileBox);
             if (total === 0) {
-              const emptyCard = createEl('div', 'td-empty-card');
-
-              const emptyDesc = createEl('div', 'td-empty-desc', '点击上方“添加到论文研读”或在输入框新建待办；也可按所选模板一键生成 5 步精读清单');
-
-              const btnCreateMilestones = createEl('button', 'td-btn-milestone-primary', '生成精读清单');
-              btnCreateMilestones.type = 'button';
-              btnCreateMilestones.title = '按所选研读模板为本文献建立精读清单';
-              btnCreateMilestones.addEventListener('click', async (e) => {
+              const emptyCard = createEl("div", "td-empty-card");
+              const emptyDesc = createEl("div", "td-empty-desc", "点击上方“添加到论文研读”或在输入框新建待办；也可按所选模板一键生成 5 步精读清单");
+              const btnCreateMilestones = createEl("button", "td-btn-milestone-primary", "生成精读清单");
+              btnCreateMilestones.type = "button";
+              btnCreateMilestones.title = "按所选研读模板为本文献建立精读清单";
+              btnCreateMilestones.addEventListener("click", async (e) => {
                 e.stopPropagation();
                 await host.createReadingMilestones(target, Zotero.getMainWindow?.(), profileSelect.value);
                 state?.refresh?.();
               });
-
               emptyCard.appendChild(emptyDesc);
               emptyCard.appendChild(btnCreateMilestones);
               wrapper.appendChild(emptyCard);
             }
-
-            // 3. Task List Inside Pane
             if (total > 0) {
-              const taskList = createEl('div', 'td-task-list');
-              const showSubtasks = host.getPref('itemPaneShowSubtasks', true);
-
+              const taskList = createEl("div", "td-task-list");
+              const showSubtasks = host.getPref("itemPaneShowSubtasks", true);
               for (const t of tasks) {
-                const taskCard = createEl('div', `td-task-card ${t.completed ? 'is-completed' : ''}`);
+                const taskCard = createEl("div", `td-task-card ${t.completed ? "is-completed" : ""}`);
                 taskCard.dataset.taskId = t.id;
-
-                const row = createEl('div', 'td-task-row');
-                // Keep the title and removal together. Navigation and secondary
-                // controls wrap on their own row to leave room for long titles.
-                const controls = createEl('div', 'td-task-controls');
-
-                // Priority dot
-                const prio = t.priority || 'medium';
-                const prioDot = createEl('span', `td-prio-dot td-prio-${prio}`);
-                const prioLabel = prio === 'high' ? '高' : (prio === 'low' ? '低' : '中');
+                const row = createEl("div", "td-task-row");
+                const controls = createEl("div", "td-task-controls");
+                const prio = t.priority || "medium";
+                const prioDot = createEl("span", `td-prio-dot td-prio-${prio}`);
+                const prioLabel = prio === "high" ? "高" : prio === "low" ? "低" : "中";
                 prioDot.title = `优先级: ${prioLabel}`;
                 row.appendChild(prioDot);
-
-                // Checkbox
-                const checkbox = createEl('input', 'td-checkbox');
-                checkbox.type = 'checkbox';
-                checkbox.setAttribute('aria-label', t.title);
+                const checkbox = createEl("input", "td-checkbox");
+                checkbox.type = "checkbox";
+                checkbox.setAttribute("aria-label", t.title);
                 checkbox.checked = Boolean(t.completed);
-                checkbox.title = t.completed ? '标记为未完成' : '标记为已完成';
-                checkbox.addEventListener('change', async (e) => {
+                checkbox.title = t.completed ? "标记为未完成" : "标记为已完成";
+                checkbox.addEventListener("change", async (e) => {
                   e.stopPropagation();
                   try {
-                    await host.updateTaskState(t.id, current => ({ completed: checkbox.checked,
-                      completedAt: checkbox.checked ? new Date().toISOString() : null,
-                      status: checkbox.checked ? 'done' : 'todo',
-                      subtasks: (current.subtasks || []).map(sub => ({ ...sub, completed: checkbox.checked ? true : sub.completed })) }));
-                  } catch (error) { checkbox.checked = t.completed; host.showNotice('保存失败', String(error)); return; }
-                  await host.tagItemOnTaskEvent(target.key, 'complete_check', target.libraryID);
-                  if (host.getPref('autoSyncChildNote', true)) {
+                    await host.updateTaskState(t.id, (current) => ({
+                      completed: checkbox.checked,
+                      completedAt: checkbox.checked ? (/* @__PURE__ */ new Date()).toISOString() : null,
+                      status: checkbox.checked ? "done" : "todo",
+                      subtasks: (current.subtasks || []).map((sub) => ({ ...sub, completed: checkbox.checked ? true : sub.completed }))
+                    }));
+                  } catch (error) {
+                    checkbox.checked = t.completed;
+                    host.showNotice("保存失败", String(error));
+                    return;
+                  }
+                  await host.tagItemOnTaskEvent(target.key, "complete_check", target.libraryID);
+                  if (host.getPref("autoSyncChildNote", true)) {
                     await host.syncTasksToChildNote(target);
                   }
                   state?.refresh?.();
                 });
                 row.appendChild(checkbox);
-
-                // Title
-                const titleSpan = createEl('button', `td-task-title ${t.completed ? 'is-done' : ''}`, t.title);
-                titleSpan.type = 'button';
+                const titleSpan = createEl("button", `td-task-title ${t.completed ? "is-done" : ""}`, t.title);
+                titleSpan.type = "button";
                 titleSpan.title = `${t.title} (点击在看板中查看详情)`;
-                titleSpan.addEventListener('click', () => {
-                  host.openTaskFlow({ mode: 'view_task', taskId: t.id }, Zotero.getMainWindow?.());
+                titleSpan.addEventListener("click", () => {
+                  host.openTaskFlow({ mode: "view_task", taskId: t.id }, Zotero.getMainWindow?.());
                 });
                 row.appendChild(titleSpan);
-
-                // Keep task removal directly on the task row; this removes only
-                // the TaskFlow record, never the linked Zotero library item.
-                const delBtn = createEl('button', 'td-task-delete');
-                delBtn.type = 'button';
-                delBtn.textContent = '移除';
-                delBtn.setAttribute('aria-label', `从 TaskFlow 移除任务并保留 Zotero 文献：${t.title}`);
-                delBtn.title = '仅移除此 TaskFlow 任务，不删除 Zotero 文献';
-                delBtn.addEventListener('click', async (e) => {
+                const delBtn = createEl("button", "td-task-delete");
+                delBtn.type = "button";
+                delBtn.textContent = "移除";
+                delBtn.setAttribute("aria-label", `从 TaskFlow 移除任务并保留 Zotero 文献：${t.title}`);
+                delBtn.title = "仅移除此 TaskFlow 任务，不删除 Zotero 文献";
+                delBtn.addEventListener("click", async (e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   if (delBtn.disabled) return;
@@ -679,124 +679,134 @@
                     host._paneDeleted ||= [];
                     host._paneDeleted.push(host.cloneData(t));
                     clearTimeout(host._paneUndoTimer);
-                    host._paneUndoTimer = setTimeout(() => { host._paneDeleted = []; host.notifyDataChanged(); }, 8000);
+                    host._paneUndoTimer = setTimeout(() => {
+                      host._paneDeleted = [];
+                      host.notifyDataChanged();
+                    }, 8e3);
                   } catch (error) {
                     delBtn.disabled = false;
-                    host.showNotice('删除失败', String(error));
+                    host.showNotice("删除失败", String(error));
                     return;
                   }
-                  await host.tagItemOnTaskEvent(target.key, 'complete_check', target.libraryID);
-                  if (host.getPref('autoSyncChildNote', true)) {
+                  await host.tagItemOnTaskEvent(target.key, "complete_check", target.libraryID);
+                  if (host.getPref("autoSyncChildNote", true)) {
                     await host.syncTasksToChildNote(target);
                   }
                   state?.refresh?.();
                 });
                 row.appendChild(delBtn);
-
                 if (t.zoteroItemKey) {
-                  const locateButton = createEl('button', 'td-task-locate', '↗ Zotero');
-                  locateButton.type = 'button';
-                  locateButton.title = '在 Zotero 文献库中定位这篇文献';
-                  locateButton.setAttribute('aria-label', `跳转到文献：${t.zoteroItemTitle || t.title}`);
-                  locateButton.addEventListener('click', (event) => {
+                  const locateButton = createEl("button", "td-task-locate", "↗ Zotero");
+                  locateButton.type = "button";
+                  locateButton.title = "在 Zotero 文献库中定位这篇文献";
+                  locateButton.setAttribute("aria-label", `跳转到文献：${t.zoteroItemTitle || t.title}`);
+                  locateButton.addEventListener("click", (event) => {
                     event.preventDefault();
                     event.stopPropagation();
-                    host.locateLiteratureItem(t.zoteroUri || t.zoteroItemKey, t.zoteroLibraryID, Zotero.getMainWindow?.())
-                      .catch(error => host.showNotice('无法跳转文献', String(error)));
+                    host.locateLiteratureItem(t.zoteroUri || t.zoteroItemKey, t.zoteroLibraryID, Zotero.getMainWindow?.()).catch((error) => host.showNotice("无法跳转文献", String(error)));
                   });
                   controls.appendChild(locateButton);
                 }
-
-                // Due date badge
                 if (t.dueDate) {
-                  const todayStr = host.localDateString(new Date());
+                  const todayStr = host.localDateString(/* @__PURE__ */ new Date());
                   const isOverdue = !t.completed && t.dueDate < todayStr;
-                  const dateText = (isOverdue ? '逾期 · ' : '') + (t.dueDate.length > 5 ? t.dueDate.slice(5) : t.dueDate);
-                  const dueBadge = createEl('span', `td-badge-date ${isOverdue ? 'is-overdue' : ''}`, dateText);
+                  const dateText = (isOverdue ? "逾期 · " : "") + (t.dueDate.length > 5 ? t.dueDate.slice(5) : t.dueDate);
+                  const dueBadge = createEl("span", `td-badge-date ${isOverdue ? "is-overdue" : ""}`, dateText);
                   dueBadge.title = isOverdue ? `已逾期！截止日期: ${t.dueDate}` : `截止日期: ${t.dueDate}`;
                   controls.appendChild(dueBadge);
                 }
-
-                // Subtask toggle button if subtasks exist
                 let subList = null;
                 if (Array.isArray(t.subtasks) && t.subtasks.length > 0) {
                   const doneSubs = t.subtasks.filter((s) => s.completed).length;
-                  const subToggle = createEl('button', 'td-subtask-toggle', `子任务 ${doneSubs}/${t.subtasks.length}`);
-                  subToggle.type = 'button';
-                  subToggle.title = '展开/收起子任务清单';
+                  const subToggle = createEl("button", "td-subtask-toggle", `子任务 ${doneSubs}/${t.subtasks.length}`);
+                  subToggle.type = "button";
+                  subToggle.title = "展开/收起子任务清单";
                   const expanded = state?.expandedTasks.get(t.id) ?? showSubtasks;
-                  subToggle.setAttribute('aria-expanded', String(expanded));
+                  subToggle.setAttribute("aria-expanded", String(expanded));
                   controls.appendChild(subToggle);
-
-                  subList = createEl('div', 'td-subtask-list');
-                  if (!expanded) subList.style.display = 'none';
-
-                  subToggle.addEventListener('click', (e) => {
+                  subList = createEl("div", "td-subtask-list");
+                  if (!expanded) subList.style.display = "none";
+                  subToggle.addEventListener("click", (e) => {
                     e.stopPropagation();
-                    const isHidden = subList.style.display === 'none';
-                    subList.style.display = isHidden ? 'flex' : 'none';
-                    subToggle.setAttribute('aria-expanded', String(isHidden));
+                    const isHidden = subList.style.display === "none";
+                    subList.style.display = isHidden ? "flex" : "none";
+                    subToggle.setAttribute("aria-expanded", String(isHidden));
                     state?.expandedTasks.set(t.id, isHidden);
                   });
-
                   for (const sub of t.subtasks) {
-                    const subRow = createEl('div', 'td-subtask-item');
-
-                    const subCheck = createEl('input', 'td-checkbox');
-                    subCheck.type = 'checkbox';
-                    subCheck.setAttribute('aria-label', sub.title);
+                    const subRow = createEl("div", "td-subtask-item");
+                    const subCheck = createEl("input", "td-checkbox");
+                    subCheck.type = "checkbox";
+                    subCheck.setAttribute("aria-label", sub.title);
                     subCheck.checked = Boolean(sub.completed);
-                    subCheck.addEventListener('change', async (e) => {
+                    subCheck.addEventListener("change", async (e) => {
                       e.stopPropagation();
                       try {
-                        await host.updateTaskState(t.id, current => {
-                          const subtasks = (current.subtasks || []).map(st => st.id === sub.id ? { ...st, completed: subCheck.checked } : st);
-                          const completed = subtasks.every(st => st.completed);
-                          return { subtasks, completed, completedAt: completed ? (current.completedAt || new Date().toISOString()) : null,
-                            status: completed ? 'done' : 'todo' };
+                        await host.updateTaskState(t.id, (current) => {
+                          const subtasks = (current.subtasks || []).map((st) => st.id === sub.id ? { ...st, completed: subCheck.checked } : st);
+                          const completed = subtasks.every((st) => st.completed);
+                          return {
+                            subtasks,
+                            completed,
+                            completedAt: completed ? current.completedAt || (/* @__PURE__ */ new Date()).toISOString() : null,
+                            status: completed ? "done" : "todo"
+                          };
                         });
-                      } catch (error) { subCheck.checked = sub.completed; host.showNotice('保存失败', String(error)); return; }
-                      await host.tagItemOnTaskEvent(target.key, 'complete_check', target.libraryID);
-                      if (host.getPref('autoSyncChildNote', true) && host.getPref('childNoteAutoUpdateOnSubtask', true)) {
+                      } catch (error) {
+                        subCheck.checked = sub.completed;
+                        host.showNotice("保存失败", String(error));
+                        return;
+                      }
+                      await host.tagItemOnTaskEvent(target.key, "complete_check", target.libraryID);
+                      if (host.getPref("autoSyncChildNote", true) && host.getPref("childNoteAutoUpdateOnSubtask", true)) {
                         await host.syncTasksToChildNote(target);
                       }
                       state?.refresh?.();
                     });
-
-                    const subSpan = createEl('span', `td-subtask-title ${sub.completed ? 'is-done' : ''}`, sub.title);
+                    const subSpan = createEl("span", `td-subtask-title ${sub.completed ? "is-done" : ""}`, sub.title);
                     subRow.appendChild(subCheck);
                     subRow.appendChild(subSpan);
                     subList.appendChild(subRow);
                   }
                 }
-
                 taskCard.appendChild(row);
-                const editBtn = createEl('button', 'td-task-edit', '编辑'); editBtn.type = 'button';
-                editBtn.addEventListener('click', () => host.openTaskFlow({ mode: 'edit_task', taskId: t.id }, Zotero.getMainWindow?.()));
+                const editBtn = createEl("button", "td-task-edit", "编辑");
+                editBtn.type = "button";
+                editBtn.addEventListener("click", () => host.openTaskFlow({ mode: "edit_task", taskId: t.id }, Zotero.getMainWindow?.()));
                 controls.appendChild(editBtn);
                 if (!t.completed) {
-                  const menu = createEl('details', 'td-reschedule');
-                  const summary = createEl('summary', '', '改期'); menu.appendChild(summary);
-                  for (const [days, label] of [[0, '今天'], [3, '延后三天'], [7, '延后一周']]) {
-                    const dateBtn = createEl('button', 'td-reschedule-option', label); dateBtn.type = 'button';
-                    dateBtn.title = days ? '从当前截止日期延后；未设置或已逾期时从今天计算' : '截止日期设为今天';
-                    dateBtn.addEventListener('click', async () => {
+                  const menu = createEl("details", "td-reschedule");
+                  const summary = createEl("summary", "", "改期");
+                  menu.appendChild(summary);
+                  for (const [days, label] of [[0, "今天"], [3, "延后三天"], [7, "延后一周"]]) {
+                    const dateBtn = createEl("button", "td-reschedule-option", label);
+                    dateBtn.type = "button";
+                    dateBtn.title = days ? "从当前截止日期延后；未设置或已逾期时从今天计算" : "截止日期设为今天";
+                    dateBtn.addEventListener("click", async () => {
                       if (dateBtn.disabled) return;
-                      menu.querySelectorAll('button').forEach(btn => { btn.disabled = true; });
+                      menu.querySelectorAll("button").forEach((btn) => {
+                        btn.disabled = true;
+                      });
                       try {
-                        await host.rescheduleLiteratureTask(t.id, days, days > 0);
+                        await host.rescheduleLiteratureTask(t.id, days, Number(days) > 0);
                         menu.open = false;
-                      } catch (error) { host.showNotice('改期失败', String(error)); }
-                      finally { menu.querySelectorAll('button').forEach(btn => { btn.disabled = false; }); }
-                      Promise.resolve(state?.refresh?.()).catch(error => Zotero.logError?.('[TaskFlow] 改期刷新失败: ' + error));
+                      } catch (error) {
+                        host.showNotice("改期失败", String(error));
+                      } finally {
+                        menu.querySelectorAll("button").forEach((btn) => {
+                          btn.disabled = false;
+                        });
+                      }
+                      Promise.resolve(state?.refresh?.()).catch((error) => Zotero.logError?.("[TaskFlow] 改期刷新失败: " + error));
                     });
                     menu.appendChild(dateBtn);
                   }
                   controls.appendChild(menu);
                 }
                 if (t.zoteroPdfUri || t.zoteroAnnotationKey) {
-                  const pdfBtn = createEl('button', 'td-task-pdf', t.zoteroAnnotationKey ? '回到批注' : '打开 PDF'); pdfBtn.type = 'button';
-                  pdfBtn.addEventListener('click', () => host.openTaskPdf(t).catch(error => host.showNotice('打开 PDF 失败', String(error))));
+                  const pdfBtn = createEl("button", "td-task-pdf", t.zoteroAnnotationKey ? "回到批注" : "打开 PDF");
+                  pdfBtn.type = "button";
+                  pdfBtn.addEventListener("click", () => host.openTaskPdf(t).catch((error) => host.showNotice("打开 PDF 失败", String(error))));
                   controls.appendChild(pdfBtn);
                 }
                 taskCard.appendChild(controls);
@@ -805,11 +815,10 @@
               }
               wrapper.appendChild(taskList);
             }
-
             if (host._paneDeleted?.length) {
-              const undoBtn = createEl('button', 'td-subtask-toggle', '撤销删除（8 秒内）');
-              undoBtn.type = 'button';
-              undoBtn.addEventListener('click', async () => {
+              const undoBtn = createEl("button", "td-subtask-toggle", "撤销删除（8 秒内）");
+              undoBtn.type = "button";
+              undoBtn.addEventListener("click", async () => {
                 if (undoBtn.disabled) return;
                 undoBtn.disabled = true;
                 try {
@@ -817,90 +826,82 @@
                   await host.saveData({ taskChanges: { added: restored } });
                   host._paneDeleted = [];
                   clearTimeout(host._paneUndoTimer);
-                  for (const task of restored) await host.tagItemOnTaskEvent(task.zoteroItemKey, 'complete_check', task.zoteroLibraryID);
-                  if (host.getPref('autoSyncChildNote', true)) await host.syncTasksToChildNote(target);
+                  for (const task of restored) await host.tagItemOnTaskEvent(task.zoteroItemKey, "complete_check", task.zoteroLibraryID);
+                  if (host.getPref("autoSyncChildNote", true)) await host.syncTasksToChildNote(target);
                   state?.refresh?.();
-                } catch (error) { undoBtn.disabled = false; host.showNotice('恢复失败', String(error)); }
+                } catch (error) {
+                  undoBtn.disabled = false;
+                  host.showNotice("恢复失败", String(error));
+                }
               });
               wrapper.appendChild(undoBtn);
             }
-
-            // 4. Action Buttons Grid (2 Columns, perfectly aligned, no overflow)
-            const actionGrid = createEl('div', 'td-action-grid');
-
-            const btnOpenBoard = createEl('button', 'td-action-btn td-action-workspace', '待办看板');
-            btnOpenBoard.type = 'button';
-            btnOpenBoard.title = '在主标签页中打开 TaskFlow 任务看板';
-            btnOpenBoard.addEventListener('click', () => {
-              host.openTaskFlow({ mode: 'filter_item', itemKey: target.key }, Zotero.getMainWindow?.());
+            const actionGrid = createEl("div", "td-action-grid");
+            const btnOpenBoard = createEl("button", "td-action-btn td-action-workspace", "待办看板");
+            btnOpenBoard.type = "button";
+            btnOpenBoard.title = "在主标签页中打开 TaskFlow 任务看板";
+            btnOpenBoard.addEventListener("click", () => {
+              host.openTaskFlow({ mode: "filter_item", itemKey: target.key }, Zotero.getMainWindow?.());
             });
             actionGrid.appendChild(btnOpenBoard);
-
-            const btnSubwin = createEl('button', 'td-action-btn td-action-workspace', '伴读窗口');
-            btnSubwin.type = 'button';
-            btnSubwin.title = '打开轻量伴读窗口，适合与 PDF 左右分屏对照';
-            btnSubwin.addEventListener('click', () => {
-              host.openStandaloneWindow({ mode: 'filter_item', itemKey: target.key }, Zotero.getMainWindow?.(), 'subwindow');
+            const btnSubwin = createEl("button", "td-action-btn td-action-workspace", "伴读窗口");
+            btnSubwin.type = "button";
+            btnSubwin.title = "打开轻量伴读窗口，适合与 PDF 左右分屏对照";
+            btnSubwin.addEventListener("click", () => {
+              host.openStandaloneWindow({ mode: "filter_item", itemKey: target.key }, Zotero.getMainWindow?.(), "subwindow");
             });
             actionGrid.appendChild(btnSubwin);
-
-            const btnSyncNote = createEl('button', 'td-action-btn td-action-notes', '同步子笔记');
-            btnSyncNote.type = 'button';
-            btnSyncNote.title = '将本文献的所有研读待办同步导出为文献子笔记 (云端)';
-            const isReadOnly = typeof target.isEditable === 'function' && !target.isEditable();
+            const btnSyncNote = createEl("button", "td-action-btn td-action-notes", "同步子笔记");
+            btnSyncNote.type = "button";
+            btnSyncNote.title = "将本文献的所有研读待办同步导出为文献子笔记 (云端)";
+            const isReadOnly = typeof target.isEditable === "function" && !target.isEditable();
             if (isReadOnly) {
               btnSyncNote.disabled = true;
-              btnSyncNote.title = '只读文献无法同步子笔记';
+              btnSyncNote.title = "只读文献无法同步子笔记";
             }
-            btnSyncNote.addEventListener('click', async () => {
+            btnSyncNote.addEventListener("click", async () => {
               if (btnSyncNote.disabled) return;
               const note = await host.syncTasksToChildNote(target.id || target);
               if (note) {
-                host.showNotice('同步成功', '已更新文献子笔记研读清单');
+                host.showNotice("同步成功", "已更新文献子笔记研读清单");
               } else {
-                host.showNotice('跳过同步', '只读条目或未找到任务清单，跳过同步');
+                host.showNotice("跳过同步", "只读条目或未找到任务清单，跳过同步");
               }
             });
             actionGrid.appendChild(btnSyncNote);
-
             const meta = serializeLiteratureItem(target);
             if (meta?.pdfUri) {
-              const btnPdf = createEl('button', 'td-action-btn td-action-btn-pdf', '打开 PDF');
-              btnPdf.type = 'button';
-              btnPdf.title = '在 Zotero 内置阅读器中打开该文献的 PDF 全文';
-              btnPdf.addEventListener('click', () => {
+              const btnPdf = createEl("button", "td-action-btn td-action-btn-pdf", "打开 PDF");
+              btnPdf.type = "button";
+              btnPdf.title = "在 Zotero 内置阅读器中打开该文献的 PDF 全文";
+              btnPdf.addEventListener("click", () => {
                 host.openPdfAttachment(target);
               });
               actionGrid.appendChild(btnPdf);
             }
-
-            // If tasks already exist, offer the reading milestones action across the bottom row
             if (total > 0) {
-              const btnMilestones = createEl('button', 'td-action-btn td-action-reading td-action-btn-milestones-row', '追加精读清单');
-              btnMilestones.type = 'button';
-              btnMilestones.title = '按当前研读模板为本文献追加生成 5 项精读里程碑待办';
-              btnMilestones.addEventListener('click', async () => {
+              const btnMilestones = createEl("button", "td-action-btn td-action-reading td-action-btn-milestones-row", "追加精读清单");
+              btnMilestones.type = "button";
+              btnMilestones.title = "按当前研读模板为本文献追加生成 5 项精读里程碑待办";
+              btnMilestones.addEventListener("click", async () => {
                 await host.createReadingMilestones(target, Zotero.getMainWindow?.(), profileSelect.value);
                 state?.refresh?.();
               });
               actionGrid.appendChild(btnMilestones);
             }
-
             wrapper.appendChild(actionGrid);
             body.appendChild(wrapper);
-          },
+          }
         });
       } catch (error) {
-        Zotero.logError?.('[TaskFlow] Could not register ItemPane section: ' + error);
+        Zotero.logError?.("[TaskFlow] Could not register ItemPane section: " + error);
       }
-
     }
   };
-
-  if (typeof Zotero !== 'undefined') {
+  if (typeof Zotero !== "undefined") {
     Zotero.TaskFlowItemPane = TaskFlowItemPane;
   }
-  if (typeof global !== 'undefined') {
-    global.TaskFlowItemPane = TaskFlowItemPane;
+  if (typeof globalThis !== "undefined") {
+    globalThis.TaskFlowItemPane = TaskFlowItemPane;
   }
-})(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this));
+})();
