@@ -1,6 +1,4 @@
-import { ADDON_ID, CHROME_ROOT } from '../config';
-import { TaskFlowStorage } from './storage';
-import { TaskRules } from '../taskRules';
+import { TaskFlowLiteratureTasks } from './literatureTasks';
 import { LiteratureWorkflow } from '../literatureWorkflow';
 import { TaskFlowItemPane } from '../itemPane';
 import { getLiteratureItem, serializeLiteratureItem, resolveItemReference, escapeHtml } from '../utils';
@@ -8,117 +6,8 @@ import { getLiteratureItem, serializeLiteratureItem, resolveItemReference, escap
 declare let Zotero: any;
 declare let Services: any;
 
-export class TaskFlowLiterature extends TaskFlowStorage {
-
-    async locateLiteratureItem(reference, libraryID, ownerWindow = null) {
-      const item = resolveItemReference(reference, libraryID);
-      const mainWindow = ownerWindow?.ZoteroPane ? ownerWindow : Zotero.getMainWindow?.();
-      if (!item || item.deleted || !mainWindow?.ZoteroPane?.selectItem) {
-        this.showNotice('无法跳转文献', '文献可能已被删除，或 Zotero 文献库窗口尚未打开。');
-        return false;
-      }
-      const tabs = mainWindow.Zotero_Tabs;
-      const libraryTab = tabs?._tabs?.find(tab => tab && (tab.type === 'library' || tab.id === 'zotero-pane'));
-      if (libraryTab) tabs.select(libraryTab.id);
-      mainWindow.focus?.();
-      await mainWindow.ZoteroPane.selectItem(item.id);
-      return true;
-    }
-
-
-    async openPdfAttachment(item, page = null, annotationKey = null) {
-      if (!item) return;
-      const target = (item.isPDFAttachment?.() ? item : getLiteratureItem(item)) || item;
-      if (target.deleted) { this.showNotice('无法打开 PDF', '文献或附件已在回收站中。'); return false; }
-      let pdfAtt = null;
-      if (typeof target.isAttachment === 'function' && target.isAttachment() && target.isPDFAttachment && target.isPDFAttachment()) {
-        pdfAtt = target;
-      } else if (typeof target.getAttachments === 'function') {
-        const attIds = target.getAttachments();
-        for (const attId of attIds) {
-          const att = Zotero.Items.get(attId);
-          if (att && att.isPDFAttachment && att.isPDFAttachment()) {
-            pdfAtt = att;
-            break;
-          }
-        }
-      }
-      if (pdfAtt && Zotero.Reader && typeof Zotero.Reader.open === 'function') {
-        const location: any = {};
-        if (page && Number.isInteger(Number(page)) && Number(page) > 0) {
-          location.pageIndex = Number(page) - 1;
-        }
-        if (annotationKey) location.annotationID = annotationKey;
-        await Zotero.Reader.open(pdfAtt.id, Object.keys(location).length ? location : undefined);
-        return true;
-      }
-      this.showNotice('未找到 PDF', '当前文献没有可打开的 PDF 附件。');
-      return false;
-    }
-
-
-    async openTaskPdf(task) {
-      const item = resolveItemReference(task.zoteroPdfUri || task.zoteroItemKey, task.zoteroLibraryID);
-      if (!item) { this.showNotice('无法打开 PDF', '关联的文献或附件已删除。'); return false; }
-      if (!this.getPref('pdfReaderJumpPage', true)) return this.openPdfAttachment(item);
-      let annotationKey = task.zoteroAnnotationKey || null;
-      if (annotationKey) {
-        const annotation = resolveItemReference(annotationKey, task.zoteroLibraryID);
-        if (!annotation || annotation.deleted || annotation.parentItemID !== item.id) {
-          annotationKey = null;
-          this.showNotice('批注已不可用', '将返回记录的 PDF 页码。');
-        }
-      }
-      const page = task.zoteroPage || Number(String(task.zoteroPdfUri || '').match(/[?&]page=(\d+)/)?.[1]) || null;
-      return this.openPdfAttachment(item, page, annotationKey);
-    }
-
-
-    async createTaskFromAnnotation(reader, annotationKey, { forceInstant = false } = {}) {
-      const attachment = Zotero.Items.get(reader.itemID);
-      const annotation = resolveItemReference(annotationKey, attachment?.libraryID);
-      const parent = getLiteratureItem(attachment);
-      if (!parent || !annotation?.isAnnotation?.() || annotation.deleted || annotation.parentItemID !== attachment.id) {
-        throw new Error('批注已删除或不属于当前 PDF');
-      }
-      let position;
-      try { position = JSON.parse(annotation.annotationPosition || '{}'); } catch (_) { position = {}; }
-      const page = Number.isInteger(position.pageIndex) && position.pageIndex >= 0 ? position.pageIndex + 1 : null;
-      const quote = annotation.annotationText || '';
-      const title = `批注：${String(annotation.annotationComment || quote || '核查文献批注').slice(0, 60)}`;
-      const task = this.buildLiteratureTask(parent, { title, workflowId: `annotation:${annotationKey}` });
-      task.zoteroAnnotationKey = annotationKey;
-      task.zoteroAttachmentKey = attachment.key;
-      task.zoteroPage = page; task.zoteroQuote = quote;
-      task.description = [quote, annotation.annotationComment].filter(Boolean).join('\n\n');
-      const groupID = Zotero.Libraries?.get?.(attachment.libraryID)?.groupID;
-      task.zoteroPdfUri = `zotero://open-pdf/${groupID ? 'groups/' + groupID : 'library'}/items/${attachment.key}?annotation=${annotationKey}${page ? '&page=' + page : ''}`;
-      const data = await this.loadData(); task.order = Math.max(-1, ...data.tasks.map(t => t.order || 0)) + 1;
-      if (!forceInstant && this.getPref('readerShortcutAction', 'create_instant') === 'open_modal') {
-        this.openTaskFlow({ mode: 'open_modal_prefill', prefill: task }, Zotero.getMainWindow?.()); return;
-      }
-      const saved = await this.saveData({ taskChanges: { added: [task] }, deduplicateLiterature: true, syncLinkedItems: true });
-      const created = saved.tasks.some(t => t.id === task.id);
-      this.showNotice(created ? '批注已加入待办' : '该批注已有待办', '点击任务的“回到批注”即可返回原文位置。');
-      return saved.tasks.find(t => LiteratureWorkflow.samePending(t, task, Zotero.Libraries.userLibraryID));
-    }
-
-
-    getZoteroCollections(libraryID = null) {
-      const libID = Number.isInteger(Number(libraryID)) && Number(libraryID) > 0
-        ? Number(libraryID) : (Zotero.Libraries?.userLibraryID || 1);
-      const collections = Zotero.Collections?.getByLibrary?.(libID) || [];
-      return collections.map((col) => ({
-        id: col.id,
-        key: col.key,
-        name: col.name,
-        parentID: col.parentID,
-        itemCount: typeof col.getChildItemsCount === 'function' ? col.getChildItemsCount() : 0
-      }));
-    }
-
-
-    async syncTasksToChildNote(item, tasks = null, options = {}) {
+export class TaskFlowLiterature extends TaskFlowLiteratureTasks {
+async syncTasksToChildNote(item, tasks = null, options = {}) {
       const target = getLiteratureItem(item);
       if (!target) return null;
       if (typeof target.isEditable === 'function' && !target.isEditable()) return null;
@@ -176,8 +65,8 @@ export class TaskFlowLiterature extends TaskFlowStorage {
             const noteItem = Zotero.Items.get(nid);
             if (noteItem && noteItem.isNote && noteItem.isNote()) {
               const content = noteItem.getNote();
-              const hasTaskFlowTag = typeof noteItem.hasTag === 'function' && noteItem.hasTag('TaskFlow');
-              if (hasTaskFlowTag || (content && (content.includes('[TaskFlow]') || content.includes('TaskFlow')))) {
+              const hasTaskFlowTag = typeof noteItem.hasTag === 'function' && (noteItem.hasTag('TaskFlow') || noteItem.hasTag('Todolist'));
+              if (hasTaskFlowTag || (content && (content.includes('[TaskFlow]') || content.includes('[Todolist]') || content.includes('TaskFlow') || content.includes('Todolist')))) {
                 targetNote = noteItem;
                 break;
               }

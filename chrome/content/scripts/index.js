@@ -1277,116 +1277,8 @@
     globalThis.TaskRules = TaskRules;
   }
 
-  // src/utils.ts
-  var escapeHtml = (value) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-  var itemSelectUri2 = (item) => {
-    if (!item) return "";
-    const key = item.key || item.id;
-    const groupID = Zotero.Libraries?.get?.(item.libraryID)?.groupID;
-    return groupID ? `zotero://select/groups/${groupID}/items/${key}` : `zotero://select/library/items/${key}`;
-  };
-  var getLiteratureItem2 = (item) => {
-    if (!item) return null;
-    let target = typeof item === "number" || typeof item === "string" ? Zotero.Items?.get?.(item) || null : item;
-    if (!target) return null;
-    try {
-      if (target.topLevelItem && typeof target.topLevelItem.isRegularItem === "function" && target.topLevelItem.isRegularItem()) {
-        return target.topLevelItem;
-      }
-    } catch (_) {
-    }
-    if (typeof target.isAttachment === "function" && target.isAttachment()) {
-      if (target.parentItemID) {
-        target = Zotero.Items.get(target.parentItemID) || target;
-      }
-    }
-    if (typeof target.isNote === "function" && target.isNote()) {
-      if (target.parentItemID) {
-        target = Zotero.Items.get(target.parentItemID) || target;
-      }
-    }
-    try {
-      if (target.topLevelItem && typeof target.topLevelItem.isRegularItem === "function" && target.topLevelItem.isRegularItem()) {
-        return target.topLevelItem;
-      }
-    } catch (_) {
-    }
-    return target && typeof target.isRegularItem === "function" && target.isRegularItem() ? target : null;
-  };
-  var serializeLiteratureItem2 = (item) => {
-    const target = getLiteratureItem2(item);
-    if (!target) return null;
-    const title = (typeof target.getField === "function" ? target.getField("title") : target.title) || "无标题文献";
-    const date = typeof target.getField === "function" ? target.getField("date") : target.date;
-    let year = "";
-    if (date) {
-      const match = String(date).match(/\b(19|20)\d{2}\b/);
-      year = match ? match[0] : String(date).slice(0, 4);
-    }
-    let authors = [];
-    try {
-      if (typeof target.getCreators === "function") {
-        authors = target.getCreators().map(
-          (c) => c.lastName || c.name || `${c.firstName || ""} ${c.lastName || ""}`.trim()
-        ).filter(Boolean);
-      }
-    } catch (_) {
-    }
-    const publication = typeof target.getField === "function" ? target.getField("publicationTitle") || target.getField("proceedingsTitle") || target.getField("publisher") || "" : "";
-    let tags = [];
-    try {
-      if (typeof target.getTags === "function") {
-        tags = target.getTags().map((t) => t.tag || String(t)).filter(Boolean);
-      }
-    } catch (_) {
-    }
-    let pdfUri = null;
-    try {
-      if (typeof target.getAttachments === "function") {
-        const attIds = target.getAttachments();
-        for (const attId of attIds) {
-          const att = Zotero.Items.get(attId);
-          if (att && (typeof att.isPDFAttachment === "function" && att.isPDFAttachment() || att.contentType === "application/pdf")) {
-            const groupID = Zotero.Libraries?.get?.(att.libraryID)?.groupID;
-            pdfUri = groupID ? `zotero://open-pdf/groups/${groupID}/items/${att.key}` : `zotero://open-pdf/library/items/${att.key}`;
-            break;
-          }
-        }
-      }
-    } catch (_) {
-    }
-    return {
-      key: target.key || String(target.id),
-      id: target.id,
-      libraryID: target.libraryID,
-      title,
-      authors: authors.slice(0, 3).join(", ") + (authors.length > 3 ? " 等" : ""),
-      year,
-      publication,
-      tags,
-      zoteroUri: itemSelectUri2(target),
-      pdfUri
-    };
-  };
-  var resolveItemReference = (reference, libraryID) => {
-    if (!reference) return null;
-    const raw = String(reference).trim();
-    const groupMatch = raw.match(
-      /^zotero:\/\/(?:select|open-pdf)\/groups\/(\d+)\/items\/([A-Za-z0-9_]+)/
-    );
-    const key = groupMatch?.[2] || raw.match(/\/items\/([A-Za-z0-9_]+)(?:[?#]|$)/)?.[1] || raw;
-    if (!/^[A-Za-z0-9_]+$/.test(key)) return null;
-    if (!raw.includes("/items/") && /^\d+$/.test(key))
-      return Zotero.Items.get(Number(key));
-    let targetLibraryID = Number.isInteger(Number(libraryID)) && Number(libraryID) > 0 ? Number(libraryID) : Zotero.Libraries?.userLibraryID || 1;
-    if (groupMatch) {
-      targetLibraryID = Zotero.Groups?.getLibraryIDFromGroupID?.(Number(groupMatch[1])) || targetLibraryID;
-    }
-    return Zotero.Items.getByLibraryAndKey?.(targetLibraryID, key) || null;
-  };
-
-  // src/modules/storage.ts
-  var TaskFlowStorage = class extends TaskFlowBase {
+  // src/modules/storagePersistence.ts
+  var TaskFlowStoragePersistence = class extends TaskFlowBase {
     getDataFilePath() {
       const baseDir = Zotero.DataDirectory?.dir || PathUtils.profileDir;
       return PathUtils.join(baseDir, "taskflow-data.json");
@@ -1631,6 +1523,118 @@
         }
       }
     }
+  };
+
+  // src/utils.ts
+  var escapeHtml = (value) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  var itemSelectUri2 = (item) => {
+    if (!item) return "";
+    const key = item.key || item.id;
+    const groupID = Zotero.Libraries?.get?.(item.libraryID)?.groupID;
+    return groupID ? `zotero://select/groups/${groupID}/items/${key}` : `zotero://select/library/items/${key}`;
+  };
+  var getLiteratureItem2 = (item) => {
+    if (!item) return null;
+    let target = typeof item === "number" || typeof item === "string" ? Zotero.Items?.get?.(item) || null : item;
+    if (!target) return null;
+    try {
+      if (target.topLevelItem && typeof target.topLevelItem.isRegularItem === "function" && target.topLevelItem.isRegularItem()) {
+        return target.topLevelItem;
+      }
+    } catch (_) {
+    }
+    if (typeof target.isAttachment === "function" && target.isAttachment()) {
+      if (target.parentItemID) {
+        target = Zotero.Items.get(target.parentItemID) || target;
+      }
+    }
+    if (typeof target.isNote === "function" && target.isNote()) {
+      if (target.parentItemID) {
+        target = Zotero.Items.get(target.parentItemID) || target;
+      }
+    }
+    try {
+      if (target.topLevelItem && typeof target.topLevelItem.isRegularItem === "function" && target.topLevelItem.isRegularItem()) {
+        return target.topLevelItem;
+      }
+    } catch (_) {
+    }
+    return target && typeof target.isRegularItem === "function" && target.isRegularItem() ? target : null;
+  };
+  var serializeLiteratureItem2 = (item) => {
+    const target = getLiteratureItem2(item);
+    if (!target) return null;
+    const title = (typeof target.getField === "function" ? target.getField("title") : target.title) || "无标题文献";
+    const date = typeof target.getField === "function" ? target.getField("date") : target.date;
+    let year = "";
+    if (date) {
+      const match = String(date).match(/\b(19|20)\d{2}\b/);
+      year = match ? match[0] : String(date).slice(0, 4);
+    }
+    let authors = [];
+    try {
+      if (typeof target.getCreators === "function") {
+        authors = target.getCreators().map(
+          (c) => c.lastName || c.name || `${c.firstName || ""} ${c.lastName || ""}`.trim()
+        ).filter(Boolean);
+      }
+    } catch (_) {
+    }
+    const publication = typeof target.getField === "function" ? target.getField("publicationTitle") || target.getField("proceedingsTitle") || target.getField("publisher") || "" : "";
+    let tags = [];
+    try {
+      if (typeof target.getTags === "function") {
+        tags = target.getTags().map((t) => t.tag || String(t)).filter(Boolean);
+      }
+    } catch (_) {
+    }
+    let pdfUri = null;
+    try {
+      if (typeof target.getAttachments === "function") {
+        const attIds = target.getAttachments();
+        for (const attId of attIds) {
+          const att = Zotero.Items.get(attId);
+          if (att && (typeof att.isPDFAttachment === "function" && att.isPDFAttachment() || att.contentType === "application/pdf")) {
+            const groupID = Zotero.Libraries?.get?.(att.libraryID)?.groupID;
+            pdfUri = groupID ? `zotero://open-pdf/groups/${groupID}/items/${att.key}` : `zotero://open-pdf/library/items/${att.key}`;
+            break;
+          }
+        }
+      }
+    } catch (_) {
+    }
+    return {
+      key: target.key || String(target.id),
+      id: target.id,
+      libraryID: target.libraryID,
+      title,
+      authors: authors.slice(0, 3).join(", ") + (authors.length > 3 ? " 等" : ""),
+      year,
+      publication,
+      tags,
+      zoteroUri: itemSelectUri2(target),
+      pdfUri
+    };
+  };
+  var resolveItemReference = (reference, libraryID) => {
+    if (!reference) return null;
+    const raw = String(reference).trim();
+    const groupMatch = raw.match(
+      /^zotero:\/\/(?:select|open-pdf)\/groups\/(\d+)\/items\/([A-Za-z0-9_]+)/
+    );
+    const key = groupMatch?.[2] || raw.match(/\/items\/([A-Za-z0-9_]+)(?:[?#]|$)/)?.[1] || raw;
+    if (!/^[A-Za-z0-9_]+$/.test(key)) return null;
+    if (!raw.includes("/items/") && /^\d+$/.test(key))
+      return Zotero.Items.get(Number(key));
+    let targetLibraryID = Number.isInteger(Number(libraryID)) && Number(libraryID) > 0 ? Number(libraryID) : Zotero.Libraries?.userLibraryID || 1;
+    if (groupMatch) {
+      targetLibraryID = Zotero.Groups?.getLibraryIDFromGroupID?.(Number(groupMatch[1])) || targetLibraryID;
+    }
+    return Zotero.Items.getByLibraryAndKey?.(targetLibraryID, key) || null;
+  };
+
+  // src/modules/storage.ts
+  var TaskFlowStorage = class extends TaskFlowStoragePersistence {
     async exportData(format = "json") {
       try {
         const data = await this.loadData();
@@ -1887,12 +1891,22 @@
         });
         html += `</body></html>`;
         const printWin = win.open("", "_blank", "width=800,height=700");
+        if (!printWin || !printWin.document) {
+          this.showNotice("打印提示", "无法打开打印窗口，请检查是否被弹窗拦截。");
+          return;
+        }
         printWin.document.open();
         printWin.document.write(html);
         printWin.document.close();
-        printWin.focus();
+        try {
+          printWin.focus();
+        } catch (_) {
+        }
         setTimeout(() => {
-          printWin.print();
+          try {
+            printWin.print();
+          } catch (_) {
+          }
         }, 300);
       } catch (err) {
         Zotero.logError?.("[TaskFlow] printTasks error: " + err);
@@ -1900,8 +1914,8 @@
     }
   };
 
-  // src/modules/literature.ts
-  var TaskFlowLiterature = class extends TaskFlowStorage {
+  // src/modules/literatureTasks.ts
+  var TaskFlowLiteratureTasks = class extends TaskFlowStorage {
     async locateLiteratureItem(reference, libraryID, ownerWindow = null) {
       const item = resolveItemReference(reference, libraryID);
       const mainWindow = ownerWindow?.ZoteroPane ? ownerWindow : Zotero.getMainWindow?.();
@@ -2012,6 +2026,10 @@
         itemCount: typeof col.getChildItemsCount === "function" ? col.getChildItemsCount() : 0
       }));
     }
+  };
+
+  // src/modules/literature.ts
+  var TaskFlowLiterature = class extends TaskFlowLiteratureTasks {
     async syncTasksToChildNote(item, tasks = null, options = {}) {
       const target = getLiteratureItem2(item);
       if (!target) return null;
@@ -2061,8 +2079,8 @@
             const noteItem = Zotero.Items.get(nid);
             if (noteItem && noteItem.isNote && noteItem.isNote()) {
               const content = noteItem.getNote();
-              const hasTaskFlowTag = typeof noteItem.hasTag === "function" && noteItem.hasTag("TaskFlow");
-              if (hasTaskFlowTag || content && (content.includes("[TaskFlow]") || content.includes("TaskFlow"))) {
+              const hasTaskFlowTag = typeof noteItem.hasTag === "function" && (noteItem.hasTag("TaskFlow") || noteItem.hasTag("Todolist"));
+              if (hasTaskFlowTag || content && (content.includes("[TaskFlow]") || content.includes("[Todolist]") || content.includes("TaskFlow") || content.includes("Todolist"))) {
                 targetNote = noteItem;
                 break;
               }
@@ -2510,10 +2528,10 @@ PDF 锚点直达：${pageLink}`;
     }
   };
 
-  // src/modules/window.ts
+  // src/modules/windowMenus.ts
   var injectedElements = /* @__PURE__ */ new Map();
   var pendingWindowLoads = /* @__PURE__ */ new Map();
-  var TaskFlowWindow = class extends TaskFlowLiterature {
+  var TaskFlowWindowMenus = class extends TaskFlowLiterature {
     switchWindowMode(mode, window = null) {
       try {
         if (Zotero.Prefs) {
@@ -2714,6 +2732,10 @@ PDF 锚点直达：${pageLink}`;
       const href = String(win.location?.href || "");
       return href.includes("reader");
     }
+  };
+
+  // src/modules/windowToolbar.ts
+  var TaskFlowWindowToolbar = class extends TaskFlowWindowMenus {
     addToWindow(window) {
       if (!window || !window.document) return;
       const doc = window.document;
@@ -3260,6 +3282,10 @@ PDF 锚点直达：${pageLink}`;
         }
       }
     }
+  };
+
+  // src/modules/window.ts
+  var TaskFlowWindow = class extends TaskFlowWindowToolbar {
     getSelectedRegularItems(window) {
       const pane = window?.ZoteroPane || (Zotero.getActiveZoteroPane ? Zotero.getActiveZoteroPane() : null) || (Zotero.getMainWindow ? Zotero.getMainWindow().ZoteroPane : null);
       let rawSelection = [];
@@ -3688,6 +3714,11 @@ PDF 锚点直达：${pageLink}`;
         clearTimeout(this._linkRefreshTimer);
         this._linkRefreshTimer = null;
       }
+      if (this._paneUndoTimer) {
+        clearTimeout(this._paneUndoTimer);
+        this._paneUndoTimer = null;
+      }
+      this._paneDeleted = [];
       if (this._notifierID && Zotero.Notifier?.unregisterObserver) {
         try {
           Zotero.Notifier.unregisterObserver(this._notifierID);

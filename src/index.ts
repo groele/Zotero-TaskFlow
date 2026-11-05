@@ -146,6 +146,12 @@ export class TaskFlowHost extends TaskFlowWindow {
         this._linkRefreshTimer = null;
       }
 
+      if (this._paneUndoTimer) {
+        clearTimeout(this._paneUndoTimer);
+        this._paneUndoTimer = null;
+      }
+      this._paneDeleted = [];
+
       if (this._notifierID && Zotero.Notifier?.unregisterObserver) {
         try { Zotero.Notifier.unregisterObserver(this._notifierID); } catch (_) {}
         this._notifierID = null;

@@ -3,6 +3,11 @@
 ## 15.0.0 - 2026-11-05
 
 ### Major Architectural Milestone
+- Completed end-to-end data processing pipeline audit: hardened persistence, IPC messaging, literature note sync, and export workflows.
+- Prevented duplicate child notes by recognizing legacy `[Todolist]` notes and tags during bidirectional syncing.
+- Closed timer escape in `shutdown()` by explicitly clearing `_paneUndoTimer` and resetting deletion buffers.
+- Guarded `printTasks` window against browser popup blocker failures.
+- Granular domain module decoupling under `src/modules/` with strictly bounded file lengths (100~300 lines per module).
 - Migrated codebase to modern modular TypeScript (`src/`) and esbuild compilation pipeline.
 - Standardized package commands (`npm run tsc`, `npm run build:source`, `npm run build`, `npm test`) aligned with Zotero Flow engineering standards.
 - Production host build outputs pure Firefox 140+ / Gecko 153+ IIFE bundle `chrome/content/scripts/index.js`.
