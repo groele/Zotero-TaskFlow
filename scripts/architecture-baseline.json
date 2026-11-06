@@ -1,0 +1,23 @@
+{
+  "policy": "freeze-and-shrink",
+  "maxSourceLines": 360,
+  "capturedAt": "2026-11-06",
+  "debtCleared": true,
+  "note": "Known §5.9 debt. Listed files may stay at or below the recorded line count, but must never grow; any other source file above 360 lines fails the guard. Remove an entry only after splitting that module below 360 lines. Every entry must still exist and must still exceed the ceiling - stale entries are rejected by the baseline integrity test.",
+  "lastReleasedVersion": "15.0.0",
+  "splitHistory": [
+    {
+      "version": "15.0.0",
+      "date": "2026-11-06",
+      "resolved": [
+        "Decomposed monolithic src/itemPane.ts (848 lines) into itemPane/ submodules (DOM view, context menu, drag & drop, task scheduler)",
+        "Decomposed monolithic src/modules/windowToolbar.ts (597 lines) into toolbar/ functional tool groups (button group, shortcuts group, message bridge)",
+        "Decomposed monolithic src/preferences.ts (524 lines) into preferences/ configuration model and UI binding submodules",
+        "Decomposed monolithic src/modules/literature.ts (462 lines) into literature/ task mapping and state synchronization submodules",
+        "100% compliance across all 28 source files in src/ (all <= 360 lines); debtCleared = true with 0 oversized modules",
+        "Architecture guard scripts/architecture-guard.mjs established and integrated into build/test workflows"
+      ]
+    }
+  ],
+  "oversized": {}
+}

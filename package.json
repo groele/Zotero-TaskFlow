@@ -5,10 +5,12 @@
   "private": true,
   "scripts": {
     "tsc": "tsc --noEmit",
+    "guard": "node scripts/architecture-guard.mjs",
+    "check:architecture": "node scripts/architecture-guard.mjs",
     "build:source": "node scripts/build-source.mjs",
-    "build": "npm run tsc && npm run build:source && node scripts/build.mjs",
+    "build": "npm run tsc && npm run guard && npm run build:source && node scripts/build.mjs",
     "package": "npm run build",
-    "test": "npm run build && node --test tests/*.test.cjs && python -B -m unittest discover -s tests -p test_build_package.py"
+    "test": "npm run guard && npm run build && node --test tests/*.test.cjs && python -B -m unittest discover -s tests -p test_build_package.py"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

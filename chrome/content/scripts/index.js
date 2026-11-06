@@ -3,6 +3,372 @@
   var ADDON_ID = "taskflow@groele.org";
   var CHROME_ROOT = "chrome://taskflow/content/";
 
+  // src/utils.ts
+  var escapeHtml = (value) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  var itemSelectUri = (item) => {
+    if (!item) return "";
+    const key = item.key || item.id;
+    const groupID = Zotero.Libraries?.get?.(item.libraryID)?.groupID;
+    return groupID ? `zotero://select/groups/${groupID}/items/${key}` : `zotero://select/library/items/${key}`;
+  };
+  var getLiteratureItem = (item) => {
+    if (!item) return null;
+    let target = typeof item === "number" || typeof item === "string" ? Zotero.Items?.get?.(item) || null : item;
+    if (!target) return null;
+    try {
+      if (target.topLevelItem && typeof target.topLevelItem.isRegularItem === "function" && target.topLevelItem.isRegularItem()) {
+        return target.topLevelItem;
+      }
+    } catch (_) {
+    }
+    if (typeof target.isAttachment === "function" && target.isAttachment()) {
+      if (target.parentItemID) {
+        target = Zotero.Items.get(target.parentItemID) || target;
+      }
+    }
+    if (typeof target.isNote === "function" && target.isNote()) {
+      if (target.parentItemID) {
+        target = Zotero.Items.get(target.parentItemID) || target;
+      }
+    }
+    try {
+      if (target.topLevelItem && typeof target.topLevelItem.isRegularItem === "function" && target.topLevelItem.isRegularItem()) {
+        return target.topLevelItem;
+      }
+    } catch (_) {
+    }
+    return target && typeof target.isRegularItem === "function" && target.isRegularItem() ? target : null;
+  };
+  var serializeLiteratureItem = (item) => {
+    const target = getLiteratureItem(item);
+    if (!target) return null;
+    const title = (typeof target.getField === "function" ? target.getField("title") : target.title) || "无标题文献";
+    const date = typeof target.getField === "function" ? target.getField("date") : target.date;
+    let year = "";
+    if (date) {
+      const match = String(date).match(/\b(19|20)\d{2}\b/);
+      year = match ? match[0] : String(date).slice(0, 4);
+    }
+    let authors = [];
+    try {
+      if (typeof target.getCreators === "function") {
+        authors = target.getCreators().map(
+          (c) => c.lastName || c.name || `${c.firstName || ""} ${c.lastName || ""}`.trim()
+        ).filter(Boolean);
+      }
+    } catch (_) {
+    }
+    const publication = typeof target.getField === "function" ? target.getField("publicationTitle") || target.getField("proceedingsTitle") || target.getField("publisher") || "" : "";
+    let tags = [];
+    try {
+      if (typeof target.getTags === "function") {
+        tags = target.getTags().map((t) => t.tag || String(t)).filter(Boolean);
+      }
+    } catch (_) {
+    }
+    let pdfUri = null;
+    try {
+      if (typeof target.getAttachments === "function") {
+        const attIds = target.getAttachments();
+        for (const attId of attIds) {
+          const att = Zotero.Items.get(attId);
+          if (att && (typeof att.isPDFAttachment === "function" && att.isPDFAttachment() || att.contentType === "application/pdf")) {
+            const groupID = Zotero.Libraries?.get?.(att.libraryID)?.groupID;
+            pdfUri = groupID ? `zotero://open-pdf/groups/${groupID}/items/${att.key}` : `zotero://open-pdf/library/items/${att.key}`;
+            break;
+          }
+        }
+      }
+    } catch (_) {
+    }
+    return {
+      key: target.key || String(target.id),
+      id: target.id,
+      libraryID: target.libraryID,
+      title,
+      authors: authors.slice(0, 3).join(", ") + (authors.length > 3 ? " 等" : ""),
+      year,
+      publication,
+      tags,
+      zoteroUri: itemSelectUri(target),
+      pdfUri
+    };
+  };
+  var resolveItemReference = (reference, libraryID) => {
+    if (!reference) return null;
+    const raw = String(reference).trim();
+    const groupMatch = raw.match(
+      /^zotero:\/\/(?:select|open-pdf)\/groups\/(\d+)\/items\/([A-Za-z0-9_]+)/
+    );
+    const key = groupMatch?.[2] || raw.match(/\/items\/([A-Za-z0-9_]+)(?:[?#]|$)/)?.[1] || raw;
+    if (!/^[A-Za-z0-9_]+$/.test(key)) return null;
+    if (!raw.includes("/items/") && /^\d+$/.test(key))
+      return Zotero.Items.get(Number(key));
+    let targetLibraryID = Number.isInteger(Number(libraryID)) && Number(libraryID) > 0 ? Number(libraryID) : Zotero.Libraries?.userLibraryID || 1;
+    if (groupMatch) {
+      targetLibraryID = Zotero.Groups?.getLibraryIDFromGroupID?.(Number(groupMatch[1])) || targetLibraryID;
+    }
+    return Zotero.Items.getByLibraryAndKey?.(targetLibraryID, key) || null;
+  };
+
+  // src/itemPane/domView.ts
+  var HTML_NS = "http://www.w3.org/1999/xhtml";
+  function createEl(doc, tag, className = "", text = null) {
+    const el = doc.createElementNS ? doc.createElementNS(HTML_NS, tag) : doc.createElement(tag);
+    if (className) el.className = className;
+    if (text !== null && text !== void 0) el.textContent = text;
+    return el;
+  }
+  function ensureItemPaneStyles(doc) {
+    if (!doc) return;
+    if (doc.getElementById("todolist-itempane-styles")) return;
+    try {
+      const style = doc.createElementNS ? doc.createElementNS(HTML_NS, "style") : doc.createElement("style");
+      style.id = "todolist-itempane-styles";
+      style.textContent = `
+      item-pane-custom-section[data-pane*="todolist-item-pane"],
+      item-pane-custom-section[data-pane*="todolist-item-pane"] > collapsible-section,
+      item-pane-custom-section[data-pane*="todolist-item-pane"] [data-type="body"] { min-width:0; max-width:100%; box-sizing:border-box; }
+      item-pane-sidenav .btn[data-pane*="todolist-item-pane"] { width:28px !important; height:28px !important; min-width:28px !important; padding:4px !important; overflow:hidden !important; font-size:0 !important; line-height:0 !important; color:transparent !important; white-space:nowrap !important; }
+      .td-pane-wrap { --td-line:color-mix(in srgb,currentColor 12%,transparent); --td-hover:color-mix(in srgb,currentColor 4%,transparent); display:flex; flex-direction:column; gap:10px; contain:inline-size; width:100%; min-width:0; max-width:100%; box-sizing:border-box; padding:6px 2px 12px; font:inherit; color:var(--fill-primary,CanvasText); color-scheme:inherit; line-height:1.5; }
+      .td-pane-wrap * { box-sizing:border-box; }
+      .td-pane-wrap :is(button,input,select,summary) { font:inherit; color:inherit; min-width:0; max-width:100%; }
+      .td-pane-wrap button { cursor:pointer; }
+      .td-pane-wrap button:disabled { opacity:.55; cursor:default; }
+      .td-pane-wrap :is(button,input,select,summary):focus-visible { outline:2px solid var(--color-accent,Highlight); outline-offset:2px; }
+      .td-pane-wrap :is(.td-header-card,.td-header-top) { display:flex; gap:8px; }
+      .td-pane-wrap .td-header-card { flex-direction:column; padding:0 0 4px; }
+      .td-pane-wrap .td-header-top { align-items:center; justify-content:space-between; }
+      .td-pane-wrap .td-status-badge { font-weight:600; }
+      .td-pane-wrap :is(.td-progress-pct,.td-add-hint,.td-empty-desc) { color:var(--fill-secondary,GrayText); font-size:.92em; }
+      .td-pane-wrap .td-progress-track { height:3px; border-radius:2px; overflow:hidden; background:var(--td-line); }
+      .td-pane-wrap .td-progress-fill { height:100%; background:var(--color-accent,Highlight); }
+      .td-pane-wrap :is(.td-add-reading,.td-btn-milestone-primary,.td-action-btn) { border:1px solid var(--td-line); border-radius:5px; background:transparent; padding:6px 10px; white-space:normal; overflow-wrap:anywhere; }
+      .td-pane-wrap .td-add-reading { width:100%; font-weight:500; }
+      .td-pane-wrap button:hover:not(:disabled) { background:var(--td-hover); }
+      .td-pane-wrap .td-quick-box { display:flex; align-items:center; gap:6px; padding:4px; border:1px solid var(--td-line); border-radius:5px; }
+      .td-pane-wrap .td-quick-box:focus-within { border-color:var(--color-accent,Highlight); }
+      .td-pane-wrap .td-prio-select { flex:0 0 auto; padding:3px; border:0; border-inline-end:1px solid var(--td-line); background:transparent; }
+      .td-pane-wrap .td-quick-input { flex:1 1 0; width:0; padding:4px; border:0; background:transparent; }
+      .td-pane-wrap .td-quick-input::placeholder { color:var(--fill-secondary,GrayText); }
+      .td-pane-wrap .td-quick-submit { flex:0 0 auto; width:auto; min-width:44px; height:28px; padding:0 8px; border:1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius:4px; font-size:13px; white-space:nowrap; }
+      .td-pane-wrap .td-reading-profile { display:flex; align-items:center; gap:10px; color:var(--fill-secondary,GrayText); font-size:.92em; }
+      .td-pane-wrap .td-reading-profile select { flex:1; padding:4px 6px; border:1px solid var(--td-line); border-radius:4px; background:transparent; color:var(--fill-primary,CanvasText); }
+      .td-pane-wrap .td-empty-card { display:flex; flex-direction:column; align-items:flex-start; gap:6px; padding:12px 0; }
+      .td-pane-wrap .td-empty-title { font-weight:500; }
+      .td-pane-wrap .td-btn-milestone-primary { align-self:stretch; width:100%; height:auto; min-height:36px; margin:4px 0 0; padding:8px 10px; }
+      .td-pane-wrap .td-task-list { display:flex; flex-direction:column; min-width:0; }
+      .td-pane-wrap .td-task-card { display:flex; flex-direction:column; gap:6px; min-width:0; padding:12px 0; border-block-end:1px solid var(--td-line); }
+      .td-pane-wrap .td-task-row { display:flex; align-items:flex-start; gap:7px; min-width:0; }
+      .td-pane-wrap .td-prio-dot { width:4px; height:4px; margin-top:8px; border-radius:50%; flex-shrink:0; background:var(--fill-secondary,GrayText); }
+      .td-pane-wrap .td-prio-high { background:var(--color-red,#c43b3b); }
+      .td-pane-wrap .td-prio-low { opacity:.45; }
+      .td-pane-wrap .td-checkbox { flex:0 0 auto; width:15px; height:15px; margin:3px 0 0; accent-color:var(--color-accent,Highlight); }
+      .td-pane-wrap .td-task-title { flex:1 1 0; min-width:0; height:auto; min-height:0; max-height:none; margin:0; text-align:start; padding:0; border:0; background:transparent; white-space:normal; overflow-wrap:anywhere; line-height:1.5; }
+      .td-pane-wrap .td-task-delete { flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; height:25px; margin:-4px 0 0 2px; padding:0 7px; border:1px solid color-mix(in srgb,var(--color-red,#c43b3b) 24%,transparent); border-radius:5px; color:var(--color-red,#c43b3b); background:color-mix(in srgb,var(--color-red,#c43b3b) 7%,transparent); font-size:.85em; }
+      .td-pane-wrap .td-task-delete:hover:not(:disabled) { border-color:color-mix(in srgb,var(--color-red,#c43b3b) 42%,transparent); background:color-mix(in srgb,var(--color-red,#c43b3b) 13%,transparent); }
+      .td-pane-wrap .is-done { text-decoration:line-through; color:var(--fill-secondary,GrayText); }
+      .td-pane-wrap .td-task-locate { flex:0 0 auto; padding:1px 4px; font-size:.85em; color:var(--fill-secondary,GrayText); background:transparent; border:0; border-radius:3px; }
+      .td-pane-wrap .td-task-controls { display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; padding-inline-start:26px; color:var(--fill-secondary,GrayText); font-size:.85em; }
+      .td-pane-wrap :is(.td-task-controls button,.td-reschedule summary,.td-subtask-toggle) { border:0; border-radius:3px; background:transparent; padding:2px 3px; font:inherit; cursor:pointer; }
+      .td-pane-wrap .td-badge-date { line-height:1.5; }
+      .td-pane-wrap .td-badge-date.is-overdue { color:var(--color-red,#c43b3b); }
+      .td-pane-wrap .td-reschedule[open] { flex-basis:100%; }
+      .td-pane-wrap .td-subtask-list { display:flex; flex-direction:column; gap:6px; margin:2px 0 0 26px; padding-inline-start:10px; border-inline-start:1px solid var(--td-line); }
+      .td-pane-wrap .td-subtask-item { display:flex; align-items:flex-start; gap:7px; font-size:.92em; }
+      .td-pane-wrap .td-subtask-title { flex:1; min-width:0; overflow-wrap:anywhere; }
+      .td-pane-wrap .td-action-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px; padding-top:10px; border-top:1px solid var(--td-line); }
+      .td-pane-wrap .td-action-btn { font-size:.92em; border-color:transparent; text-align:start; padding:5px 6px; }
+      .td-pane-wrap .td-fallback-task-list { display:flex; flex-direction:column; gap:4px; }
+      .td-pane-wrap { --td-blue:light-dark(#315f94,#a8c9ef); --td-green:light-dark(#316d58,#a0d3bb); --td-amber:light-dark(#7a5d2c,#e3c58d); }
+      .td-pane-wrap :is(.td-add-reading,.td-quick-submit,.td-action-workspace,.td-task-edit) { --td-tone:var(--td-blue); }
+      .td-pane-wrap :is(.td-btn-milestone-primary,.td-action-reading,.td-action-btn-pdf,.td-task-pdf,.td-task-locate) { --td-tone:var(--td-green); }
+      .td-pane-wrap :is(.td-action-notes,.td-reschedule) { --td-tone:var(--td-amber); }
+      .td-pane-wrap button:is(.td-add-reading,.td-quick-submit,.td-btn-milestone-primary,.td-action-btn,.td-task-edit,.td-task-pdf,.td-task-locate),
+      .td-pane-wrap .td-reschedule summary {
+        color:var(--td-tone,var(--td-blue));
+        background:color-mix(in srgb,var(--td-tone,var(--td-blue)) 9%,transparent);
+        border:1px solid color-mix(in srgb,var(--td-tone,var(--td-blue)) 20%,transparent);
+      }
+      .td-pane-wrap button:is(.td-add-reading,.td-quick-submit,.td-btn-milestone-primary,.td-action-btn,.td-task-edit,.td-task-pdf,.td-task-locate):hover:not(:disabled),
+      .td-pane-wrap .td-reschedule summary:hover {
+        background:color-mix(in srgb,var(--td-tone,var(--td-blue)) 16%,transparent);
+        border-color:color-mix(in srgb,var(--td-tone,var(--td-blue)) 32%,transparent);
+      }
+      .td-pane-wrap .td-quick-label { display:block; margin:6px 0 -2px; font-weight:600; color:var(--fill-primary,CanvasText); }
+      .td-pane-wrap .td-quick-box { min-height:38px; padding:5px; border:1px solid color-mix(in srgb,var(--td-blue) 35%,transparent); background:color-mix(in srgb,var(--td-blue) 4%,transparent); }
+      .td-pane-wrap .td-quick-box:focus-within { border-color:var(--color-accent,Highlight); box-shadow:0 0 0 2px color-mix(in srgb,var(--color-accent,Highlight) 28%,transparent); }
+      .td-pane-wrap .td-quick-input { padding:6px 4px; font-size:1.05em; color:var(--fill-primary,CanvasText); }
+      .td-pane-wrap .td-quick-input::placeholder { color:color-mix(in srgb,var(--fill-primary,CanvasText) 62%,transparent); }
+      .td-pane-wrap .td-quick-box button.td-quick-submit,
+      .td-pane-wrap button.td-quick-submit {
+        flex:0 0 auto !important; width:auto !important; min-width:44px !important; height:28px !important;
+        line-height:26px !important; padding:0 8px !important; font-size:13px !important; font-weight:500 !important;
+        white-space:nowrap !important; overflow:visible !important; text-overflow:clip !important;
+        display:inline-flex !important; align-items:center !important; justify-content:center !important;
+        color:var(--fill-primary, currentColor) !important;
+        background:color-mix(in srgb, currentColor 6%, transparent) !important;
+        border:1px solid color-mix(in srgb, currentColor 18%, transparent) !important;
+        border-radius:4px !important;
+      }
+      .td-pane-wrap .td-quick-box button.td-quick-submit:hover:not(:disabled),
+      .td-pane-wrap button.td-quick-submit:hover:not(:disabled) {
+        background:color-mix(in srgb, currentColor 11%, transparent) !important;
+        border-color:color-mix(in srgb, currentColor 28%, transparent) !important;
+      }
+      .td-pane-wrap button.td-quick-submit:disabled { opacity:.55 !important; }
+      .td-pane-wrap .td-action-grid { display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:6px !important; padding-top:10px !important; border-top:1px solid var(--td-line) !important; }
+      .td-pane-wrap .td-action-btn { padding:6px 8px !important; text-align:center !important; font-size:13px !important; grid-column:auto !important; }
+      .td-pane-wrap .td-action-btn-pdf { grid-column:auto !important; }
+      .td-pane-wrap .td-action-btn-milestones-row { grid-column:1 / -1 !important; width:100% !important; text-align:center !important; }
+    `;
+      (doc.head || doc.documentElement || doc.body).appendChild(style);
+    } catch (e) {
+      Zotero.logError?.("[TaskFlow] Failed to inject itemPane styles: " + e);
+    }
+  }
+  function renderHeaderCard(doc, total, done, pct, showProgressBar) {
+    const headerCard = createEl(doc, "div", "td-header-card");
+    const headerTop = createEl(doc, "div", "td-header-top");
+    let statusText = "暂无待办";
+    let badgeClass = "td-status-badge td-status-empty";
+    if (total > 0) {
+      if (done === total) {
+        statusText = `研读已完成 (${done}/${total})`;
+        badgeClass = "td-status-badge td-status-done";
+      } else {
+        statusText = `研读进行中 (${done}/${total})`;
+        badgeClass = "td-status-badge td-status-active";
+      }
+    }
+    const statusBadge = createEl(doc, "span", badgeClass, statusText);
+    headerTop.appendChild(statusBadge);
+    if (total > 0) {
+      const pctSpan = createEl(doc, "span", "td-progress-pct", `${pct}%`);
+      headerTop.appendChild(pctSpan);
+    }
+    headerCard.appendChild(headerTop);
+    if (total > 0 && showProgressBar) {
+      const track = createEl(doc, "div", "td-progress-track");
+      track.setAttribute("role", "progressbar");
+      track.setAttribute("data-l10n-id", "taskflow-item-pane-progress");
+      track.setAttribute("aria-valuemin", "0");
+      track.setAttribute("aria-valuemax", String(total));
+      track.setAttribute("aria-valuenow", String(done));
+      const fill = createEl(doc, "div", "td-progress-fill");
+      fill.style.width = `${pct}%`;
+      track.appendChild(fill);
+      headerCard.appendChild(track);
+    }
+    return headerCard;
+  }
+  function renderActionGrid(doc, target, total, host, state, profileSelect) {
+    const actionGrid = createEl(doc, "div", "td-action-grid");
+    const btnOpenBoard = createEl(doc, "button", "td-action-btn td-action-workspace", "待办看板");
+    btnOpenBoard.type = "button";
+    btnOpenBoard.title = "在主标签页中打开 TaskFlow 任务看板";
+    btnOpenBoard.addEventListener("click", () => {
+      host.openTaskFlow({ mode: "filter_item", itemKey: target.key }, Zotero.getMainWindow?.());
+    });
+    actionGrid.appendChild(btnOpenBoard);
+    const btnSubwin = createEl(doc, "button", "td-action-btn td-action-workspace", "伴读窗口");
+    btnSubwin.type = "button";
+    btnSubwin.title = "打开轻量伴读窗口，适合与 PDF 左右分屏对照";
+    btnSubwin.addEventListener("click", () => {
+      host.openStandaloneWindow({ mode: "filter_item", itemKey: target.key }, Zotero.getMainWindow?.(), "subwindow");
+    });
+    actionGrid.appendChild(btnSubwin);
+    const btnSyncNote = createEl(doc, "button", "td-action-btn td-action-notes", "同步子笔记");
+    btnSyncNote.type = "button";
+    btnSyncNote.title = "将本文献的所有研读待办同步导出为文献子笔记 (云端)";
+    const isReadOnly = typeof target.isEditable === "function" && !target.isEditable();
+    if (isReadOnly) {
+      btnSyncNote.disabled = true;
+      btnSyncNote.title = "只读文献无法同步子笔记";
+    }
+    btnSyncNote.addEventListener("click", async () => {
+      if (btnSyncNote.disabled) return;
+      const note = await host.syncTasksToChildNote(target.id || target);
+      if (note) {
+        host.showNotice("同步成功", "已更新文献子笔记研读清单");
+      } else {
+        host.showNotice("跳过同步", "只读条目或未找到任务清单，跳过同步");
+      }
+    });
+    actionGrid.appendChild(btnSyncNote);
+    const meta = serializeLiteratureItem(target);
+    if (meta?.pdfUri) {
+      const btnPdf = createEl(doc, "button", "td-action-btn td-action-btn-pdf", "打开 PDF");
+      btnPdf.type = "button";
+      btnPdf.title = "在 Zotero 内置阅读器中打开该文献的 PDF 全文";
+      btnPdf.addEventListener("click", () => {
+        host.openPdfAttachment(target);
+      });
+      actionGrid.appendChild(btnPdf);
+    }
+    if (total > 0) {
+      const btnMilestones = createEl(
+        doc,
+        "button",
+        "td-action-btn td-action-reading td-action-btn-milestones-row",
+        "追加精读清单"
+      );
+      btnMilestones.type = "button";
+      btnMilestones.title = "按当前研读模板为本文献追加生成 5 项精读里程碑待办";
+      btnMilestones.addEventListener("click", async () => {
+        await host.createReadingMilestones(target, Zotero.getMainWindow?.(), profileSelect.value);
+        state?.refresh?.();
+      });
+      actionGrid.appendChild(btnMilestones);
+    }
+    return actionGrid;
+  }
+
+  // src/itemPane/dragDrop.ts
+  function setupPaneDragAndDrop(wrapper, target, host, state) {
+    wrapper.addEventListener("dragover", (e) => {
+      if (!target) return;
+      if (e.dataTransfer) {
+        e.dataTransfer.dropEffect = "copy";
+        e.preventDefault();
+      }
+      wrapper.classList.add("td-drag-target-active");
+    });
+    wrapper.addEventListener("dragleave", (e) => {
+      if (!wrapper.contains(e.relatedTarget)) {
+        wrapper.classList.remove("td-drag-target-active");
+      }
+    });
+    wrapper.addEventListener("drop", async (e) => {
+      wrapper.classList.remove("td-drag-target-active");
+      if (!target) return;
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        const zoteroItems = e.dataTransfer?.getData("text/x-zotero-item") || e.dataTransfer?.getData("text/plain");
+        if (zoteroItems) {
+          await state?.refresh?.();
+        }
+      } catch (err) {
+        Zotero.logError?.("[TaskFlow] ItemPane drop handling error: " + err);
+      }
+    });
+  }
+  function makeTaskCardDraggable(card, task, host) {
+    card.setAttribute("draggable", "true");
+    card.addEventListener("dragstart", (e) => {
+      if (e.dataTransfer) {
+        e.dataTransfer.setData("text/x-taskflow-id", task.id);
+        e.dataTransfer.setData("text/plain", task.title || "");
+        e.dataTransfer.effectAllowed = "move";
+      }
+      card.classList.add("is-dragging");
+    });
+    card.addEventListener("dragend", () => {
+      card.classList.remove("is-dragging");
+    });
+  }
+
   // src/literatureWorkflow.ts
   var LiteratureWorkflow = {
     profiles: {
@@ -53,206 +419,513 @@
     globalThis.LiteratureWorkflow = LiteratureWorkflow;
   }
 
-  // src/itemPane.ts
-  var itemSelectUri = (item) => {
-    if (!item) return "";
-    const key = item.key || item.id;
-    const groupID = Zotero.Libraries?.get?.(item.libraryID)?.groupID;
-    return groupID ? `zotero://select/groups/${groupID}/items/${key}` : `zotero://select/library/items/${key}`;
-  };
-  var serializeLiteratureItem = (item) => {
-    const target = getLiteratureItem(item);
-    if (!target) return null;
-    const title = (typeof target.getField === "function" ? target.getField("title") : target.title) || "无标题文献";
-    const date = typeof target.getField === "function" ? target.getField("date") : target.date;
-    let year = "";
-    if (date) {
-      const match = String(date).match(/\b(19|20)\d{2}\b/);
-      year = match ? match[0] : String(date).slice(0, 4);
+  // src/itemPane/quickAdd.ts
+  function renderQuickAddSection(doc, target, host, state, uncompletedTasks) {
+    const elements = [];
+    const quickBox = createEl(doc, "div", "td-quick-box");
+    const prioSelect = createEl(doc, "select", "td-prio-select");
+    prioSelect.setAttribute("aria-label", "新待办优先级");
+    prioSelect.title = "新待办优先级";
+    const defaultPrio = state?.quickPriority || host.getPref("defaultPriority", "medium");
+    const priorities = [
+      { val: "medium", label: "中优先" },
+      { val: "high", label: "高优先" },
+      { val: "low", label: "低优先" }
+    ];
+    for (const p of priorities) {
+      const opt = createEl(doc, "option", "", p.label);
+      opt.value = p.val;
+      if (p.val === defaultPrio) opt.selected = true;
+      prioSelect.appendChild(opt);
     }
-    let authors = [];
-    try {
-      if (typeof target.getCreators === "function") {
-        authors = target.getCreators().map((c) => c.lastName || c.name || `${c.firstName || ""} ${c.lastName || ""}`.trim()).filter(Boolean);
+    prioSelect.addEventListener("change", () => {
+      if (state) state.quickPriority = prioSelect.value;
+    });
+    const quickInput = createEl(doc, "input", "td-quick-input");
+    quickInput.type = "text";
+    quickInput.value = state?.quickDraft || "";
+    quickInput.addEventListener("input", () => {
+      if (state) state.quickDraft = quickInput.value;
+    });
+    quickInput.setAttribute("aria-label", "新待办事项");
+    quickInput.placeholder = "输入待办内容，按 Enter 添加";
+    quickInput.id = "td-quick-input";
+    const quickBtn = createEl(doc, "button", "td-quick-submit", "添加");
+    quickBtn.type = "button";
+    quickBtn.title = "添加待办任务";
+    quickBtn.setAttribute("aria-label", "添加待办任务");
+    quickInput.disabled = prioSelect.disabled = quickBtn.disabled = Boolean(state?.saving);
+    const literatureTitle = serializeLiteratureItem(target).title;
+    const existingReadingTask = uncompletedTasks.find(
+      (task) => (task.literatureWorkflowId === "reading" || task.title === `研读：${literatureTitle}`) && (task.academicType || "literature_reading") === "literature_reading"
+    );
+    const addReadingBtn = createEl(
+      doc,
+      "button",
+      "td-add-reading",
+      existingReadingTask ? "已加入论文研读" : "＋ 添加到论文研读"
+    );
+    addReadingBtn.type = "button";
+    addReadingBtn.title = `为当前文献创建论文研读待办，默认 ${LiteratureWorkflow.days(host.getPref("defaultDueDays", 7))} 天后截止`;
+    addReadingBtn.setAttribute("aria-label", "添加到论文研读");
+    addReadingBtn.disabled = Boolean(existingReadingTask || state?.saving);
+    if (addReadingBtn.disabled) addReadingBtn.style.opacity = "0.65";
+    const addHint = createEl(
+      doc,
+      "div",
+      "td-add-hint",
+      existingReadingTask ? `已关联当前文献 · 截止日期：${existingReadingTask.dueDate || "未设置"}` : `点击即可创建待办并关联当前文献 · 默认 ${LiteratureWorkflow.days(host.getPref("defaultDueDays", 7))} 天后截止`
+    );
+    addHint.setAttribute("role", "status");
+    addHint.setAttribute("aria-live", "polite");
+    elements.push(addReadingBtn);
+    elements.push(addHint);
+    let saving = false;
+    const handleQuickAdd = async (useLiteratureTitle = false) => {
+      if (saving || state?.saving || useLiteratureTitle && existingReadingTask) return;
+      const text = useLiteratureTitle ? "" : quickInput.value.trim();
+      if (!useLiteratureTitle && !text) {
+        quickInput.focus();
+        return;
       }
-    } catch (_) {
-    }
-    const publication = typeof target.getField === "function" ? target.getField("publicationTitle") || target.getField("proceedingsTitle") || target.getField("publisher") || "" : "";
-    let tags = [];
-    try {
-      if (typeof target.getTags === "function") {
-        tags = target.getTags().map((t) => t.tag || String(t)).filter(Boolean);
+      const selectedPrio = prioSelect.value || defaultPrio;
+      saving = true;
+      if (state) state.saving = true;
+      addReadingBtn.disabled = true;
+      quickBtn.disabled = true;
+      quickInput.disabled = true;
+      prioSelect.disabled = true;
+      try {
+        const result = await host.addLiteratureReadingTask(target, {
+          title: text,
+          priority: selectedPrio,
+          academicType: useLiteratureTitle ? "literature_reading" : host.getPref("defaultTaskType", "literature_reading")
+        });
+        if (!useLiteratureTitle) {
+          quickInput.value = "";
+          if (state?.itemKey === target.key && state?.libraryID === target.libraryID) state.quickDraft = "";
+        }
+        host.showNotice(
+          result.created ? "已加入待办事项" : "该文献已加入待办",
+          `截止日期：${result.task.dueDate || "未设置"}`
+        );
+      } catch (error) {
+        addHint.textContent = "保存失败，请重试。";
+        host.showNotice("保存失败", String(error));
+        return;
+      } finally {
+        saving = false;
+        if (state) state.saving = false;
+        addReadingBtn.disabled = Boolean(existingReadingTask);
+        addReadingBtn.style.opacity = addReadingBtn.disabled ? "0.65" : "1";
+        quickBtn.disabled = false;
+        quickInput.disabled = false;
+        prioSelect.disabled = false;
       }
-    } catch (_) {
+      await state?.refresh?.();
+    };
+    addReadingBtn.addEventListener("click", () => {
+      handleQuickAdd(true).catch(
+        (error) => Zotero.logError?.("[TaskFlow] Quick add refresh failed: " + error)
+      );
+    });
+    quickInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleQuickAdd().catch(
+          (error) => Zotero.logError?.("[TaskFlow] Quick add refresh failed: " + error)
+        );
+      }
+    });
+    quickBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      handleQuickAdd().catch(
+        (error) => Zotero.logError?.("[TaskFlow] Quick add refresh failed: " + error)
+      );
+    });
+    const quickLabel = createEl(doc, "label", "td-quick-label", "快速新建待办");
+    quickLabel.setAttribute("for", "td-quick-input");
+    elements.push(quickLabel);
+    quickBox.appendChild(prioSelect);
+    quickBox.appendChild(quickInput);
+    quickBox.appendChild(quickBtn);
+    elements.push(quickBox);
+    return elements;
+  }
+  function renderProfileSection(doc, tasks, host, state) {
+    const profileBox = createEl(doc, "label", "td-reading-profile", "研读模板");
+    const profileSelect = createEl(doc, "select");
+    profileSelect.setAttribute("aria-label", "研读模板");
+    const selectedProfile = state?.profileID || tasks.find((task) => task.readingProfile)?.readingProfile || host.getPref("readingProfile", "general");
+    for (const [id, profile] of Object.entries(LiteratureWorkflow.profiles)) {
+      const option = createEl(doc, "option", "", profile.label);
+      option.value = id;
+      option.selected = id === selectedProfile;
+      profileSelect.appendChild(option);
     }
-    let pdfUri = null;
+    profileSelect.addEventListener("change", () => {
+      if (state) state.profileID = profileSelect.value;
+    });
+    profileBox.appendChild(profileSelect);
+    return { box: profileBox, select: profileSelect };
+  }
+  function renderEmptyCard(doc, target, host, state, profileSelect) {
+    const emptyCard = createEl(doc, "div", "td-empty-card");
+    const emptyDesc = createEl(
+      doc,
+      "div",
+      "td-empty-desc",
+      "点击上方“添加到论文研读”或在输入框新建待办；也可按所选模板一键生成 5 步精读清单"
+    );
+    const btnCreateMilestones = createEl(doc, "button", "td-btn-milestone-primary", "生成精读清单");
+    btnCreateMilestones.type = "button";
+    btnCreateMilestones.title = "按所选研读模板为本文献建立精读清单";
+    btnCreateMilestones.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      await host.createReadingMilestones(target, Zotero.getMainWindow?.(), profileSelect.value);
+      state?.refresh?.();
+    });
+    emptyCard.appendChild(emptyDesc);
+    emptyCard.appendChild(btnCreateMilestones);
+    return emptyCard;
+  }
+
+  // src/itemPane/contextMenu.ts
+  function renderRescheduleMenu(doc, task, state, host) {
+    const menu = createEl(doc, "details", "td-reschedule");
+    const summary = createEl(doc, "summary", "", "改期");
+    menu.appendChild(summary);
+    for (const [days, label] of [
+      [0, "今天"],
+      [3, "延后三天"],
+      [7, "延后一周"]
+    ]) {
+      const dateBtn = createEl(doc, "button", "td-reschedule-option", label);
+      dateBtn.type = "button";
+      dateBtn.title = days ? "从当前截止日期延后；未设置或已逾期时从今天计算" : "截止日期设为今天";
+      dateBtn.addEventListener("click", async () => {
+        if (dateBtn.disabled) return;
+        menu.querySelectorAll("button").forEach((btn) => {
+          btn.disabled = true;
+        });
+        try {
+          await host.rescheduleLiteratureTask(task.id, days, Number(days) > 0);
+          menu.open = false;
+        } catch (error) {
+          host.showNotice("改期失败", String(error));
+        } finally {
+          menu.querySelectorAll("button").forEach((btn) => {
+            btn.disabled = false;
+          });
+        }
+        Promise.resolve(state?.refresh?.()).catch((error) => Zotero.logError?.("[TaskFlow] 改期刷新失败: " + error));
+      });
+      menu.appendChild(dateBtn);
+    }
+    return menu;
+  }
+  function renderTaskControls(doc, task, target, host, state) {
+    const controls = createEl(doc, "div", "td-task-controls");
+    if (task.zoteroItemKey) {
+      const locateButton = createEl(doc, "button", "td-task-locate", "↗ Zotero");
+      locateButton.type = "button";
+      locateButton.title = "在 Zotero 文献库中定位这篇文献";
+      locateButton.setAttribute("aria-label", `跳转到文献：${task.zoteroItemTitle || task.title}`);
+      locateButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        host.locateLiteratureItem(task.zoteroUri || task.zoteroItemKey, task.zoteroLibraryID, Zotero.getMainWindow?.()).catch((error) => host.showNotice("无法跳转文献", String(error)));
+      });
+      controls.appendChild(locateButton);
+    }
+    if (task.dueDate) {
+      const todayStr = host.localDateString(/* @__PURE__ */ new Date());
+      const isOverdue = !task.completed && task.dueDate < todayStr;
+      const dateText = (isOverdue ? "逾期 · " : "") + (task.dueDate.length > 5 ? task.dueDate.slice(5) : task.dueDate);
+      const dueBadge = createEl(doc, "span", `td-badge-date ${isOverdue ? "is-overdue" : ""}`, dateText);
+      dueBadge.title = isOverdue ? `已逾期！截止日期: ${task.dueDate}` : `截止日期: ${task.dueDate}`;
+      controls.appendChild(dueBadge);
+    }
+    const editBtn = createEl(doc, "button", "td-task-edit", "编辑");
+    editBtn.type = "button";
+    editBtn.addEventListener("click", () => {
+      host.openTaskFlow({ mode: "edit_task", taskId: task.id }, Zotero.getMainWindow?.());
+    });
+    controls.appendChild(editBtn);
+    if (!task.completed) {
+      const rescheduleMenu = renderRescheduleMenu(doc, task, state, host);
+      controls.appendChild(rescheduleMenu);
+    }
+    if (task.zoteroPdfUri || task.zoteroAnnotationKey) {
+      const pdfBtn = createEl(doc, "button", "td-task-pdf", task.zoteroAnnotationKey ? "回到批注" : "打开 PDF");
+      pdfBtn.type = "button";
+      pdfBtn.addEventListener("click", () => {
+        host.openTaskPdf(task).catch((error) => host.showNotice("打开 PDF 失败", String(error)));
+      });
+      controls.appendChild(pdfBtn);
+    }
+    return controls;
+  }
+  function attachTaskCardContextMenu(card, task, host, state) {
+    card.addEventListener("contextmenu", (e) => {
+      if (e.target && e.target.tagName === "BUTTON") return;
+    });
+  }
+
+  // src/itemPane/scheduler.ts
+  async function handleTaskToggle(host, target, task, checkbox, state) {
     try {
-      if (typeof target.getAttachments === "function") {
-        const attIds = target.getAttachments();
-        for (const attId of attIds) {
-          const att = Zotero.Items.get(attId);
-          if (att && (typeof att.isPDFAttachment === "function" && att.isPDFAttachment() || att.contentType === "application/pdf")) {
-            const groupID = Zotero.Libraries?.get?.(att.libraryID)?.groupID;
-            pdfUri = groupID ? `zotero://open-pdf/groups/${groupID}/items/${att.key}` : `zotero://open-pdf/library/items/${att.key}`;
-            break;
-          }
+      await host.updateTaskState(task.id, (current) => ({
+        completed: checkbox.checked,
+        completedAt: checkbox.checked ? (/* @__PURE__ */ new Date()).toISOString() : null,
+        status: checkbox.checked ? "done" : "todo",
+        subtasks: (current.subtasks || []).map((sub) => ({
+          ...sub,
+          completed: checkbox.checked ? true : sub.completed
+        }))
+      }));
+    } catch (error) {
+      checkbox.checked = task.completed;
+      host.showNotice("保存失败", String(error));
+      return;
+    }
+    await host.tagItemOnTaskEvent(target.key, "complete_check", target.libraryID);
+    if (host.getPref("autoSyncChildNote", true)) {
+      await host.syncTasksToChildNote(target);
+    }
+    state?.refresh?.();
+  }
+  async function handleSubtaskToggle(host, target, task, sub, subCheck, state) {
+    try {
+      await host.updateTaskState(task.id, (current) => {
+        const subtasks = (current.subtasks || []).map(
+          (st) => st.id === sub.id ? { ...st, completed: subCheck.checked } : st
+        );
+        const completed = subtasks.every((st) => st.completed);
+        return {
+          subtasks,
+          completed,
+          completedAt: completed ? current.completedAt || (/* @__PURE__ */ new Date()).toISOString() : null,
+          status: completed ? "done" : "todo"
+        };
+      });
+    } catch (error) {
+      subCheck.checked = sub.completed;
+      host.showNotice("保存失败", String(error));
+      return;
+    }
+    await host.tagItemOnTaskEvent(target.key, "complete_check", target.libraryID);
+    if (host.getPref("autoSyncChildNote", true) && host.getPref("childNoteAutoUpdateOnSubtask", true)) {
+      await host.syncTasksToChildNote(target);
+    }
+    state?.refresh?.();
+  }
+  async function handleTaskDelete(host, target, task, delBtn, state) {
+    if (delBtn.disabled) return;
+    delBtn.disabled = true;
+    try {
+      await host.saveData({ taskChanges: { deleted: [task.id] } });
+      host._paneDeleted ||= [];
+      host._paneDeleted.push(host.cloneData(task));
+      clearTimeout(host._paneUndoTimer);
+      host._paneUndoTimer = setTimeout(() => {
+        host._paneDeleted = [];
+        host.notifyDataChanged();
+      }, 8e3);
+    } catch (error) {
+      delBtn.disabled = false;
+      host.showNotice("删除失败", String(error));
+      return;
+    }
+    await host.tagItemOnTaskEvent(target.key, "complete_check", target.libraryID);
+    if (host.getPref("autoSyncChildNote", true)) {
+      await host.syncTasksToChildNote(target);
+    }
+    state?.refresh?.();
+  }
+  async function handleUndoDelete(host, target, undoBtn, state) {
+    if (undoBtn.disabled) return;
+    undoBtn.disabled = true;
+    try {
+      const restored = host._paneDeleted;
+      await host.saveData({ taskChanges: { added: restored } });
+      host._paneDeleted = [];
+      clearTimeout(host._paneUndoTimer);
+      for (const task of restored) {
+        await host.tagItemOnTaskEvent(task.zoteroItemKey, "complete_check", task.zoteroLibraryID);
+      }
+      if (host.getPref("autoSyncChildNote", true)) {
+        await host.syncTasksToChildNote(target);
+      }
+      state?.refresh?.();
+    } catch (error) {
+      undoBtn.disabled = false;
+      host.showNotice("恢复失败", String(error));
+    }
+  }
+  function renderTaskList(doc, tasks, target, host, state) {
+    const taskList = createEl(doc, "div", "td-task-list");
+    const showSubtasks = host.getPref("itemPaneShowSubtasks", true);
+    for (const t of tasks) {
+      const taskCard = createEl(doc, "div", `td-task-card ${t.completed ? "is-completed" : ""}`);
+      taskCard.dataset.taskId = t.id;
+      makeTaskCardDraggable(taskCard, t, host);
+      attachTaskCardContextMenu(taskCard, t, host, state);
+      const row = createEl(doc, "div", "td-task-row");
+      const prio = t.priority || "medium";
+      const prioDot = createEl(doc, "span", `td-prio-dot td-prio-${prio}`);
+      const prioLabel = prio === "high" ? "高" : prio === "low" ? "低" : "中";
+      prioDot.title = `优先级: ${prioLabel}`;
+      row.appendChild(prioDot);
+      const checkbox = createEl(doc, "input", "td-checkbox");
+      checkbox.type = "checkbox";
+      checkbox.setAttribute("aria-label", t.title);
+      checkbox.checked = Boolean(t.completed);
+      checkbox.title = t.completed ? "标记为未完成" : "标记为已完成";
+      checkbox.addEventListener("change", (e) => {
+        e.stopPropagation();
+        handleTaskToggle(host, target, t, checkbox, state);
+      });
+      row.appendChild(checkbox);
+      const titleSpan = createEl(doc, "button", `td-task-title ${t.completed ? "is-done" : ""}`, t.title);
+      titleSpan.type = "button";
+      titleSpan.title = `${t.title} (点击在看板中查看详情)`;
+      titleSpan.addEventListener("click", () => {
+        host.openTaskFlow({ mode: "view_task", taskId: t.id }, Zotero.getMainWindow?.());
+      });
+      row.appendChild(titleSpan);
+      const delBtn = createEl(doc, "button", "td-task-delete", "移除");
+      delBtn.type = "button";
+      delBtn.setAttribute("aria-label", `从 TaskFlow 移除任务并保留 Zotero 文献：${t.title}`);
+      delBtn.title = "仅移除此 TaskFlow 任务，不删除 Zotero 文献";
+      delBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handleTaskDelete(host, target, t, delBtn, state);
+      });
+      row.appendChild(delBtn);
+      taskCard.appendChild(row);
+      const controls = renderTaskControls(doc, t, target, host, state);
+      let subList = null;
+      if (Array.isArray(t.subtasks) && t.subtasks.length > 0) {
+        const doneSubs = t.subtasks.filter((s) => s.completed).length;
+        const subToggle = createEl(doc, "button", "td-subtask-toggle", `子任务 ${doneSubs}/${t.subtasks.length}`);
+        subToggle.type = "button";
+        subToggle.title = "展开/收起子任务清单";
+        const expanded = state?.expandedTasks.get(t.id) ?? showSubtasks;
+        subToggle.setAttribute("aria-expanded", String(expanded));
+        controls.appendChild(subToggle);
+        subList = createEl(doc, "div", "td-subtask-list");
+        if (!expanded) subList.style.display = "none";
+        subToggle.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const isHidden = subList.style.display === "none";
+          subList.style.display = isHidden ? "flex" : "none";
+          subToggle.setAttribute("aria-expanded", String(isHidden));
+          state?.expandedTasks.set(t.id, isHidden);
+        });
+        for (const sub of t.subtasks) {
+          const subRow = createEl(doc, "div", "td-subtask-item");
+          const subCheck = createEl(doc, "input", "td-checkbox");
+          subCheck.type = "checkbox";
+          subCheck.setAttribute("aria-label", sub.title);
+          subCheck.checked = Boolean(sub.completed);
+          subCheck.addEventListener("change", (e) => {
+            e.stopPropagation();
+            handleSubtaskToggle(host, target, t, sub, subCheck, state);
+          });
+          const subSpan = createEl(doc, "span", `td-subtask-title ${sub.completed ? "is-done" : ""}`, sub.title);
+          subRow.appendChild(subCheck);
+          subRow.appendChild(subSpan);
+          subList.appendChild(subRow);
         }
       }
-    } catch (_) {
+      taskCard.appendChild(controls);
+      if (subList) taskCard.appendChild(subList);
+      taskList.appendChild(taskCard);
     }
-    return {
-      key: target.key || String(target.id),
-      id: target.id,
-      libraryID: target.libraryID,
-      title,
-      authors: authors.slice(0, 3).join(", ") + (authors.length > 3 ? " 等" : ""),
-      year,
-      publication,
-      tags,
-      zoteroUri: itemSelectUri(target),
-      pdfUri
-    };
-  };
-  var getLiteratureItem = (item) => {
-    if (!item) return null;
-    let target = typeof item === "number" || typeof item === "string" ? Zotero.Items?.get?.(item) || null : item;
-    if (!target) return null;
-    try {
-      if (target.topLevelItem && typeof target.topLevelItem.isRegularItem === "function" && target.topLevelItem.isRegularItem()) {
-        return target.topLevelItem;
+    return taskList;
+  }
+  function renderFallback(doc, target, state, host, fallbackVersion) {
+    const fallback = createEl(doc, "div", "td-pane-wrap td-pane-fallback");
+    const addButton = createEl(doc, "button", "td-add-reading", "＋ 添加到论文研读");
+    addButton.type = "button";
+    addButton.disabled = !target || Boolean(state?.saving);
+    addButton.setAttribute("aria-label", "添加到论文研读");
+    addButton.title = target ? "创建关联当前文献的研读待办，默认一周后截止" : "请先在 Zotero 文献库中选中一篇文献";
+    addButton.addEventListener("click", async () => {
+      if (!target || addButton.disabled) return;
+      addButton.disabled = true;
+      try {
+        const result = await host.addLiteratureReadingTask(target);
+        host.showNotice(
+          result.created ? "已加入论文研读" : "该文献已有关联待办",
+          `截止日期：${result.task?.dueDate || "未设置"}`
+        );
+        await state?.refresh?.();
+      } catch (error) {
+        addButton.disabled = false;
+        host.showNotice("保存失败", String(error));
       }
-    } catch (_) {
-    }
-    if (typeof target.isAttachment === "function" && target.isAttachment()) {
-      if (target.parentItemID) {
-        target = Zotero.Items.get(target.parentItemID) || target;
+    });
+    fallback.appendChild(addButton);
+    const fallbackTaskList = createEl(doc, "div", "td-fallback-task-list");
+    fallback.appendChild(fallbackTaskList);
+    if (target) {
+      const renderFallbackTasks = (tasks) => {
+        fallbackTaskList.replaceChildren();
+        if (tasks.length) {
+          for (const task of tasks) {
+            const row = createEl(doc, "div", "td-task-card td-task-card-fallback");
+            const taskRow = createEl(doc, "div", "td-task-row");
+            const title = createEl(doc, "span", "td-task-title-fallback", task.title || "未命名待办");
+            title.style.cssText = "flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;";
+            const locate = createEl(doc, "button", "td-task-locate", "↗ Zotero");
+            locate.type = "button";
+            locate.title = "在 Zotero 文献库中定位这篇文献";
+            locate.setAttribute("aria-label", `跳转到文献：${task.zoteroItemTitle || task.title || target.key}`);
+            locate.addEventListener("click", (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              host.locateLiteratureItem(task.zoteroUri || task.zoteroItemKey, task.zoteroLibraryID, Zotero.getMainWindow?.()).catch((error) => host.showNotice("无法跳转文献", String(error)));
+            });
+            taskRow.append(title, locate);
+            row.appendChild(taskRow);
+            fallbackTaskList.appendChild(row);
+          }
+        } else {
+          fallbackTaskList.appendChild(createEl(doc, "div", "td-add-hint", "当前文献还没有关联的研读待办。"));
+        }
+      };
+      const matchesTarget = (task) => task.zoteroItemKey === target.key && (task.zoteroLibraryID || Zotero.Libraries.userLibraryID) === target.libraryID;
+      renderFallbackTasks((host._cachedData?.tasks || []).filter(matchesTarget));
+      if (!host._cachedData) {
+        host.loadData().then((data) => {
+          if (state && state.renderVersion !== fallbackVersion) return;
+          if (doc.querySelector(".td-pane-fallback") !== fallback) return;
+          renderFallbackTasks((data.tasks || []).filter(matchesTarget));
+        }).catch((error) => {
+          if (state && state.renderVersion !== fallbackVersion) return;
+          if (doc.querySelector(".td-pane-fallback") === fallback) {
+            fallbackTaskList.replaceChildren(
+              createEl(doc, "div", "td-add-hint", "待办读取失败；添加按钮仍可使用，请重新选择条目重试。")
+            );
+          }
+          Zotero.logError?.("[TaskFlow] ItemPane fallback data load failed: " + error);
+        });
       }
+    } else {
+      fallbackTaskList.appendChild(
+        createEl(doc, "div", "td-add-hint", "请在文献库中选中一篇文献以查看关联待办和跳转按钮。")
+      );
     }
-    if (typeof target.isNote === "function" && target.isNote()) {
-      if (target.parentItemID) {
-        target = Zotero.Items.get(target.parentItemID) || target;
-      }
-    }
-    try {
-      if (target.topLevelItem && typeof target.topLevelItem.isRegularItem === "function" && target.topLevelItem.isRegularItem()) {
-        return target.topLevelItem;
-      }
-    } catch (_) {
-    }
-    return target;
-  };
+    return fallback;
+  }
+
+  // src/itemPane/index.ts
   var TaskFlowItemPane = {
     ensureItemPaneStyles(doc) {
-      if (!doc) return;
-      if (doc.getElementById("todolist-itempane-styles")) return;
-      try {
-        const style = doc.createElementNS ? doc.createElementNS("http://www.w3.org/1999/xhtml", "style") : doc.createElement("style");
-        style.id = "todolist-itempane-styles";
-        style.textContent = `
-          item-pane-custom-section[data-pane*="todolist-item-pane"],
-          item-pane-custom-section[data-pane*="todolist-item-pane"] > collapsible-section,
-          item-pane-custom-section[data-pane*="todolist-item-pane"] [data-type="body"] { min-width:0; max-width:100%; box-sizing:border-box; }
-          item-pane-sidenav .btn[data-pane*="todolist-item-pane"] { width:28px !important; height:28px !important; min-width:28px !important; padding:4px !important; overflow:hidden !important; font-size:0 !important; line-height:0 !important; color:transparent !important; white-space:nowrap !important; }
-          .td-pane-wrap { --td-line:color-mix(in srgb,currentColor 12%,transparent); --td-hover:color-mix(in srgb,currentColor 4%,transparent); display:flex; flex-direction:column; gap:10px; contain:inline-size; width:100%; min-width:0; max-width:100%; box-sizing:border-box; padding:6px 2px 12px; font:inherit; color:var(--fill-primary,CanvasText); color-scheme:inherit; line-height:1.5; }
-          .td-pane-wrap * { box-sizing:border-box; }
-          .td-pane-wrap :is(button,input,select,summary) { font:inherit; color:inherit; min-width:0; max-width:100%; }
-          .td-pane-wrap button { cursor:pointer; }
-          .td-pane-wrap button:disabled { opacity:.55; cursor:default; }
-          .td-pane-wrap :is(button,input,select,summary):focus-visible { outline:2px solid var(--color-accent,Highlight); outline-offset:2px; }
-          .td-pane-wrap :is(.td-header-card,.td-header-top) { display:flex; gap:8px; }
-          .td-pane-wrap .td-header-card { flex-direction:column; padding:0 0 4px; }
-          .td-pane-wrap .td-header-top { align-items:center; justify-content:space-between; }
-          .td-pane-wrap .td-status-badge { font-weight:600; }
-          .td-pane-wrap :is(.td-progress-pct,.td-add-hint,.td-empty-desc) { color:var(--fill-secondary,GrayText); font-size:.92em; }
-          .td-pane-wrap .td-progress-track { height:3px; border-radius:2px; overflow:hidden; background:var(--td-line); }
-          .td-pane-wrap .td-progress-fill { height:100%; background:var(--color-accent,Highlight); }
-          .td-pane-wrap :is(.td-add-reading,.td-btn-milestone-primary,.td-action-btn) { border:1px solid var(--td-line); border-radius:5px; background:transparent; padding:6px 10px; white-space:normal; overflow-wrap:anywhere; }
-          .td-pane-wrap .td-add-reading { width:100%; font-weight:500; }
-          .td-pane-wrap button:hover:not(:disabled) { background:var(--td-hover); }
-          .td-pane-wrap .td-quick-box { display:flex; align-items:center; gap:6px; padding:4px; border:1px solid var(--td-line); border-radius:5px; }
-          .td-pane-wrap .td-quick-box:focus-within { border-color:var(--color-accent,Highlight); }
-          .td-pane-wrap .td-prio-select { flex:0 0 auto; padding:3px; border:0; border-inline-end:1px solid var(--td-line); background:transparent; }
-          .td-pane-wrap .td-quick-input { flex:1 1 0; width:0; padding:4px; border:0; background:transparent; }
-          .td-pane-wrap .td-quick-input::placeholder { color:var(--fill-secondary,GrayText); }
-          .td-pane-wrap .td-quick-submit { flex:0 0 auto; width:auto; min-width:44px; height:28px; padding:0 8px; border:1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius:4px; font-size:13px; white-space:nowrap; }
-          .td-pane-wrap .td-reading-profile { display:flex; align-items:center; gap:10px; color:var(--fill-secondary,GrayText); font-size:.92em; }
-          .td-pane-wrap .td-reading-profile select { flex:1; padding:4px 6px; border:1px solid var(--td-line); border-radius:4px; background:transparent; color:var(--fill-primary,CanvasText); }
-          .td-pane-wrap .td-empty-card { display:flex; flex-direction:column; align-items:flex-start; gap:6px; padding:12px 0; }
-          .td-pane-wrap .td-empty-title { font-weight:500; }
-          .td-pane-wrap .td-btn-milestone-primary { align-self:stretch; width:100%; height:auto; min-height:36px; margin:4px 0 0; padding:8px 10px; }
-          .td-pane-wrap .td-task-list { display:flex; flex-direction:column; min-width:0; }
-          .td-pane-wrap .td-task-card { display:flex; flex-direction:column; gap:6px; min-width:0; padding:12px 0; border-block-end:1px solid var(--td-line); }
-          .td-pane-wrap .td-task-row { display:flex; align-items:flex-start; gap:7px; min-width:0; }
-          .td-pane-wrap .td-prio-dot { width:4px; height:4px; margin-top:8px; border-radius:50%; flex-shrink:0; background:var(--fill-secondary,GrayText); }
-          .td-pane-wrap .td-prio-high { background:var(--color-red,#c43b3b); }
-          .td-pane-wrap .td-prio-low { opacity:.45; }
-          .td-pane-wrap .td-checkbox { flex:0 0 auto; width:15px; height:15px; margin:3px 0 0; accent-color:var(--color-accent,Highlight); }
-          /* Zotero's native button height must not constrain a multiline title. */
-          .td-pane-wrap .td-task-title { flex:1 1 0; min-width:0; height:auto; min-height:0; max-height:none; margin:0; text-align:start; padding:0; border:0; background:transparent; white-space:normal; overflow-wrap:anywhere; line-height:1.5; }
-          .td-pane-wrap .td-task-delete { flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; height:25px; margin:-4px 0 0 2px; padding:0 7px; border:1px solid color-mix(in srgb,var(--color-red,#c43b3b) 24%,transparent); border-radius:5px; color:var(--color-red,#c43b3b); background:color-mix(in srgb,var(--color-red,#c43b3b) 7%,transparent); font-size:.85em; }
-          .td-pane-wrap .td-task-delete:hover:not(:disabled) { border-color:color-mix(in srgb,var(--color-red,#c43b3b) 42%,transparent); background:color-mix(in srgb,var(--color-red,#c43b3b) 13%,transparent); }
-          .td-pane-wrap .is-done { text-decoration:line-through; color:var(--fill-secondary,GrayText); }
-          .td-pane-wrap .td-task-locate { flex:0 0 auto; padding:1px 4px; font-size:.85em; color:var(--fill-secondary,GrayText); background:transparent; border:0; border-radius:3px; }
-          .td-pane-wrap .td-task-controls { display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; padding-inline-start:26px; color:var(--fill-secondary,GrayText); font-size:.85em; }
-          .td-pane-wrap :is(.td-task-controls button,.td-reschedule summary,.td-subtask-toggle) { border:0; border-radius:3px; background:transparent; padding:2px 3px; font:inherit; cursor:pointer; }
-          .td-pane-wrap .td-badge-date { line-height:1.5; }
-          .td-pane-wrap .td-badge-date.is-overdue { color:var(--color-red,#c43b3b); }
-          .td-pane-wrap .td-reschedule[open] { flex-basis:100%; }
-          .td-pane-wrap .td-subtask-list { display:flex; flex-direction:column; gap:6px; margin:2px 0 0 26px; padding-inline-start:10px; border-inline-start:1px solid var(--td-line); }
-          .td-pane-wrap .td-subtask-item { display:flex; align-items:flex-start; gap:7px; font-size:.92em; }
-          .td-pane-wrap .td-subtask-title { flex:1; min-width:0; overflow-wrap:anywhere; }
-          .td-pane-wrap .td-action-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px; padding-top:10px; border-top:1px solid var(--td-line); }
-          .td-pane-wrap .td-action-btn { font-size:.92em; border-color:transparent; text-align:start; padding:5px 6px; }
-          /* .td-pane-wrap .td-action-btn-pdf { grid-column:1 / -1; } */
-          .td-pane-wrap .td-fallback-task-list { display:flex; flex-direction:column; gap:4px; }
-          /* Soft functional accents follow the host's inherited color scheme. */
-          .td-pane-wrap { --td-blue:light-dark(#315f94,#a8c9ef); --td-green:light-dark(#316d58,#a0d3bb); --td-amber:light-dark(#7a5d2c,#e3c58d); }
-          .td-pane-wrap :is(.td-add-reading,.td-quick-submit,.td-action-workspace,.td-task-edit) { --td-tone:var(--td-blue); }
-          .td-pane-wrap :is(.td-btn-milestone-primary,.td-action-reading,.td-action-btn-pdf,.td-task-pdf,.td-task-locate) { --td-tone:var(--td-green); }
-          .td-pane-wrap :is(.td-action-notes,.td-reschedule) { --td-tone:var(--td-amber); }
-          .td-pane-wrap button:is(.td-add-reading,.td-quick-submit,.td-btn-milestone-primary,.td-action-btn,.td-task-edit,.td-task-pdf,.td-task-locate),
-          .td-pane-wrap .td-reschedule summary {
-            color:var(--td-tone,var(--td-blue));
-            background:color-mix(in srgb,var(--td-tone,var(--td-blue)) 9%,transparent);
-            border:1px solid color-mix(in srgb,var(--td-tone,var(--td-blue)) 20%,transparent);
-          }
-          .td-pane-wrap button:is(.td-add-reading,.td-quick-submit,.td-btn-milestone-primary,.td-action-btn,.td-task-edit,.td-task-pdf,.td-task-locate):hover:not(:disabled),
-          .td-pane-wrap .td-reschedule summary:hover {
-            background:color-mix(in srgb,var(--td-tone,var(--td-blue)) 16%,transparent);
-            border-color:color-mix(in srgb,var(--td-tone,var(--td-blue)) 32%,transparent);
-          }
-          /* Quick creation is the primary action: give it a visible label, field and solid submit button. */
-          .td-pane-wrap .td-quick-label { display:block; margin:6px 0 -2px; font-weight:600; color:var(--fill-primary,CanvasText); }
-          .td-pane-wrap .td-quick-box { min-height:38px; padding:5px; border:1px solid color-mix(in srgb,var(--td-blue) 35%,transparent); background:color-mix(in srgb,var(--td-blue) 4%,transparent); }
-          .td-pane-wrap .td-quick-box:focus-within { border-color:var(--color-accent,Highlight); box-shadow:0 0 0 2px color-mix(in srgb,var(--color-accent,Highlight) 28%,transparent); }
-          .td-pane-wrap .td-quick-input { padding:6px 4px; font-size:1.05em; color:var(--fill-primary,CanvasText); }
-          .td-pane-wrap .td-quick-input::placeholder { color:color-mix(in srgb,var(--fill-primary,CanvasText) 62%,transparent); }
-          .td-pane-wrap .td-quick-box button.td-quick-submit,
-          .td-pane-wrap button.td-quick-submit {
-            flex:0 0 auto !important; width:auto !important; min-width:44px !important; height:28px !important;
-            line-height:26px !important; padding:0 8px !important; font-size:13px !important; font-weight:500 !important;
-            white-space:nowrap !important; overflow:visible !important; text-overflow:clip !important;
-            display:inline-flex !important; align-items:center !important; justify-content:center !important;
-            color:var(--fill-primary, currentColor) !important;
-            background:color-mix(in srgb, currentColor 6%, transparent) !important;
-            border:1px solid color-mix(in srgb, currentColor 18%, transparent) !important;
-            border-radius:4px !important;
-          }
-          .td-pane-wrap .td-quick-box button.td-quick-submit:hover:not(:disabled),
-          .td-pane-wrap button.td-quick-submit:hover:not(:disabled) {
-            background:color-mix(in srgb, currentColor 11%, transparent) !important;
-            border-color:color-mix(in srgb, currentColor 28%, transparent) !important;
-          }
-          .td-pane-wrap button.td-quick-submit:disabled { opacity:.55 !important; }
-          .td-pane-wrap .td-action-grid { display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:6px !important; padding-top:10px !important; border-top:1px solid var(--td-line) !important; }
-          .td-pane-wrap .td-action-btn { padding:6px 8px !important; text-align:center !important; font-size:13px !important; grid-column:auto !important; }
-          .td-pane-wrap .td-action-btn-pdf { grid-column:auto !important; }
-          .td-pane-wrap .td-action-btn-milestones-row { grid-column:1 / -1 !important; width:100% !important; text-align:center !important; }
-        `;
-        (doc.head || doc.documentElement || doc.body).appendChild(style);
-      } catch (e) {
-        Zotero.logError?.("[TaskFlow] Failed to inject itemPane styles: " + e);
-      }
+      ensureItemPaneStyles(doc);
     },
     registerItemPaneSection(host) {
       if (!host.getPref("enableItemPane", true)) return;
@@ -299,9 +972,7 @@
             sectionStates.delete(body);
           },
           onItemChange: ({ body, item, setEnabled }) => {
-            const target = getLiteratureItem(item) || getLiteratureItem(
-              Zotero.getMainWindow?.()?.ZoteroPane?.getSelectedItems?.()?.[0]
-            );
+            const target = getLiteratureItem(item) || getLiteratureItem(Zotero.getMainWindow?.()?.ZoteroPane?.getSelectedItems?.()?.[0]);
             const state = sectionStates.get(body);
             if (state) {
               if (state.itemKey !== target?.key || state.libraryID !== target?.libraryID) {
@@ -319,92 +990,12 @@
           onRender: ({ body, item, setSectionSummary }) => {
             if (!body) return;
             const document = body.ownerDocument;
-            const target = getLiteratureItem(item) || getLiteratureItem(
-              Zotero.getMainWindow?.()?.ZoteroPane?.getSelectedItems?.()?.[0]
-            );
+            const target = getLiteratureItem(item) || getLiteratureItem(Zotero.getMainWindow?.()?.ZoteroPane?.getSelectedItems?.()?.[0]);
             const state = sectionStates.get(body);
             setSectionSummary?.("文献研读待办");
             body.replaceChildren();
-            const html = "http://www.w3.org/1999/xhtml";
-            const createEl = (tag, className = "", text = null) => {
-              const el = document.createElementNS ? document.createElementNS(html, tag) : document.createElement(tag);
-              if (className) el.className = className;
-              if (text !== null && text !== void 0) el.textContent = text;
-              return el;
-            };
-            const fallback = createEl("div", "td-pane-wrap td-pane-fallback");
             const fallbackVersion = state ? ++state.renderVersion : 0;
-            const addButton = createEl("button", "td-add-reading", "＋ 添加到论文研读");
-            addButton.type = "button";
-            addButton.disabled = !target || Boolean(state?.saving);
-            addButton.setAttribute("aria-label", "添加到论文研读");
-            addButton.title = target ? "创建关联当前文献的研读待办，默认一周后截止" : "请先在 Zotero 文献库中选中一篇文献";
-            addButton.addEventListener("click", async () => {
-              if (!target || addButton.disabled) return;
-              addButton.disabled = true;
-              try {
-                const result = await host.addLiteratureReadingTask(target);
-                host.showNotice(
-                  result.created ? "已加入论文研读" : "该文献已有关联待办",
-                  `截止日期：${result.task?.dueDate || "未设置"}`
-                );
-                await state?.refresh?.();
-              } catch (error) {
-                addButton.disabled = false;
-                host.showNotice("保存失败", String(error));
-              }
-            });
-            fallback.appendChild(addButton);
-            const fallbackTaskList = createEl("div", "td-fallback-task-list");
-            fallback.appendChild(fallbackTaskList);
-            if (target) {
-              const renderFallbackTasks = (tasks) => {
-                fallbackTaskList.replaceChildren();
-                if (tasks.length) {
-                  for (const task of tasks) {
-                    const row = createEl("div", "td-task-card td-task-card-fallback");
-                    const taskRow = createEl("div", "td-task-row");
-                    const title = createEl("span", "td-task-title-fallback", task.title || "未命名待办");
-                    title.style.cssText = "flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;";
-                    const locate = createEl("button", "td-task-locate", "↗ Zotero");
-                    locate.type = "button";
-                    locate.title = "在 Zotero 文献库中定位这篇文献";
-                    locate.setAttribute("aria-label", `跳转到文献：${task.zoteroItemTitle || task.title || target.key}`);
-                    locate.addEventListener("click", (event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      host.locateLiteratureItem(
-                        task.zoteroUri || task.zoteroItemKey,
-                        task.zoteroLibraryID,
-                        Zotero.getMainWindow?.()
-                      ).catch((error) => host.showNotice("无法跳转文献", String(error)));
-                    });
-                    taskRow.append(title, locate);
-                    row.appendChild(taskRow);
-                    fallbackTaskList.appendChild(row);
-                  }
-                } else {
-                  fallbackTaskList.appendChild(createEl("div", "td-add-hint", "当前文献还没有关联的研读待办。"));
-                }
-              };
-              const matchesTarget = (task) => task.zoteroItemKey === target.key && (task.zoteroLibraryID || Zotero.Libraries.userLibraryID) === target.libraryID;
-              renderFallbackTasks((host._cachedData?.tasks || []).filter(matchesTarget));
-              if (!host._cachedData) {
-                host.loadData().then((data) => {
-                  if (state && state.renderVersion !== fallbackVersion) return;
-                  if (body.querySelector(".td-pane-fallback") !== fallback) return;
-                  renderFallbackTasks((data.tasks || []).filter(matchesTarget));
-                }).catch((error) => {
-                  if (state && state.renderVersion !== fallbackVersion) return;
-                  if (body.querySelector(".td-pane-fallback") === fallback) {
-                    fallbackTaskList.replaceChildren(createEl("div", "td-add-hint", "待办读取失败；添加按钮仍可使用，请重新选择条目重试。"));
-                  }
-                  Zotero.logError?.("[TaskFlow] ItemPane fallback data load failed: " + error);
-                });
-              }
-            } else {
-              fallbackTaskList.appendChild(createEl("div", "td-add-hint", "请在文献库中选中一篇文献以查看关联待办和跳转按钮。"));
-            }
+            const fallback = renderFallback(document, target, state, host, fallbackVersion);
             body.appendChild(fallback);
           },
           onAsyncRender: async ({ doc, body, item, setSectionSummary }) => {
@@ -413,483 +1004,54 @@
             if (document) {
               host.ensureItemPaneStyles(document);
             }
-            const target = getLiteratureItem(item) || getLiteratureItem(
-              Zotero.getMainWindow?.()?.ZoteroPane?.getSelectedItems?.()?.[0]
-            );
+            const target = getLiteratureItem(item) || getLiteratureItem(Zotero.getMainWindow?.()?.ZoteroPane?.getSelectedItems?.()?.[0]);
             if (!target) return;
             const state = sectionStates.get(body);
             const renderVersion = state ? ++state.renderVersion : 0;
-            const html = "http://www.w3.org/1999/xhtml";
-            const createEl = (tag, className = "", text = null) => {
-              const el = document.createElementNS ? document.createElementNS(html, tag) : document.createElement(tag);
-              if (className) el.className = className;
-              if (text !== null && text !== void 0) {
-                el.textContent = text;
-              }
-              return el;
-            };
             let data;
             try {
               data = await host.loadData();
             } catch (error) {
               if (state && renderVersion !== state.renderVersion) return;
-              body.appendChild(createEl("div", "td-add-hint", "待办数据读取失败，请重新选择条目后重试。"));
+              body.appendChild(createEl(document, "div", "td-add-hint", "待办数据读取失败，请重新选择条目后重试。"));
               Zotero.logError?.("[TaskFlow] ItemPane data load failed: " + error);
               return;
             }
             if (state && renderVersion !== state.renderVersion) return;
             body.replaceChildren();
             const targetKey = target.key;
-            const tasks = (data.tasks || []).filter((t) => t.zoteroItemKey === targetKey && (t.zoteroLibraryID || Zotero.Libraries.userLibraryID) === target.libraryID);
+            const tasks = (data.tasks || []).filter(
+              (t) => t.zoteroItemKey === targetKey && (t.zoteroLibraryID || Zotero.Libraries.userLibraryID) === target.libraryID
+            );
             const uncompletedTasks = tasks.filter((t) => !t.completed);
             const total = tasks.length;
             const done = total - uncompletedTasks.length;
             const pct = total > 0 ? Math.round(done / total * 100) : 0;
             setSectionSummary?.(total ? `${total} 项待办 · ${done}/${total} 完成` : "展开后快速新建");
-            const wrapper = createEl("div", "td-pane-wrap");
-            const headerCard = createEl("div", "td-header-card");
-            const headerTop = createEl("div", "td-header-top");
-            let statusText = "暂无待办";
-            let badgeClass = "td-status-badge td-status-empty";
-            if (total > 0) {
-              if (done === total) {
-                statusText = `研读已完成 (${done}/${total})`;
-                badgeClass = "td-status-badge td-status-done";
-              } else {
-                statusText = `研读进行中 (${done}/${total})`;
-                badgeClass = "td-status-badge td-status-active";
-              }
-            }
-            const statusBadge = createEl("span", badgeClass, statusText);
-            headerTop.appendChild(statusBadge);
-            if (total > 0) {
-              const pctSpan = createEl("span", "td-progress-pct", `${pct}%`);
-              headerTop.appendChild(pctSpan);
-            }
-            headerCard.appendChild(headerTop);
+            const wrapper = createEl(document, "div", "td-pane-wrap");
+            setupPaneDragAndDrop(wrapper, target, host, state);
             const showProgressBar = host.getPref("itemPaneShowProgressBar", true);
-            if (total > 0 && showProgressBar) {
-              const track = createEl("div", "td-progress-track");
-              track.setAttribute("role", "progressbar");
-              track.setAttribute("data-l10n-id", "taskflow-item-pane-progress");
-              track.setAttribute("aria-valuemin", "0");
-              track.setAttribute("aria-valuemax", String(total));
-              track.setAttribute("aria-valuenow", String(done));
-              const fill = createEl("div", "td-progress-fill");
-              fill.style.width = `${pct}%`;
-              track.appendChild(fill);
-              headerCard.appendChild(track);
+            wrapper.appendChild(renderHeaderCard(document, total, done, pct, showProgressBar));
+            for (const el of renderQuickAddSection(document, target, host, state, uncompletedTasks)) {
+              wrapper.appendChild(el);
             }
-            wrapper.appendChild(headerCard);
-            const quickBox = createEl("div", "td-quick-box");
-            const prioSelect = createEl("select", "td-prio-select");
-            prioSelect.setAttribute("aria-label", "新待办优先级");
-            prioSelect.title = "新待办优先级";
-            const defaultPrio = state?.quickPriority || host.getPref("defaultPriority", "medium");
-            const priorities = [
-              { val: "medium", label: "中优先" },
-              { val: "high", label: "高优先" },
-              { val: "low", label: "低优先" }
-            ];
-            for (const p of priorities) {
-              const opt = createEl("option", "", p.label);
-              opt.value = p.val;
-              if (p.val === defaultPrio) opt.selected = true;
-              prioSelect.appendChild(opt);
-            }
-            prioSelect.addEventListener("change", () => {
-              if (state) state.quickPriority = prioSelect.value;
-            });
-            const quickInput = createEl("input", "td-quick-input");
-            quickInput.type = "text";
-            quickInput.value = state?.quickDraft || "";
-            quickInput.addEventListener("input", () => {
-              if (state) state.quickDraft = quickInput.value;
-            });
-            quickInput.setAttribute("aria-label", "新待办事项");
-            quickInput.placeholder = "输入待办内容，按 Enter 添加";
-            quickInput.id = "td-quick-input";
-            const quickBtn = createEl("button", "td-quick-submit", "添加");
-            quickBtn.type = "button";
-            quickBtn.title = "添加待办任务";
-            quickBtn.setAttribute("aria-label", "添加待办任务");
-            quickInput.disabled = prioSelect.disabled = quickBtn.disabled = Boolean(state?.saving);
-            const literatureTitle = serializeLiteratureItem(target).title;
-            const existingReadingTask = uncompletedTasks.find((task) => (task.literatureWorkflowId === "reading" || task.title === `研读：${literatureTitle}`) && (task.academicType || "literature_reading") === "literature_reading");
-            const addReadingBtn = createEl("button", "td-add-reading", existingReadingTask ? "已加入论文研读" : "＋ 添加到论文研读");
-            addReadingBtn.type = "button";
-            addReadingBtn.title = `为当前文献创建论文研读待办，默认 ${LiteratureWorkflow.days(host.getPref("defaultDueDays", 7))} 天后截止`;
-            addReadingBtn.setAttribute("aria-label", "添加到论文研读");
-            addReadingBtn.disabled = Boolean(existingReadingTask || state?.saving);
-            if (addReadingBtn.disabled) addReadingBtn.style.opacity = "0.65";
-            const addHint = createEl("div", "td-add-hint", existingReadingTask ? `已关联当前文献 · 截止日期：${existingReadingTask.dueDate || "未设置"}` : `点击即可创建待办并关联当前文献 · 默认 ${LiteratureWorkflow.days(host.getPref("defaultDueDays", 7))} 天后截止`);
-            addHint.setAttribute("role", "status");
-            addHint.setAttribute("aria-live", "polite");
-            wrapper.appendChild(addReadingBtn);
-            wrapper.appendChild(addHint);
-            let saving = false;
-            const handleQuickAdd = async (useLiteratureTitle = false) => {
-              if (saving || state?.saving || useLiteratureTitle && existingReadingTask) return;
-              const text = useLiteratureTitle ? "" : quickInput.value.trim();
-              if (!useLiteratureTitle && !text) {
-                quickInput.focus();
-                return;
-              }
-              const selectedPrio = prioSelect.value || defaultPrio;
-              saving = true;
-              if (state) state.saving = true;
-              addReadingBtn.disabled = true;
-              quickBtn.disabled = true;
-              quickInput.disabled = true;
-              prioSelect.disabled = true;
-              try {
-                const result = await host.addLiteratureReadingTask(target, {
-                  title: text,
-                  priority: selectedPrio,
-                  academicType: useLiteratureTitle ? "literature_reading" : host.getPref("defaultTaskType", "literature_reading")
-                });
-                if (!useLiteratureTitle) {
-                  quickInput.value = "";
-                  if (state?.itemKey === target.key && state?.libraryID === target.libraryID) state.quickDraft = "";
-                }
-                host.showNotice(result.created ? "已加入待办事项" : "该文献已加入待办", `截止日期：${result.task.dueDate || "未设置"}`);
-              } catch (error) {
-                addHint.textContent = "保存失败，请重试。";
-                host.showNotice("保存失败", String(error));
-                return;
-              } finally {
-                saving = false;
-                if (state) state.saving = false;
-                addReadingBtn.disabled = Boolean(existingReadingTask);
-                addReadingBtn.style.opacity = addReadingBtn.disabled ? "0.65" : "1";
-                quickBtn.disabled = false;
-                quickInput.disabled = false;
-                prioSelect.disabled = false;
-              }
-              await state?.refresh?.();
-            };
-            addReadingBtn.addEventListener("click", () => {
-              handleQuickAdd(true).catch((error) => Zotero.logError?.("[TaskFlow] Quick add refresh failed: " + error));
-            });
-            quickInput.addEventListener("keydown", (e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleQuickAdd().catch((error) => Zotero.logError?.("[TaskFlow] Quick add refresh failed: " + error));
-              }
-            });
-            quickBtn.addEventListener("click", (e) => {
-              e.preventDefault();
-              handleQuickAdd().catch((error) => Zotero.logError?.("[TaskFlow] Quick add refresh failed: " + error));
-            });
-            const quickLabel = createEl("label", "td-quick-label", "快速新建待办");
-            quickLabel.setAttribute("for", "td-quick-input");
-            wrapper.appendChild(quickLabel);
-            quickBox.appendChild(prioSelect);
-            quickBox.appendChild(quickInput);
-            quickBox.appendChild(quickBtn);
-            wrapper.appendChild(quickBox);
-            const profileBox = createEl("label", "td-reading-profile", "研读模板");
-            const profileSelect = createEl("select");
-            profileSelect.setAttribute("aria-label", "研读模板");
-            const selectedProfile = state?.profileID || tasks.find((task) => task.readingProfile)?.readingProfile || host.getPref("readingProfile", "general");
-            for (const [id, profile] of Object.entries(LiteratureWorkflow.profiles)) {
-              const option = createEl("option", "", profile.label);
-              option.value = id;
-              option.selected = id === selectedProfile;
-              profileSelect.appendChild(option);
-            }
-            profileSelect.addEventListener("change", () => {
-              if (state) state.profileID = profileSelect.value;
-            });
-            profileBox.appendChild(profileSelect);
-            wrapper.appendChild(profileBox);
+            const profile = renderProfileSection(document, tasks, host, state);
+            wrapper.appendChild(profile.box);
             if (total === 0) {
-              const emptyCard = createEl("div", "td-empty-card");
-              const emptyDesc = createEl("div", "td-empty-desc", "点击上方“添加到论文研读”或在输入框新建待办；也可按所选模板一键生成 5 步精读清单");
-              const btnCreateMilestones = createEl("button", "td-btn-milestone-primary", "生成精读清单");
-              btnCreateMilestones.type = "button";
-              btnCreateMilestones.title = "按所选研读模板为本文献建立精读清单";
-              btnCreateMilestones.addEventListener("click", async (e) => {
-                e.stopPropagation();
-                await host.createReadingMilestones(target, Zotero.getMainWindow?.(), profileSelect.value);
-                state?.refresh?.();
-              });
-              emptyCard.appendChild(emptyDesc);
-              emptyCard.appendChild(btnCreateMilestones);
-              wrapper.appendChild(emptyCard);
+              wrapper.appendChild(renderEmptyCard(document, target, host, state, profile.select));
             }
             if (total > 0) {
-              const taskList = createEl("div", "td-task-list");
-              const showSubtasks = host.getPref("itemPaneShowSubtasks", true);
-              for (const t of tasks) {
-                const taskCard = createEl("div", `td-task-card ${t.completed ? "is-completed" : ""}`);
-                taskCard.dataset.taskId = t.id;
-                const row = createEl("div", "td-task-row");
-                const controls = createEl("div", "td-task-controls");
-                const prio = t.priority || "medium";
-                const prioDot = createEl("span", `td-prio-dot td-prio-${prio}`);
-                const prioLabel = prio === "high" ? "高" : prio === "low" ? "低" : "中";
-                prioDot.title = `优先级: ${prioLabel}`;
-                row.appendChild(prioDot);
-                const checkbox = createEl("input", "td-checkbox");
-                checkbox.type = "checkbox";
-                checkbox.setAttribute("aria-label", t.title);
-                checkbox.checked = Boolean(t.completed);
-                checkbox.title = t.completed ? "标记为未完成" : "标记为已完成";
-                checkbox.addEventListener("change", async (e) => {
-                  e.stopPropagation();
-                  try {
-                    await host.updateTaskState(t.id, (current) => ({
-                      completed: checkbox.checked,
-                      completedAt: checkbox.checked ? (/* @__PURE__ */ new Date()).toISOString() : null,
-                      status: checkbox.checked ? "done" : "todo",
-                      subtasks: (current.subtasks || []).map((sub) => ({ ...sub, completed: checkbox.checked ? true : sub.completed }))
-                    }));
-                  } catch (error) {
-                    checkbox.checked = t.completed;
-                    host.showNotice("保存失败", String(error));
-                    return;
-                  }
-                  await host.tagItemOnTaskEvent(target.key, "complete_check", target.libraryID);
-                  if (host.getPref("autoSyncChildNote", true)) {
-                    await host.syncTasksToChildNote(target);
-                  }
-                  state?.refresh?.();
-                });
-                row.appendChild(checkbox);
-                const titleSpan = createEl("button", `td-task-title ${t.completed ? "is-done" : ""}`, t.title);
-                titleSpan.type = "button";
-                titleSpan.title = `${t.title} (点击在看板中查看详情)`;
-                titleSpan.addEventListener("click", () => {
-                  host.openTaskFlow({ mode: "view_task", taskId: t.id }, Zotero.getMainWindow?.());
-                });
-                row.appendChild(titleSpan);
-                const delBtn = createEl("button", "td-task-delete");
-                delBtn.type = "button";
-                delBtn.textContent = "移除";
-                delBtn.setAttribute("aria-label", `从 TaskFlow 移除任务并保留 Zotero 文献：${t.title}`);
-                delBtn.title = "仅移除此 TaskFlow 任务，不删除 Zotero 文献";
-                delBtn.addEventListener("click", async (e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (delBtn.disabled) return;
-                  delBtn.disabled = true;
-                  try {
-                    await host.saveData({ taskChanges: { deleted: [t.id] } });
-                    host._paneDeleted ||= [];
-                    host._paneDeleted.push(host.cloneData(t));
-                    clearTimeout(host._paneUndoTimer);
-                    host._paneUndoTimer = setTimeout(() => {
-                      host._paneDeleted = [];
-                      host.notifyDataChanged();
-                    }, 8e3);
-                  } catch (error) {
-                    delBtn.disabled = false;
-                    host.showNotice("删除失败", String(error));
-                    return;
-                  }
-                  await host.tagItemOnTaskEvent(target.key, "complete_check", target.libraryID);
-                  if (host.getPref("autoSyncChildNote", true)) {
-                    await host.syncTasksToChildNote(target);
-                  }
-                  state?.refresh?.();
-                });
-                row.appendChild(delBtn);
-                if (t.zoteroItemKey) {
-                  const locateButton = createEl("button", "td-task-locate", "↗ Zotero");
-                  locateButton.type = "button";
-                  locateButton.title = "在 Zotero 文献库中定位这篇文献";
-                  locateButton.setAttribute("aria-label", `跳转到文献：${t.zoteroItemTitle || t.title}`);
-                  locateButton.addEventListener("click", (event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    host.locateLiteratureItem(t.zoteroUri || t.zoteroItemKey, t.zoteroLibraryID, Zotero.getMainWindow?.()).catch((error) => host.showNotice("无法跳转文献", String(error)));
-                  });
-                  controls.appendChild(locateButton);
-                }
-                if (t.dueDate) {
-                  const todayStr = host.localDateString(/* @__PURE__ */ new Date());
-                  const isOverdue = !t.completed && t.dueDate < todayStr;
-                  const dateText = (isOverdue ? "逾期 · " : "") + (t.dueDate.length > 5 ? t.dueDate.slice(5) : t.dueDate);
-                  const dueBadge = createEl("span", `td-badge-date ${isOverdue ? "is-overdue" : ""}`, dateText);
-                  dueBadge.title = isOverdue ? `已逾期！截止日期: ${t.dueDate}` : `截止日期: ${t.dueDate}`;
-                  controls.appendChild(dueBadge);
-                }
-                let subList = null;
-                if (Array.isArray(t.subtasks) && t.subtasks.length > 0) {
-                  const doneSubs = t.subtasks.filter((s) => s.completed).length;
-                  const subToggle = createEl("button", "td-subtask-toggle", `子任务 ${doneSubs}/${t.subtasks.length}`);
-                  subToggle.type = "button";
-                  subToggle.title = "展开/收起子任务清单";
-                  const expanded = state?.expandedTasks.get(t.id) ?? showSubtasks;
-                  subToggle.setAttribute("aria-expanded", String(expanded));
-                  controls.appendChild(subToggle);
-                  subList = createEl("div", "td-subtask-list");
-                  if (!expanded) subList.style.display = "none";
-                  subToggle.addEventListener("click", (e) => {
-                    e.stopPropagation();
-                    const isHidden = subList.style.display === "none";
-                    subList.style.display = isHidden ? "flex" : "none";
-                    subToggle.setAttribute("aria-expanded", String(isHidden));
-                    state?.expandedTasks.set(t.id, isHidden);
-                  });
-                  for (const sub of t.subtasks) {
-                    const subRow = createEl("div", "td-subtask-item");
-                    const subCheck = createEl("input", "td-checkbox");
-                    subCheck.type = "checkbox";
-                    subCheck.setAttribute("aria-label", sub.title);
-                    subCheck.checked = Boolean(sub.completed);
-                    subCheck.addEventListener("change", async (e) => {
-                      e.stopPropagation();
-                      try {
-                        await host.updateTaskState(t.id, (current) => {
-                          const subtasks = (current.subtasks || []).map((st) => st.id === sub.id ? { ...st, completed: subCheck.checked } : st);
-                          const completed = subtasks.every((st) => st.completed);
-                          return {
-                            subtasks,
-                            completed,
-                            completedAt: completed ? current.completedAt || (/* @__PURE__ */ new Date()).toISOString() : null,
-                            status: completed ? "done" : "todo"
-                          };
-                        });
-                      } catch (error) {
-                        subCheck.checked = sub.completed;
-                        host.showNotice("保存失败", String(error));
-                        return;
-                      }
-                      await host.tagItemOnTaskEvent(target.key, "complete_check", target.libraryID);
-                      if (host.getPref("autoSyncChildNote", true) && host.getPref("childNoteAutoUpdateOnSubtask", true)) {
-                        await host.syncTasksToChildNote(target);
-                      }
-                      state?.refresh?.();
-                    });
-                    const subSpan = createEl("span", `td-subtask-title ${sub.completed ? "is-done" : ""}`, sub.title);
-                    subRow.appendChild(subCheck);
-                    subRow.appendChild(subSpan);
-                    subList.appendChild(subRow);
-                  }
-                }
-                taskCard.appendChild(row);
-                const editBtn = createEl("button", "td-task-edit", "编辑");
-                editBtn.type = "button";
-                editBtn.addEventListener("click", () => host.openTaskFlow({ mode: "edit_task", taskId: t.id }, Zotero.getMainWindow?.()));
-                controls.appendChild(editBtn);
-                if (!t.completed) {
-                  const menu = createEl("details", "td-reschedule");
-                  const summary = createEl("summary", "", "改期");
-                  menu.appendChild(summary);
-                  for (const [days, label] of [[0, "今天"], [3, "延后三天"], [7, "延后一周"]]) {
-                    const dateBtn = createEl("button", "td-reschedule-option", label);
-                    dateBtn.type = "button";
-                    dateBtn.title = days ? "从当前截止日期延后；未设置或已逾期时从今天计算" : "截止日期设为今天";
-                    dateBtn.addEventListener("click", async () => {
-                      if (dateBtn.disabled) return;
-                      menu.querySelectorAll("button").forEach((btn) => {
-                        btn.disabled = true;
-                      });
-                      try {
-                        await host.rescheduleLiteratureTask(t.id, days, Number(days) > 0);
-                        menu.open = false;
-                      } catch (error) {
-                        host.showNotice("改期失败", String(error));
-                      } finally {
-                        menu.querySelectorAll("button").forEach((btn) => {
-                          btn.disabled = false;
-                        });
-                      }
-                      Promise.resolve(state?.refresh?.()).catch((error) => Zotero.logError?.("[TaskFlow] 改期刷新失败: " + error));
-                    });
-                    menu.appendChild(dateBtn);
-                  }
-                  controls.appendChild(menu);
-                }
-                if (t.zoteroPdfUri || t.zoteroAnnotationKey) {
-                  const pdfBtn = createEl("button", "td-task-pdf", t.zoteroAnnotationKey ? "回到批注" : "打开 PDF");
-                  pdfBtn.type = "button";
-                  pdfBtn.addEventListener("click", () => host.openTaskPdf(t).catch((error) => host.showNotice("打开 PDF 失败", String(error))));
-                  controls.appendChild(pdfBtn);
-                }
-                taskCard.appendChild(controls);
-                if (subList) taskCard.appendChild(subList);
-                taskList.appendChild(taskCard);
-              }
-              wrapper.appendChild(taskList);
+              wrapper.appendChild(renderTaskList(document, tasks, target, host, state));
             }
             if (host._paneDeleted?.length) {
-              const undoBtn = createEl("button", "td-subtask-toggle", "撤销删除（8 秒内）");
+              const undoBtn = createEl(document, "button", "td-subtask-toggle", "撤销删除（8 秒内）");
               undoBtn.type = "button";
-              undoBtn.addEventListener("click", async () => {
-                if (undoBtn.disabled) return;
-                undoBtn.disabled = true;
-                try {
-                  const restored = host._paneDeleted;
-                  await host.saveData({ taskChanges: { added: restored } });
-                  host._paneDeleted = [];
-                  clearTimeout(host._paneUndoTimer);
-                  for (const task of restored) await host.tagItemOnTaskEvent(task.zoteroItemKey, "complete_check", task.zoteroLibraryID);
-                  if (host.getPref("autoSyncChildNote", true)) await host.syncTasksToChildNote(target);
-                  state?.refresh?.();
-                } catch (error) {
-                  undoBtn.disabled = false;
-                  host.showNotice("恢复失败", String(error));
-                }
+              undoBtn.addEventListener("click", () => {
+                handleUndoDelete(host, target, undoBtn, state);
               });
               wrapper.appendChild(undoBtn);
             }
-            const actionGrid = createEl("div", "td-action-grid");
-            const btnOpenBoard = createEl("button", "td-action-btn td-action-workspace", "待办看板");
-            btnOpenBoard.type = "button";
-            btnOpenBoard.title = "在主标签页中打开 TaskFlow 任务看板";
-            btnOpenBoard.addEventListener("click", () => {
-              host.openTaskFlow({ mode: "filter_item", itemKey: target.key }, Zotero.getMainWindow?.());
-            });
-            actionGrid.appendChild(btnOpenBoard);
-            const btnSubwin = createEl("button", "td-action-btn td-action-workspace", "伴读窗口");
-            btnSubwin.type = "button";
-            btnSubwin.title = "打开轻量伴读窗口，适合与 PDF 左右分屏对照";
-            btnSubwin.addEventListener("click", () => {
-              host.openStandaloneWindow({ mode: "filter_item", itemKey: target.key }, Zotero.getMainWindow?.(), "subwindow");
-            });
-            actionGrid.appendChild(btnSubwin);
-            const btnSyncNote = createEl("button", "td-action-btn td-action-notes", "同步子笔记");
-            btnSyncNote.type = "button";
-            btnSyncNote.title = "将本文献的所有研读待办同步导出为文献子笔记 (云端)";
-            const isReadOnly = typeof target.isEditable === "function" && !target.isEditable();
-            if (isReadOnly) {
-              btnSyncNote.disabled = true;
-              btnSyncNote.title = "只读文献无法同步子笔记";
-            }
-            btnSyncNote.addEventListener("click", async () => {
-              if (btnSyncNote.disabled) return;
-              const note = await host.syncTasksToChildNote(target.id || target);
-              if (note) {
-                host.showNotice("同步成功", "已更新文献子笔记研读清单");
-              } else {
-                host.showNotice("跳过同步", "只读条目或未找到任务清单，跳过同步");
-              }
-            });
-            actionGrid.appendChild(btnSyncNote);
-            const meta = serializeLiteratureItem(target);
-            if (meta?.pdfUri) {
-              const btnPdf = createEl("button", "td-action-btn td-action-btn-pdf", "打开 PDF");
-              btnPdf.type = "button";
-              btnPdf.title = "在 Zotero 内置阅读器中打开该文献的 PDF 全文";
-              btnPdf.addEventListener("click", () => {
-                host.openPdfAttachment(target);
-              });
-              actionGrid.appendChild(btnPdf);
-            }
-            if (total > 0) {
-              const btnMilestones = createEl("button", "td-action-btn td-action-reading td-action-btn-milestones-row", "追加精读清单");
-              btnMilestones.type = "button";
-              btnMilestones.title = "按当前研读模板为本文献追加生成 5 项精读里程碑待办";
-              btnMilestones.addEventListener("click", async () => {
-                await host.createReadingMilestones(target, Zotero.getMainWindow?.(), profileSelect.value);
-                state?.refresh?.();
-              });
-              actionGrid.appendChild(btnMilestones);
-            }
-            wrapper.appendChild(actionGrid);
+            wrapper.appendChild(renderActionGrid(document, target, total, host, state, profile.select));
             body.appendChild(wrapper);
           }
         });
@@ -898,6 +1060,14 @@
       }
     }
   };
+  if (typeof Zotero !== "undefined") {
+    Zotero.TaskFlowItemPane = TaskFlowItemPane;
+  }
+  if (typeof globalThis !== "undefined") {
+    globalThis.TaskFlowItemPane = TaskFlowItemPane;
+  }
+
+  // src/itemPane.ts
   if (typeof Zotero !== "undefined") {
     Zotero.TaskFlowItemPane = TaskFlowItemPane;
   }
@@ -1525,114 +1695,6 @@
     }
   };
 
-  // src/utils.ts
-  var escapeHtml = (value) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-  var itemSelectUri2 = (item) => {
-    if (!item) return "";
-    const key = item.key || item.id;
-    const groupID = Zotero.Libraries?.get?.(item.libraryID)?.groupID;
-    return groupID ? `zotero://select/groups/${groupID}/items/${key}` : `zotero://select/library/items/${key}`;
-  };
-  var getLiteratureItem2 = (item) => {
-    if (!item) return null;
-    let target = typeof item === "number" || typeof item === "string" ? Zotero.Items?.get?.(item) || null : item;
-    if (!target) return null;
-    try {
-      if (target.topLevelItem && typeof target.topLevelItem.isRegularItem === "function" && target.topLevelItem.isRegularItem()) {
-        return target.topLevelItem;
-      }
-    } catch (_) {
-    }
-    if (typeof target.isAttachment === "function" && target.isAttachment()) {
-      if (target.parentItemID) {
-        target = Zotero.Items.get(target.parentItemID) || target;
-      }
-    }
-    if (typeof target.isNote === "function" && target.isNote()) {
-      if (target.parentItemID) {
-        target = Zotero.Items.get(target.parentItemID) || target;
-      }
-    }
-    try {
-      if (target.topLevelItem && typeof target.topLevelItem.isRegularItem === "function" && target.topLevelItem.isRegularItem()) {
-        return target.topLevelItem;
-      }
-    } catch (_) {
-    }
-    return target && typeof target.isRegularItem === "function" && target.isRegularItem() ? target : null;
-  };
-  var serializeLiteratureItem2 = (item) => {
-    const target = getLiteratureItem2(item);
-    if (!target) return null;
-    const title = (typeof target.getField === "function" ? target.getField("title") : target.title) || "无标题文献";
-    const date = typeof target.getField === "function" ? target.getField("date") : target.date;
-    let year = "";
-    if (date) {
-      const match = String(date).match(/\b(19|20)\d{2}\b/);
-      year = match ? match[0] : String(date).slice(0, 4);
-    }
-    let authors = [];
-    try {
-      if (typeof target.getCreators === "function") {
-        authors = target.getCreators().map(
-          (c) => c.lastName || c.name || `${c.firstName || ""} ${c.lastName || ""}`.trim()
-        ).filter(Boolean);
-      }
-    } catch (_) {
-    }
-    const publication = typeof target.getField === "function" ? target.getField("publicationTitle") || target.getField("proceedingsTitle") || target.getField("publisher") || "" : "";
-    let tags = [];
-    try {
-      if (typeof target.getTags === "function") {
-        tags = target.getTags().map((t) => t.tag || String(t)).filter(Boolean);
-      }
-    } catch (_) {
-    }
-    let pdfUri = null;
-    try {
-      if (typeof target.getAttachments === "function") {
-        const attIds = target.getAttachments();
-        for (const attId of attIds) {
-          const att = Zotero.Items.get(attId);
-          if (att && (typeof att.isPDFAttachment === "function" && att.isPDFAttachment() || att.contentType === "application/pdf")) {
-            const groupID = Zotero.Libraries?.get?.(att.libraryID)?.groupID;
-            pdfUri = groupID ? `zotero://open-pdf/groups/${groupID}/items/${att.key}` : `zotero://open-pdf/library/items/${att.key}`;
-            break;
-          }
-        }
-      }
-    } catch (_) {
-    }
-    return {
-      key: target.key || String(target.id),
-      id: target.id,
-      libraryID: target.libraryID,
-      title,
-      authors: authors.slice(0, 3).join(", ") + (authors.length > 3 ? " 等" : ""),
-      year,
-      publication,
-      tags,
-      zoteroUri: itemSelectUri2(target),
-      pdfUri
-    };
-  };
-  var resolveItemReference = (reference, libraryID) => {
-    if (!reference) return null;
-    const raw = String(reference).trim();
-    const groupMatch = raw.match(
-      /^zotero:\/\/(?:select|open-pdf)\/groups\/(\d+)\/items\/([A-Za-z0-9_]+)/
-    );
-    const key = groupMatch?.[2] || raw.match(/\/items\/([A-Za-z0-9_]+)(?:[?#]|$)/)?.[1] || raw;
-    if (!/^[A-Za-z0-9_]+$/.test(key)) return null;
-    if (!raw.includes("/items/") && /^\d+$/.test(key))
-      return Zotero.Items.get(Number(key));
-    let targetLibraryID = Number.isInteger(Number(libraryID)) && Number(libraryID) > 0 ? Number(libraryID) : Zotero.Libraries?.userLibraryID || 1;
-    if (groupMatch) {
-      targetLibraryID = Zotero.Groups?.getLibraryIDFromGroupID?.(Number(groupMatch[1])) || targetLibraryID;
-    }
-    return Zotero.Items.getByLibraryAndKey?.(targetLibraryID, key) || null;
-  };
-
   // src/modules/storage.ts
   var TaskFlowStorage = class extends TaskFlowStoragePersistence {
     async exportData(format = "json") {
@@ -1932,7 +1994,7 @@
     }
     async openPdfAttachment(item, page = null, annotationKey = null) {
       if (!item) return;
-      const target = (item.isPDFAttachment?.() ? item : getLiteratureItem2(item)) || item;
+      const target = (item.isPDFAttachment?.() ? item : getLiteratureItem(item)) || item;
       if (target.deleted) {
         this.showNotice("无法打开 PDF", "文献或附件已在回收站中。");
         return false;
@@ -1983,7 +2045,7 @@
     async createTaskFromAnnotation(reader, annotationKey, { forceInstant = false } = {}) {
       const attachment = Zotero.Items.get(reader.itemID);
       const annotation = resolveItemReference(annotationKey, attachment?.libraryID);
-      const parent = getLiteratureItem2(attachment);
+      const parent = getLiteratureItem(attachment);
       if (!parent || !annotation?.isAnnotation?.() || annotation.deleted || annotation.parentItemID !== attachment.id) {
         throw new Error("批注已删除或不属于当前 PDF");
       }
@@ -2028,490 +2090,495 @@
     }
   };
 
-  // src/modules/literature.ts
-  var TaskFlowLiterature = class extends TaskFlowLiteratureTasks {
-    async syncTasksToChildNote(item, tasks = null, options = {}) {
-      const target = getLiteratureItem2(item);
-      if (!target) return null;
-      if (typeof target.isEditable === "function" && !target.isEditable()) return null;
-      try {
-        const data = await this.loadData();
-        const allTasks = (tasks || data.tasks || []).filter((t) => t.zoteroItemKey === target.key && (t.zoteroLibraryID || Zotero.Libraries.userLibraryID) === target.libraryID);
-        const meta = serializeLiteratureItem2(target);
-        const total = allTasks.length;
-        const completed = allTasks.filter((t) => t.completed).length;
-        const percent = total > 0 ? Math.round(completed / total * 100) : 0;
-        let noteHtml = `<h1>${escapeHtml(this.getPref("childNoteTitle", "📝 [TaskFlow] 研读清单与进度"))}</h1>`;
-        noteHtml += `<p><strong>文献：</strong>${escapeHtml(meta.title)} (${escapeHtml(meta.authors)} ${escapeHtml(meta.year)})</p>`;
-        noteHtml += `<p><strong>研读进度：</strong>${completed}/${total} 已完成 (<strong>${percent}%</strong>) | 更新于：${(/* @__PURE__ */ new Date()).toLocaleString()}</p>`;
-        noteHtml += `<div style="background:#e2e8f0;border-radius:4px;height:10px;width:100%;margin:8px 0;overflow:hidden;"><div style="background:#059669;height:10px;width:${percent}%;"></div></div>`;
-        if (total === 0) {
-          noteHtml += `<p><em>暂无关联待办事项。可通过 TaskFlow 插件或侧边栏添加研读计划。</em></p>`;
-        } else {
-          noteHtml += `<ul>`;
-          for (const t of allTasks) {
-            const checkMark = t.completed ? "☑" : "☐";
-            const statusStyle = t.completed ? "text-decoration:line-through;color:#64748b;" : "font-weight:600;";
-            const dueInfo = t.dueDate ? ` <span style="font-size:11px;color:#d97706;">(截止: ${escapeHtml(t.dueDate)})</span>` : "";
-            noteHtml += `<li>${checkMark} <span style="${statusStyle}">${escapeHtml(t.title)}</span>${dueInfo}`;
-            if (this.getPref("childNoteIncludeSubtasks", true) && t.subtasks && t.subtasks.length > 0) {
-              noteHtml += `<ul>`;
-              for (const sub of t.subtasks) {
-                noteHtml += `<li>${sub.completed ? "☑" : "☐"} ${escapeHtml(sub.title)}</li>`;
-              }
-              noteHtml += `</ul>`;
-            }
-            if (this.getPref("childNoteIncludeQuotes", true) && t.description && t.description.trim()) {
-              noteHtml += `<blockquote>${escapeHtml(t.description).replace(/\n/g, "<br/>")}</blockquote>`;
-            }
-            if (this.getPref("childNoteIncludeQuotes", true) && /^zotero:\/\/open-pdf\/(?:library|groups\/\d+)\/items\/[A-Za-z0-9_]+(?:\?|$)/.test(t.zoteroPdfUri || "")) {
-              noteHtml += ` <a href="${escapeHtml(t.zoteroPdfUri)}">${t.zoteroAnnotationKey ? "返回原文批注" : "打开原文页码"}</a>`;
-            }
-            noteHtml += `</li>`;
-          }
-          noteHtml += `</ul>`;
-        }
-        noteHtml += `<hr/><p style="font-size:11px;color:#94a3b8;">由 Zotero TaskFlow 自动生成并同步至 Zotero 云端笔记</p>`;
-        let targetNote = null;
-        if (typeof target.getNotes === "function") {
-          const noteIDs = target.getNotes();
-          for (const nid of noteIDs) {
-            const noteItem = Zotero.Items.get(nid);
-            if (noteItem && noteItem.isNote && noteItem.isNote()) {
-              const content = noteItem.getNote();
-              const hasTaskFlowTag = typeof noteItem.hasTag === "function" && (noteItem.hasTag("TaskFlow") || noteItem.hasTag("Todolist"));
-              if (hasTaskFlowTag || content && (content.includes("[TaskFlow]") || content.includes("[Todolist]") || content.includes("TaskFlow") || content.includes("Todolist"))) {
-                targetNote = noteItem;
-                break;
-              }
-            }
-          }
-        }
-        if (targetNote) {
-          targetNote.setNote(noteHtml);
-          try {
-            if (typeof targetNote.hasTag === "function" && !targetNote.hasTag("TaskFlow")) {
-              targetNote.addTag("TaskFlow");
-            }
-            if (typeof targetNote.hasTag === "function" && targetNote.hasTag("Todolist")) {
-              targetNote.removeTag("Todolist");
-            }
-          } catch (_) {
-          }
-          await targetNote.saveTx();
-        } else {
-          const newNote = new Zotero.Item("note");
-          newNote.libraryID = target.libraryID;
-          newNote.parentID = target.id;
-          newNote.setNote(noteHtml);
-          try {
-            newNote.addTag("TaskFlow");
-          } catch (_) {
-          }
-          await newNote.saveTx();
-          targetNote = newNote;
-        }
-        if (!options.silent) this.showNotice("文献笔记同步成功", `已更新《${meta.title.slice(0, 20)}...》的研读进度笔记，支持多端云同步！`);
-        return targetNote;
-      } catch (err) {
-        Zotero.logError?.("[TaskFlow] syncTasksToChildNote error: " + err);
-        this.recordDiagnostic({ action: "同步文献子笔记", message: String(err?.message || err), stack: err?.stack });
-        return null;
-      }
+  // src/modules/literature/literatureMapping.ts
+  function buildLiteratureTask(host, item, {
+    title = "",
+    priority = null,
+    academicType = "literature_reading",
+    profileID = null,
+    dueDate = null,
+    workflowId = null
+  } = {}) {
+    const meta = serializeLiteratureItem(item);
+    if (!meta || item.deleted) throw new Error("请先选中文献条目，回收站中的文献无法加入待办");
+    const customTitle = String(title).trim();
+    const taskTitle = customTitle || `研读：${meta.title}`;
+    const generateId = () => "task_" + Date.now() + "_" + Math.random().toString(36).slice(2, 10);
+    return {
+      id: generateId(),
+      title: taskTitle,
+      description: `文献研读待办：${meta.title} (${meta.authors} ${meta.year})`,
+      dueDate: dueDate || LiteratureWorkflow.dateAfter(LiteratureWorkflow.days(host.getPref("defaultDueDays", 7))),
+      dueTime: null,
+      priority: priority || host.getPref("defaultPriority", "medium"),
+      category: "论文研读",
+      academicType,
+      status: "todo",
+      repeat: null,
+      completed: false,
+      createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+      completedAt: null,
+      subtasks: profileID ? LiteratureWorkflow.steps(profileID, generateId) : [],
+      readingProfile: profileID,
+      literatureWorkflowId: workflowId || (profileID ? `milestones:${profileID}` : customTitle ? null : "reading"),
+      tags: host.getPref("autoTagFromItem", true) ? meta.tags || [] : [],
+      reminder: { enabled: false, before: 15, notified: false },
+      zoteroItemKey: meta.key,
+      zoteroItemID: meta.id,
+      zoteroItemTitle: meta.title,
+      zoteroAutoTitle: !customTitle,
+      zoteroAuthors: meta.authors,
+      zoteroLibraryID: meta.libraryID,
+      zoteroPublication: meta.publication,
+      zoteroYear: meta.year,
+      zoteroUri: meta.zoteroUri,
+      zoteroPdfUri: meta.pdfUri,
+      zoteroLinkStatus: "active"
+    };
+  }
+  function addLiteratureReadingTask(host, item, options = {}) {
+    let task;
+    try {
+      task = buildLiteratureTask(host, item, options);
+    } catch (error) {
+      return Promise.reject(error);
     }
-    async tagItemOnTaskEvent(itemKey, eventType, libraryID = null) {
-      if (!itemKey) return;
-      try {
-        const item = resolveItemReference(itemKey, libraryID);
-        const target = getLiteratureItem2(item);
-        if (!target) return;
-        if (typeof target.isEditable === "function" && !target.isEditable()) return;
-        const autoTagOnCreate = this.getPref("autoTagOnCreate", true);
-        const autoTagOnComplete = this.getPref("autoTagOnComplete", true);
-        const pendingTag = this.getPref("tagForPending", "待研读");
-        const completedTag = this.getPref("tagForCompleted", "精读已完成");
-        const data = await this.loadData();
-        const tasks = (data.tasks || []).filter((t) => t.zoteroItemKey === target.key && (t.zoteroLibraryID || Zotero.Libraries.userLibraryID) === target.libraryID);
-        const uncompleted = tasks.filter((t) => !t.completed);
-        let modified = false;
-        if (eventType === "create" && autoTagOnCreate) {
-          if (pendingTag && !target.hasTag(pendingTag)) {
-            target.addTag(pendingTag);
-            modified = true;
-          }
-        } else if (eventType === "complete_check") {
-          if (tasks.length > 0 && uncompleted.length === 0) {
-            if (autoTagOnComplete && completedTag) {
-              if (!target.hasTag(completedTag)) {
-                target.addTag(completedTag);
-                modified = true;
-              }
-              if (pendingTag && target.hasTag(pendingTag)) {
-                target.removeTag(pendingTag);
-                modified = true;
-              }
-            }
-          } else if (tasks.length === 0) {
-            for (const tag of [pendingTag, completedTag]) {
-              if (tag && target.hasTag(tag)) {
-                target.removeTag(tag);
-                modified = true;
-              }
-            }
-          } else if (uncompleted.length > 0) {
-            if (completedTag && target.hasTag(completedTag)) {
-              target.removeTag(completedTag);
-              modified = true;
-            }
-            if (autoTagOnCreate && pendingTag && !target.hasTag(pendingTag)) {
-              target.addTag(pendingTag);
-              modified = true;
-            }
-          }
-        }
-        if (modified) {
-          await target.saveTx();
-        }
-      } catch (err) {
-        Zotero.logError?.("[TaskFlow] tagItemOnTaskEvent error: " + err);
-      }
+    const requestKey = JSON.stringify([task.zoteroLibraryID, task.zoteroItemKey, task.title, task.literatureWorkflowId]);
+    host._literatureTaskAdds ||= /* @__PURE__ */ new Map();
+    if (host._literatureTaskAdds.has(requestKey)) return host._literatureTaskAdds.get(requestKey);
+    const run = async () => {
+      const data = await host.loadData();
+      task.order = Math.max(-1, ...(data.tasks || []).map((t) => t.order || 0)) + 1;
+      const saved = await host.saveData({
+        taskChanges: { added: [task] },
+        deduplicateLiterature: Boolean(task.literatureWorkflowId),
+        syncLinkedItems: true
+      });
+      const actual = saved.tasks.find((t) => t.id === task.id) || saved.tasks.find((t) => LiteratureWorkflow.samePending(t, task, Zotero.Libraries.userLibraryID));
+      return { task: actual, created: actual?.id === task.id };
+    };
+    const result = run().finally(() => host._literatureTaskAdds.delete(requestKey));
+    host._literatureTaskAdds.set(requestKey, result);
+    return result;
+  }
+  async function addLiteratureTasks(host, selected) {
+    const data = await host.loadData();
+    const candidates = selected.map((item, index) => ({
+      ...buildLiteratureTask(host, item),
+      order: Math.max(-1, ...(data.tasks || []).map((task) => task.order || 0)) + 1 + index
+    }));
+    const saved = await host.saveData({
+      taskChanges: { added: candidates },
+      deduplicateLiterature: "item",
+      syncLinkedItems: true
+    });
+    const ids = new Set(saved.tasks.map((task) => task.id));
+    const added = candidates.filter((task) => ids.has(task.id)).length;
+    const skipped = selected.length - added;
+    host.showNotice("批量加入完成", `新增 ${added} 篇，跳过已有待办 ${skipped} 篇；新任务截止 ${candidates[0].dueDate}。`);
+    return { added, skipped };
+  }
+  async function addSelectedLiteratureTasks(host, window = null, items = null) {
+    let selected = [];
+    if (Array.isArray(items) && items.length) {
+      const seen = /* @__PURE__ */ new Set();
+      selected = items.map((item) => getLiteratureItem(item)).filter((item) => item && !item.deleted && !seen.has(item.id) && seen.add(item.id));
+    } else {
+      selected = host.getSelectedRegularItems(window || Zotero.getMainWindow?.()).filter((item) => !item.deleted);
     }
-    async createCollectionReadingPlan(collection, window = null) {
-      if (!collection) return;
-      try {
-        const items = collection.getChildItems ? collection.getChildItems(false) : [];
-        const regularItems = items.map((it) => getLiteratureItem2(it)).filter(Boolean);
-        if (regularItems.length === 0) {
-          this.showNotice("未找到文献", `分类【${collection.name}】中暂无有效文献`);
-          return;
-        }
-        const data = await this.loadData();
-        const existingKeys = new Set((data.tasks || []).filter((t) => t.zoteroItemKey).map((t) => (t.zoteroLibraryID || Zotero.Libraries.userLibraryID) + ":" + t.zoteroItemKey));
-        let addedCount = 0;
-        const addedTasks = [];
-        for (const item of regularItems) {
-          if (existingKeys.has(item.libraryID + ":" + item.key)) continue;
-          const meta = serializeLiteratureItem2(item);
-          const taskId = "task_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5);
-          const mainTask = {
-            id: taskId,
-            title: `📖 研读：${meta.title}`,
-            description: `分类专题：${collection.name}
+    if (!selected.length) {
+      host.showNotice("请先选中文献", "可在文献列表中多选后批量加入。");
+      return { added: 0, skipped: 0 };
+    }
+    return addLiteratureTasks(host, selected);
+  }
+  async function addDroppedLiteratureTasks(host, itemIDs) {
+    if (!host.getPref("dragDropFromLibrary", true)) throw new Error("已关闭从文献库拖入待办");
+    if (!Array.isArray(itemIDs) || !itemIDs.length || itemIDs.length > 1e3 || itemIDs.some((id) => !Number.isSafeInteger(id) || id <= 0)) {
+      throw new Error("无效的 Zotero 拖拽条目");
+    }
+    const seen = /* @__PURE__ */ new Set();
+    const selected = itemIDs.map((id) => Zotero.Items.get(id)).filter((item) => item && !item.deleted).map((item) => getLiteratureItem(item)).filter((item) => item && !item.deleted && !seen.has(item.id) && seen.add(item.id));
+    if (!selected.length) throw new Error("拖入的文献已删除或不包含可研读的文献条目");
+    const result = await addLiteratureTasks(host, selected);
+    return { ...result, ignored: itemIDs.length - selected.length };
+  }
+  async function rescheduleLiteratureTask(host, taskID, days, fromDeadline = false) {
+    if (![0, 3, 7].includes(days)) throw new Error("不支持的改期选项");
+    const data = await host.saveData({ rescheduleTask: { taskID, days, fromDeadline }, syncLinkedItems: true });
+    return data.tasks.find((task) => task.id === taskID);
+  }
+
+  // src/modules/literature/literaturePlan.ts
+  async function createCollectionReadingPlan(host, collection, window = null) {
+    if (!collection) return;
+    try {
+      const items = collection.getChildItems ? collection.getChildItems(false) : [];
+      const regularItems = items.map((it) => getLiteratureItem(it)).filter(Boolean);
+      if (regularItems.length === 0) {
+        host.showNotice("未找到文献", `分类【${collection.name}】中暂无有效文献`);
+        return;
+      }
+      const data = await host.loadData();
+      const existingKeys = new Set(
+        (data.tasks || []).filter((t) => t.zoteroItemKey).map((t) => (t.zoteroLibraryID || Zotero.Libraries.userLibraryID) + ":" + t.zoteroItemKey)
+      );
+      let addedCount = 0;
+      const addedTasks = [];
+      for (const item of regularItems) {
+        if (existingKeys.has(item.libraryID + ":" + item.key)) continue;
+        const meta = serializeLiteratureItem(item);
+        const taskId = "task_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5);
+        const mainTask = {
+          id: taskId,
+          title: `📖 研读：${meta.title}`,
+          description: `分类专题：${collection.name}
 作者：${meta.authors} (${meta.year})
 出版物：${meta.publication}
 文献链接：${meta.zoteroUri}`,
-            dueDate: LiteratureWorkflow.dateAfter(LiteratureWorkflow.days(this.getPref("defaultDueDays", 7))),
-            dueTime: null,
-            priority: this.getPref("defaultPriority", "medium"),
-            category: "论文研读",
-            completed: false,
-            createdAt: (/* @__PURE__ */ new Date()).toISOString(),
-            completedAt: null,
-            tags: [collection.name, "专题研读", "待研读"],
-            reminder: { enabled: false, before: 15, notified: false },
-            order: (data.tasks || []).length,
-            zoteroItemKey: meta.key,
-            zoteroItemID: meta.id,
-            zoteroLinkStatus: "active",
-            readingProfile: this.getPref("readingProfile", "general"),
-            literatureWorkflowId: "reading",
-            zoteroItemTitle: meta.title,
-            zoteroAuthors: meta.authors,
-            zoteroLibraryID: meta.libraryID,
-            zoteroPublication: meta.publication,
-            zoteroYear: meta.year,
-            zoteroUri: meta.zoteroUri,
-            zoteroPdfUri: meta.pdfUri,
-            academicType: "literature_reading",
-            subtasks: Boolean(this.getPref("academicPresets", true)) ? LiteratureWorkflow.steps(
-              this.getPref("readingProfile", "general"),
-              () => "sub_" + Date.now() + "_" + Math.random().toString(36).slice(2, 10)
-            ) : []
-          };
-          data.tasks.push(mainTask);
-          addedTasks.push(mainTask);
-          existingKeys.add(item.libraryID + ":" + item.key);
-          addedCount++;
-        }
-        if (addedCount > 0) {
-          await this.saveData({ taskChanges: { added: addedTasks }, deduplicateLiterature: "item", syncLinkedItems: true });
-          this.showNotice(
-            "专题研读规划已建立",
-            `已为【${collection.name}】下的 ${addedCount} 篇文献批量生成研读清单！`
-          );
-        } else {
-          this.showNotice(
-            "研读规划已存在",
-            `【${collection.name}】下的文献均已存在对应研读任务。`
-          );
-        }
-        this.openTaskFlow({ mode: "create_from_collection", collectionName: collection.name }, window);
-      } catch (err) {
-        Zotero.logError?.("[TaskFlow] createCollectionReadingPlan error: " + err);
-      }
-    }
-    async createTaskFromReader(window = null, sourceReader = null, selection = null) {
-      const win = window || (Zotero.getMainWindow ? Zotero.getMainWindow() : null);
-      const tabs = win?.Zotero_Tabs || (typeof Zotero_Tabs !== "undefined" ? Zotero_Tabs : null);
-      if (!sourceReader && (!tabs || !tabs.selectedTab || tabs.selectedTab.type !== "reader")) {
-        const selected = this.getSelectedRegularItems(win);
-        if (selected.length > 0) {
-          this.openTaskFlow({ mode: "create_from_item", item: serializeLiteratureItem2(selected[0]) }, win);
-          return;
-        }
-        this.showNotice("提示", "请在 PDF 阅读器中或文献列表中使用此快捷键");
-        return;
-      }
-      try {
-        const reader = sourceReader || Zotero.Reader?.getByTabID?.(tabs.selectedTab.id);
-        const itemID = reader?.itemID || tabs?.selectedTab?.data?.itemID;
-        if (!itemID) return;
-        const attachmentItem = Zotero.Items.get(itemID);
-        const regularItem = getLiteratureItem2(attachmentItem);
-        if (!regularItem) return;
-        const meta = serializeLiteratureItem2(regularItem);
-        let selectedText = selection?.text || "";
-        try {
-          if (!selectedText && typeof reader.getSelectedText === "function") {
-            selectedText = await reader.getSelectedText();
-          }
-        } catch (_) {
-        }
-        if (!selectedText && reader._iframeWindow) {
-          try {
-            selectedText = reader._iframeWindow.getSelection?.()?.toString() || "";
-          } catch (_) {
-          }
-        }
-        selectedText = String(selectedText || "").trim();
-        let pageIndex = 0;
-        try {
-          if (Number.isInteger(selection?.position?.pageIndex)) {
-            pageIndex = selection.position.pageIndex;
-          } else if (Number.isInteger(reader._internalReader?._state?.primaryViewState?.pageIndex)) {
-            pageIndex = reader._internalReader._state.primaryViewState.pageIndex;
-          } else if (reader.state && typeof reader.state.pageIndex === "number") {
-            pageIndex = reader.state.pageIndex;
-          } else if (reader._iframeWindow?.PDFViewerApplication?.page) {
-            pageIndex = reader._iframeWindow.PDFViewerApplication.page - 1;
-          }
-        } catch (_) {
-        }
-        const pageNum = pageIndex + 1;
-        const pdfKey = attachmentItem?.key || meta.key;
-        const groupID = Zotero.Libraries?.get?.(regularItem.libraryID)?.groupID;
-        const pageLink = groupID ? `zotero://open-pdf/groups/${groupID}/items/${pdfKey}?page=${pageNum}` : `zotero://open-pdf/library/items/${pdfKey}?page=${pageNum}`;
-        const taskTitle = selectedText ? selectedText.length > 50 ? selectedText.slice(0, 50) + "..." : selectedText : `文献研读思考 (P.${pageNum})`;
-        let description = `来自 PDF 第 ${pageNum} 页的摘录与待办：
-`;
-        if (selectedText) {
-          description += `“${selectedText}”
-
-`;
-        }
-        description += `文献：《${meta.title}》
-PDF 锚点直达：${pageLink}`;
-        const data = await this.loadData();
-        const taskId = "task_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5);
-        const newTask = {
-          id: taskId,
-          title: `📌 [P.${pageNum}] ${taskTitle}`,
-          description,
-          dueDate: LiteratureWorkflow.dateAfter(LiteratureWorkflow.days(this.getPref("defaultDueDays", 7))),
+          dueDate: LiteratureWorkflow.dateAfter(LiteratureWorkflow.days(host.getPref("defaultDueDays", 7))),
           dueTime: null,
-          priority: this.getPref("defaultPriority", "medium"),
+          priority: host.getPref("defaultPriority", "medium"),
           category: "论文研读",
           completed: false,
           createdAt: (/* @__PURE__ */ new Date()).toISOString(),
           completedAt: null,
-          subtasks: [],
-          tags: [...meta.tags || [], `P.${pageNum}`, "PDF摘录"],
+          tags: [collection.name, "专题研读", "待研读"],
           reminder: { enabled: false, before: 15, notified: false },
           order: (data.tasks || []).length,
           zoteroItemKey: meta.key,
+          zoteroItemID: meta.id,
+          zoteroLinkStatus: "active",
+          readingProfile: host.getPref("readingProfile", "general"),
+          literatureWorkflowId: "reading",
           zoteroItemTitle: meta.title,
           zoteroAuthors: meta.authors,
           zoteroLibraryID: meta.libraryID,
           zoteroPublication: meta.publication,
           zoteroYear: meta.year,
           zoteroUri: meta.zoteroUri,
-          zoteroPdfUri: pageLink,
-          zoteroAttachmentKey: attachmentItem.key,
-          zoteroItemID: regularItem.id,
-          zoteroPage: pageNum,
-          zoteroQuote: selectedText,
-          zoteroLinkStatus: "active",
-          academicType: "literature_reading"
+          zoteroPdfUri: meta.pdfUri,
+          academicType: "literature_reading",
+          subtasks: Boolean(host.getPref("academicPresets", true)) ? LiteratureWorkflow.steps(host.getPref("readingProfile", "general"), () => "sub_" + Date.now() + "_" + Math.random().toString(36).slice(2, 10)) : []
         };
-        const shortcutAction = this.getPref("readerShortcutAction", "create_instant");
-        if (shortcutAction === "open_modal") {
-          this.openTaskFlow({ mode: "open_modal_prefill", prefill: newTask }, window);
-          return;
-        }
-        await this.saveData({ taskChanges: { added: [newTask] }, syncLinkedItems: true });
-        this.showNotice(
-          "已从 PDF 提取待办",
-          `已记录第 ${pageNum} 页任务，并生成一键直达锚点链接！`
-        );
-      } catch (err) {
-        Zotero.logError?.("[TaskFlow] createTaskFromReader error: " + err);
-        this.showNotice("从阅读器创建待办失败", String(err));
+        data.tasks.push(mainTask);
+        addedTasks.push(mainTask);
+        existingKeys.add(item.libraryID + ":" + item.key);
+        addedCount++;
       }
+      if (addedCount > 0) {
+        await host.saveData({ taskChanges: { added: addedTasks }, deduplicateLiterature: "item", syncLinkedItems: true });
+        host.showNotice("专题研读规划已建立", `已为【${collection.name}】下的 ${addedCount} 篇文献批量生成研读清单！`);
+      } else {
+        host.showNotice("研读规划已存在", `【${collection.name}】下的文献均已存在对应研读任务。`);
+      }
+      host.openTaskFlow({ mode: "create_from_collection", collectionName: collection.name }, window);
+    } catch (err) {
+      Zotero.logError?.("[TaskFlow] createCollectionReadingPlan error: " + err);
     }
-    buildLiteratureTask(item, {
-      title = "",
-      priority = null,
-      academicType = "literature_reading",
-      profileID = null,
-      dueDate = null,
-      workflowId = null
-    } = {}) {
-      const meta = serializeLiteratureItem2(item);
-      if (!meta || item.deleted) throw new Error("请先选中文献条目，回收站中的文献无法加入待办");
-      const customTitle = String(title).trim();
-      const taskTitle = customTitle || `研读：${meta.title}`;
-      const generateId = () => "task_" + Date.now() + "_" + Math.random().toString(36).slice(2, 10);
-      return {
-        id: generateId(),
-        title: taskTitle,
-        description: `文献研读待办：${meta.title} (${meta.authors} ${meta.year})`,
-        dueDate: dueDate || LiteratureWorkflow.dateAfter(LiteratureWorkflow.days(this.getPref("defaultDueDays", 7))),
+  }
+  async function createTaskFromReader(host, window = null, sourceReader = null, selection = null) {
+    const win = window || (Zotero.getMainWindow ? Zotero.getMainWindow() : null);
+    const tabs = win?.Zotero_Tabs || (typeof Zotero_Tabs !== "undefined" ? Zotero_Tabs : null);
+    if (!sourceReader && (!tabs || !tabs.selectedTab || tabs.selectedTab.type !== "reader")) {
+      const selected = host.getSelectedRegularItems(win);
+      if (selected.length > 0) {
+        host.openTaskFlow({ mode: "create_from_item", item: serializeLiteratureItem(selected[0]) }, win);
+        return;
+      }
+      host.showNotice("提示", "请在 PDF 阅读器中或文献列表中使用此快捷键");
+      return;
+    }
+    try {
+      const reader = sourceReader || Zotero.Reader?.getByTabID?.(tabs.selectedTab.id);
+      const itemID = reader?.itemID || tabs?.selectedTab?.data?.itemID;
+      if (!itemID) return;
+      const attachmentItem = Zotero.Items.get(itemID);
+      const regularItem = getLiteratureItem(attachmentItem);
+      if (!regularItem) return;
+      const meta = serializeLiteratureItem(regularItem);
+      let selectedText = selection?.text || "";
+      try {
+        if (!selectedText && typeof reader.getSelectedText === "function") {
+          selectedText = await reader.getSelectedText();
+        }
+      } catch (_) {
+      }
+      if (!selectedText && reader._iframeWindow) {
+        try {
+          selectedText = reader._iframeWindow.getSelection?.()?.toString() || "";
+        } catch (_) {
+        }
+      }
+      selectedText = String(selectedText || "").trim();
+      let pageIndex = 0;
+      try {
+        if (Number.isInteger(selection?.position?.pageIndex)) {
+          pageIndex = selection.position.pageIndex;
+        } else if (Number.isInteger(reader._internalReader?._state?.primaryViewState?.pageIndex)) {
+          pageIndex = reader._internalReader._state.primaryViewState.pageIndex;
+        } else if (reader.state && typeof reader.state.pageIndex === "number") {
+          pageIndex = reader.state.pageIndex;
+        } else if (reader._iframeWindow?.PDFViewerApplication?.page) {
+          pageIndex = reader._iframeWindow.PDFViewerApplication.page - 1;
+        }
+      } catch (_) {
+      }
+      const pageNum = pageIndex + 1;
+      const pdfKey = attachmentItem?.key || meta.key;
+      const groupID = Zotero.Libraries?.get?.(regularItem.libraryID)?.groupID;
+      const pageLink = groupID ? `zotero://open-pdf/groups/${groupID}/items/${pdfKey}?page=${pageNum}` : `zotero://open-pdf/library/items/${pdfKey}?page=${pageNum}`;
+      const taskTitle = selectedText ? selectedText.length > 50 ? selectedText.slice(0, 50) + "..." : selectedText : `文献研读思考 (P.${pageNum})`;
+      let description = `来自 PDF 第 ${pageNum} 页的摘录与待办：
+`;
+      if (selectedText) {
+        description += `“${selectedText}”
+
+`;
+      }
+      description += `文献：《${meta.title}》
+PDF 锚点直达：${pageLink}`;
+      const data = await host.loadData();
+      const taskId = "task_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5);
+      const newTask = {
+        id: taskId,
+        title: `📌 [P.${pageNum}] ${taskTitle}`,
+        description,
+        dueDate: LiteratureWorkflow.dateAfter(LiteratureWorkflow.days(host.getPref("defaultDueDays", 7))),
         dueTime: null,
-        priority: priority || this.getPref("defaultPriority", "medium"),
+        priority: host.getPref("defaultPriority", "medium"),
         category: "论文研读",
-        academicType,
-        status: "todo",
-        repeat: null,
         completed: false,
         createdAt: (/* @__PURE__ */ new Date()).toISOString(),
         completedAt: null,
-        subtasks: profileID ? LiteratureWorkflow.steps(profileID, generateId) : [],
-        readingProfile: profileID,
-        literatureWorkflowId: workflowId || (profileID ? `milestones:${profileID}` : customTitle ? null : "reading"),
-        tags: this.getPref("autoTagFromItem", true) ? meta.tags || [] : [],
+        subtasks: [],
+        tags: [...meta.tags || [], `P.${pageNum}`, "PDF摘录"],
         reminder: { enabled: false, before: 15, notified: false },
+        order: (data.tasks || []).length,
         zoteroItemKey: meta.key,
-        zoteroItemID: meta.id,
         zoteroItemTitle: meta.title,
-        zoteroAutoTitle: !customTitle,
         zoteroAuthors: meta.authors,
         zoteroLibraryID: meta.libraryID,
         zoteroPublication: meta.publication,
         zoteroYear: meta.year,
         zoteroUri: meta.zoteroUri,
-        zoteroPdfUri: meta.pdfUri,
-        zoteroLinkStatus: "active"
+        zoteroPdfUri: pageLink,
+        zoteroAttachmentKey: attachmentItem.key,
+        zoteroItemID: regularItem.id,
+        zoteroPage: pageNum,
+        zoteroQuote: selectedText,
+        zoteroLinkStatus: "active",
+        academicType: "literature_reading"
       };
-    }
-    addLiteratureReadingTask(item, options = {}) {
-      let task;
-      try {
-        task = this.buildLiteratureTask(item, options);
-      } catch (error) {
-        return Promise.reject(error);
+      const shortcutAction = host.getPref("readerShortcutAction", "create_instant");
+      if (shortcutAction === "open_modal") {
+        host.openTaskFlow({ mode: "open_modal_prefill", prefill: newTask }, window);
+        return;
       }
-      const requestKey = JSON.stringify([task.zoteroLibraryID, task.zoteroItemKey, task.title, task.literatureWorkflowId]);
-      this._literatureTaskAdds ||= /* @__PURE__ */ new Map();
-      if (this._literatureTaskAdds.has(requestKey)) return this._literatureTaskAdds.get(requestKey);
-      const run = async () => {
-        const data = await this.loadData();
-        task.order = Math.max(-1, ...(data.tasks || []).map((t) => t.order || 0)) + 1;
-        const saved = await this.saveData({
-          taskChanges: { added: [task] },
-          deduplicateLiterature: Boolean(task.literatureWorkflowId),
-          syncLinkedItems: true
-        });
-        const actual = saved.tasks.find((t) => t.id === task.id) || saved.tasks.find((t) => LiteratureWorkflow.samePending(t, task, Zotero.Libraries.userLibraryID));
-        return { task: actual, created: actual?.id === task.id };
-      };
-      const result = run().finally(() => this._literatureTaskAdds.delete(requestKey));
-      this._literatureTaskAdds.set(requestKey, result);
-      return result;
+      await host.saveData({ taskChanges: { added: [newTask] }, syncLinkedItems: true });
+      host.showNotice("已从 PDF 提取待办", `已记录第 ${pageNum} 页任务，并生成一键直达锚点链接！`);
+    } catch (err) {
+      Zotero.logError?.("[TaskFlow] createTaskFromReader error: " + err);
+      host.showNotice("从阅读器创建待办失败", String(err));
     }
-    async addSelectedLiteratureTasks(window = null, items = null) {
-      let selected = [];
-      if (Array.isArray(items) && items.length) {
-        const seen = /* @__PURE__ */ new Set();
-        selected = items.map((item) => getLiteratureItem2(item)).filter((item) => item && !item.deleted && !seen.has(item.id) && seen.add(item.id));
-      } else {
-        selected = this.getSelectedRegularItems(window || Zotero.getMainWindow?.()).filter((item) => !item.deleted);
-      }
-      if (!selected.length) {
-        this.showNotice("请先选中文献", "可在文献列表中多选后批量加入。");
-        return { added: 0, skipped: 0 };
-      }
-      return this.addLiteratureTasks(selected);
-    }
-    async addDroppedLiteratureTasks(itemIDs) {
-      if (!this.getPref("dragDropFromLibrary", true)) throw new Error("已关闭从文献库拖入待办");
-      if (!Array.isArray(itemIDs) || !itemIDs.length || itemIDs.length > 1e3 || itemIDs.some((id) => !Number.isSafeInteger(id) || id <= 0)) throw new Error("无效的 Zotero 拖拽条目");
-      const seen = /* @__PURE__ */ new Set();
-      const selected = itemIDs.map((id) => Zotero.Items.get(id)).filter((item) => item && !item.deleted).map((item) => getLiteratureItem2(item)).filter((item) => item && !item.deleted && !seen.has(item.id) && seen.add(item.id));
-      if (!selected.length) throw new Error("拖入的文献已删除或不包含可研读的文献条目");
-      const result = await this.addLiteratureTasks(selected);
-      return { ...result, ignored: itemIDs.length - selected.length };
-    }
-    async addLiteratureTasks(selected) {
-      const data = await this.loadData();
-      const candidates = selected.map((item, index) => ({
-        ...this.buildLiteratureTask(item),
-        order: Math.max(-1, ...(data.tasks || []).map((task) => task.order || 0)) + 1 + index
-      }));
-      const saved = await this.saveData({ taskChanges: { added: candidates }, deduplicateLiterature: "item", syncLinkedItems: true });
-      const ids = new Set(saved.tasks.map((task) => task.id));
-      const added = candidates.filter((task) => ids.has(task.id)).length;
-      const skipped = selected.length - added;
-      this.showNotice("批量加入完成", `新增 ${added} 篇，跳过已有待办 ${skipped} 篇；新任务截止 ${candidates[0].dueDate}。`);
-      return { added, skipped };
-    }
-    async rescheduleLiteratureTask(taskID, days, fromDeadline = false) {
-      if (![0, 3, 7].includes(days)) throw new Error("不支持的改期选项");
-      const data = await this.saveData({ rescheduleTask: { taskID, days, fromDeadline }, syncLinkedItems: true });
-      return data.tasks.find((task) => task.id === taskID);
-    }
-    async createReadingMilestones(item, window = null, profileID = null) {
-      const selectedProfile = Object.hasOwn(LiteratureWorkflow.profiles, profileID) ? profileID : this.getPref("readingProfile", "general");
-      const result = await this.addLiteratureReadingTask(item, { profileID: selectedProfile });
-      this.showNotice(
-        result.created ? "精读清单已创建" : "该精读清单已存在",
-        `${LiteratureWorkflow.profile(selectedProfile).label} · 截止 ${result.task.dueDate}`
+  }
+  async function createReadingMilestones(host, item, window = null, profileID = null) {
+    const selectedProfile = Object.hasOwn(LiteratureWorkflow.profiles, profileID) ? profileID : host.getPref("readingProfile", "general");
+    const result = await addLiteratureReadingTask(host, item, { profileID: selectedProfile });
+    host.showNotice(
+      result.created ? "精读清单已创建" : "该精读清单已存在",
+      `${LiteratureWorkflow.profile(selectedProfile).label} · 截止 ${result.task.dueDate}`
+    );
+    host.openTaskFlow({ mode: "view_task", taskId: result.task.id }, window);
+    return result;
+  }
+
+  // src/modules/literature/literatureSync.ts
+  async function syncTasksToChildNote(host, item, tasks = null, options = {}) {
+    const target = getLiteratureItem(item);
+    if (!target) return null;
+    if (typeof target.isEditable === "function" && !target.isEditable()) return null;
+    try {
+      const data = await host.loadData();
+      const allTasks = (tasks || data.tasks || []).filter(
+        (t) => t.zoteroItemKey === target.key && (t.zoteroLibraryID || Zotero.Libraries.userLibraryID) === target.libraryID
       );
-      this.openTaskFlow({ mode: "view_task", taskId: result.task.id }, window);
-      return result;
-    }
-    registerItemPaneSection() {
-      if (typeof Zotero !== "undefined" && Zotero.TaskFlowItemPane?.registerItemPaneSection) {
-        return Zotero.TaskFlowItemPane.registerItemPaneSection(this);
-      }
-      if (typeof TaskFlowItemPane !== "undefined" && TaskFlowItemPane.registerItemPaneSection) {
-        return TaskFlowItemPane.registerItemPaneSection(this);
-      }
-    }
-    async refreshLinkedLiterature(itemIDs = null, removed = []) {
-      const data = await this.loadData();
-      const updated = [];
-      for (const task of data.tasks || []) {
-        if (!task.zoteroItemKey) continue;
-        const libraryID = task.zoteroLibraryID || Zotero.Libraries.userLibraryID;
-        const item = resolveItemReference(task.zoteroItemKey, libraryID);
-        const matchesRemoved = removed.some((ref) => ref.key === task.zoteroItemKey && ref.libraryID === libraryID);
-        if (itemIDs && !itemIDs.has(item?.id) && !itemIDs.has(task.zoteroItemID) && !matchesRemoved) continue;
-        let changes = { zoteroLinkStatus: !item ? "missing" : item.deleted ? "trashed" : "active" };
-        if (item) {
-          const meta = serializeLiteratureItem2(item);
-          if (!meta) continue;
-          Object.assign(changes, {
-            zoteroItemID: meta.id,
-            zoteroItemTitle: meta.title,
-            zoteroAuthors: meta.authors,
-            zoteroYear: meta.year,
-            zoteroPublication: meta.publication,
-            zoteroUri: meta.zoteroUri
-          });
-          if (task.zoteroAutoTitle || task.zoteroAutoTitle == null && task.title === `研读：${task.zoteroItemTitle}`) changes.title = `研读：${meta.title}`;
+      const meta = serializeLiteratureItem(target);
+      const total = allTasks.length;
+      const completed = allTasks.filter((t) => t.completed).length;
+      const percent = total > 0 ? Math.round(completed / total * 100) : 0;
+      let noteHtml = `<h1>${escapeHtml(host.getPref("childNoteTitle", "📝 [TaskFlow] 研读清单与进度"))}</h1>`;
+      noteHtml += `<p><strong>文献：</strong>${escapeHtml(meta.title)} (${escapeHtml(meta.authors)} ${escapeHtml(meta.year)})</p>`;
+      noteHtml += `<p><strong>研读进度：</strong>${completed}/${total} 已完成 (<strong>${percent}%</strong>) | 更新于：${(/* @__PURE__ */ new Date()).toLocaleString()}</p>`;
+      noteHtml += `<div style="background:#e2e8f0;border-radius:4px;height:10px;width:100%;margin:8px 0;overflow:hidden;"><div style="background:#059669;height:10px;width:${percent}%;"></div></div>`;
+      if (total === 0) {
+        noteHtml += `<p><em>暂无关联待办事项。可通过 TaskFlow 插件或侧边栏添加研读计划。</em></p>`;
+      } else {
+        noteHtml += `<ul>`;
+        for (const t of allTasks) {
+          const checkMark = t.completed ? "☑" : "☐";
+          const statusStyle = t.completed ? "text-decoration:line-through;color:#64748b;" : "font-weight:600;";
+          const dueInfo = t.dueDate ? ` <span style="font-size:11px;color:#d97706;">(截止: ${escapeHtml(t.dueDate)})</span>` : "";
+          noteHtml += `<li>${checkMark} <span style="${statusStyle}">${escapeHtml(t.title)}</span>${dueInfo}`;
+          if (host.getPref("childNoteIncludeSubtasks", true) && t.subtasks && t.subtasks.length > 0) {
+            noteHtml += `<ul>`;
+            for (const sub of t.subtasks) {
+              noteHtml += `<li>${sub.completed ? "☑" : "☐"} ${escapeHtml(sub.title)}</li>`;
+            }
+            noteHtml += `</ul>`;
+          }
+          if (host.getPref("childNoteIncludeQuotes", true) && t.description && t.description.trim()) {
+            noteHtml += `<blockquote>${escapeHtml(t.description).replace(/\n/g, "<br/>")}</blockquote>`;
+          }
+          if (host.getPref("childNoteIncludeQuotes", true) && /^zotero:\/\/open-pdf\/(?:library|groups\/\d+)\/items\/[A-Za-z0-9_]+(?:\?|$)/.test(t.zoteroPdfUri || "")) {
+            noteHtml += ` <a href="${escapeHtml(t.zoteroPdfUri)}">${t.zoteroAnnotationKey ? "返回原文批注" : "打开原文页码"}</a>`;
+          }
+          noteHtml += `</li>`;
         }
-        changes = Object.fromEntries(Object.entries(changes).filter(([key, value]) => value !== task[key]));
-        if (Object.keys(changes).length) updated.push({
+        noteHtml += `</ul>`;
+      }
+      noteHtml += `<hr/><p style="font-size:11px;color:#94a3b8;">由 Zotero TaskFlow 自动生成并同步至 Zotero 云端笔记</p>`;
+      let targetNote = null;
+      if (typeof target.getNotes === "function") {
+        const noteIDs = target.getNotes();
+        for (const nid of noteIDs) {
+          const noteItem = Zotero.Items.get(nid);
+          if (noteItem && noteItem.isNote && noteItem.isNote()) {
+            const content = noteItem.getNote();
+            const hasTaskFlowTag = typeof noteItem.hasTag === "function" && (noteItem.hasTag("TaskFlow") || noteItem.hasTag("Todolist"));
+            if (hasTaskFlowTag || content && (content.includes("[TaskFlow]") || content.includes("[Todolist]") || content.includes("TaskFlow") || content.includes("Todolist"))) {
+              targetNote = noteItem;
+              break;
+            }
+          }
+        }
+      }
+      if (targetNote) {
+        targetNote.setNote(noteHtml);
+        try {
+          if (typeof targetNote.hasTag === "function" && !targetNote.hasTag("TaskFlow")) {
+            targetNote.addTag("TaskFlow");
+          }
+          if (typeof targetNote.hasTag === "function" && targetNote.hasTag("Todolist")) {
+            targetNote.removeTag("Todolist");
+          }
+        } catch (_) {
+        }
+        await targetNote.saveTx();
+      } else {
+        const newNote = new Zotero.Item("note");
+        newNote.libraryID = target.libraryID;
+        newNote.parentID = target.id;
+        newNote.setNote(noteHtml);
+        try {
+          newNote.addTag("TaskFlow");
+        } catch (_) {
+        }
+        await newNote.saveTx();
+        targetNote = newNote;
+      }
+      if (!options?.silent) {
+        host.showNotice(
+          "文献笔记同步成功",
+          `已更新《${meta.title.slice(0, 20)}...》的研读进度笔记，支持多端云同步！`
+        );
+      }
+      return targetNote;
+    } catch (err) {
+      Zotero.logError?.("[TaskFlow] syncTasksToChildNote error: " + err);
+      host.recordDiagnostic({ action: "同步文献子笔记", message: String(err?.message || err), stack: err?.stack });
+      return null;
+    }
+  }
+  async function tagItemOnTaskEvent(host, itemKey, eventType, libraryID = null) {
+    if (!itemKey) return;
+    try {
+      const item = resolveItemReference(itemKey, libraryID);
+      const target = getLiteratureItem(item);
+      if (!target) return;
+      if (typeof target.isEditable === "function" && !target.isEditable()) return;
+      const autoTagOnCreate = host.getPref("autoTagOnCreate", true);
+      const autoTagOnComplete = host.getPref("autoTagOnComplete", true);
+      const pendingTag = host.getPref("tagForPending", "待研读");
+      const completedTag = host.getPref("tagForCompleted", "精读已完成");
+      const data = await host.loadData();
+      const tasks = (data.tasks || []).filter(
+        (t) => t.zoteroItemKey === target.key && (t.zoteroLibraryID || Zotero.Libraries.userLibraryID) === target.libraryID
+      );
+      const uncompleted = tasks.filter((t) => !t.completed);
+      let modified = false;
+      if (eventType === "create" && autoTagOnCreate) {
+        if (pendingTag && !target.hasTag(pendingTag)) {
+          target.addTag(pendingTag);
+          modified = true;
+        }
+      } else if (eventType === "complete_check") {
+        if (tasks.length > 0 && uncompleted.length === 0) {
+          if (autoTagOnComplete && completedTag) {
+            if (!target.hasTag(completedTag)) {
+              target.addTag(completedTag);
+              modified = true;
+            }
+            if (pendingTag && target.hasTag(pendingTag)) {
+              target.removeTag(pendingTag);
+              modified = true;
+            }
+          }
+        } else if (tasks.length === 0) {
+          for (const tag of [pendingTag, completedTag]) {
+            if (tag && target.hasTag(tag)) {
+              target.removeTag(tag);
+              modified = true;
+            }
+          }
+        } else if (uncompleted.length > 0) {
+          if (completedTag && target.hasTag(completedTag)) {
+            target.removeTag(completedTag);
+            modified = true;
+          }
+          if (autoTagOnCreate && pendingTag && !target.hasTag(pendingTag)) {
+            target.addTag(pendingTag);
+            modified = true;
+          }
+        }
+      }
+      if (modified) {
+        await target.saveTx();
+      }
+    } catch (err) {
+      Zotero.logError?.("[TaskFlow] tagItemOnTaskEvent error: " + err);
+    }
+  }
+  async function refreshLinkedLiterature(host, itemIDs = null, removed = []) {
+    const data = await host.loadData();
+    const updated = [];
+    for (const task of data.tasks || []) {
+      if (!task.zoteroItemKey) continue;
+      const libraryID = task.zoteroLibraryID || Zotero.Libraries.userLibraryID;
+      const item = resolveItemReference(task.zoteroItemKey, libraryID);
+      const matchesRemoved = removed.some(
+        (ref) => ref.key === task.zoteroItemKey && ref.libraryID === libraryID
+      );
+      if (itemIDs && !itemIDs.has(item?.id) && !itemIDs.has(task.zoteroItemID) && !matchesRemoved) continue;
+      let changes = { zoteroLinkStatus: !item ? "missing" : item.deleted ? "trashed" : "active" };
+      if (item) {
+        const meta = serializeLiteratureItem(item);
+        if (!meta) continue;
+        Object.assign(changes, {
+          zoteroItemID: meta.id,
+          zoteroItemTitle: meta.title,
+          zoteroAuthors: meta.authors,
+          zoteroYear: meta.year,
+          zoteroPublication: meta.publication,
+          zoteroUri: meta.zoteroUri
+        });
+        if (task.zoteroAutoTitle || task.zoteroAutoTitle == null && task.title === `研读：${task.zoteroItemTitle}`) {
+          changes.title = `研读：${meta.title}`;
+        }
+      }
+      changes = Object.fromEntries(Object.entries(changes).filter(([key, value]) => value !== task[key]));
+      if (Object.keys(changes).length) {
+        updated.push({
           id: task.id,
           changes,
           literatureRefresh: true,
@@ -2520,11 +2587,61 @@ PDF 锚点直达：${pageLink}`;
           libraryID
         });
       }
-      if (updated.length && !this._shuttingDown) await this.saveData({
+    }
+    if (updated.length && !host._shuttingDown) {
+      await host.saveData({
         taskChanges: { updated },
         expectedTasksGeneration: data.tasksGeneration || 0
       });
-      return updated.length;
+    }
+    return updated.length;
+  }
+
+  // src/modules/literature.ts
+  var TaskFlowLiterature = class extends TaskFlowLiteratureTasks {
+    buildLiteratureTask(item, options = {}) {
+      return buildLiteratureTask(this, item, options);
+    }
+    addLiteratureReadingTask(item, options = {}) {
+      return addLiteratureReadingTask(this, item, options);
+    }
+    addLiteratureTasks(selected) {
+      return addLiteratureTasks(this, selected);
+    }
+    addSelectedLiteratureTasks(window = null, items = null) {
+      return addSelectedLiteratureTasks(this, window, items);
+    }
+    addDroppedLiteratureTasks(itemIDs) {
+      return addDroppedLiteratureTasks(this, itemIDs);
+    }
+    rescheduleLiteratureTask(taskID, days, fromDeadline = false) {
+      return rescheduleLiteratureTask(this, taskID, days, fromDeadline);
+    }
+    createCollectionReadingPlan(collection, window = null) {
+      return createCollectionReadingPlan(this, collection, window);
+    }
+    createTaskFromReader(window = null, sourceReader = null, selection = null) {
+      return createTaskFromReader(this, window, sourceReader, selection);
+    }
+    createReadingMilestones(item, window = null, profileID = null) {
+      return createReadingMilestones(this, item, window, profileID);
+    }
+    syncTasksToChildNote(item, tasks = null, options = {}) {
+      return syncTasksToChildNote(this, item, tasks, options);
+    }
+    tagItemOnTaskEvent(itemKey, eventType, libraryID = null) {
+      return tagItemOnTaskEvent(this, itemKey, eventType, libraryID);
+    }
+    refreshLinkedLiterature(itemIDs = null, removed = []) {
+      return refreshLinkedLiterature(this, itemIDs, removed);
+    }
+    registerItemPaneSection() {
+      if (typeof Zotero !== "undefined" && Zotero.TaskFlowItemPane?.registerItemPaneSection) {
+        return Zotero.TaskFlowItemPane.registerItemPaneSection(this);
+      }
+      if (typeof TaskFlowItemPane !== "undefined" && TaskFlowItemPane.registerItemPaneSection) {
+        return TaskFlowItemPane.registerItemPaneSection(this);
+      }
     }
   };
 
@@ -2734,6 +2851,485 @@ PDF 锚点直达：${pageLink}`;
     }
   };
 
+  // src/modules/toolbar/buttonGroup.ts
+  var isTodolistButton = (button) => button.id === "todolist-toolbar-button" || ((button.getAttribute("label") === "TaskFlow" || button.getAttribute("label") === "Todolist") && String(button.getAttribute("image") || "").includes("/icons/taskflow.svg") || String(button.getAttribute("image") || "").includes("/icons/todolist.svg"));
+  function updateToolbarBadge(host, doc, data) {
+    const button = doc?.getElementById("todolist-toolbar-button");
+    if (!button) return;
+    const today = host.localDateString(/* @__PURE__ */ new Date());
+    const tasks = (data?.tasks || []).filter((task) => task);
+    const overdue = tasks.filter((task) => !task.completed && task.dueDate && task.dueDate < today).length;
+    const count = tasks.filter((task) => {
+      if (task.completed || task.status === "done" || task.dueDate && task.dueDate < today) return false;
+      return !task.status || task.status === "todo" || task.status === "in-progress";
+    }).length;
+    const showBadge = Boolean(host.getPref("toolbarShowBadge", true));
+    if (showBadge && count) button.setAttribute("data-taskflow-count", count > 99 ? "99+" : String(count));
+    else button.removeAttribute("data-taskflow-count");
+    if (doc.l10n?.setAttributes) {
+      doc.l10n.setAttributes(button, "taskflow-toolbar-status", { count, overdue });
+    } else {
+      const text = `TaskFlow: ${count} to do or in progress (excluding overdue), ${overdue} overdue (Ctrl+Alt+T)`;
+      button.setAttribute("tooltiptext", text);
+      button.setAttribute("aria-label", text);
+    }
+  }
+  function updateAllToolbarBadges(host) {
+    try {
+      if (typeof Services !== "undefined" && Services.wm?.getEnumerator) {
+        const windows = Services.wm.getEnumerator("navigator:browser");
+        while (windows.hasMoreElements()) {
+          const win = windows.getNext();
+          if (win?.document && !win.closed) {
+            updateToolbarBadge(host, win.document, host._cachedData);
+          }
+        }
+      }
+    } catch (_) {
+    }
+  }
+  function injectToolbarButton(host, window, windowElements, retryCount = 0, retryState = { cancelled: false, timers: /* @__PURE__ */ new Set() }) {
+    if (retryState.cancelled) return;
+    if (!window || !window.document) return;
+    const doc = window.document;
+    if (!host.isMainWindow(window)) {
+      try {
+        doc.getElementById("todolist-toolbar-button")?.remove();
+      } catch (_) {
+      }
+      return;
+    }
+    const toolbar = doc.getElementById("zotero-items-toolbar") || doc.getElementById("zotero-item-toolbar") || doc.getElementById("zotero-tb") || doc.getElementById("zotero-toolbar") || (doc.getElementById("zotero-pane")?.querySelector("toolbar") || null);
+    if (!toolbar) {
+      if (retryCount < 10) {
+        const timer = window.setTimeout(() => {
+          retryState.timers.delete(timer);
+          if (!retryState.cancelled) injectToolbarButton(host, window, windowElements, retryCount + 1, retryState);
+        }, 300);
+        retryState.timers.add(timer);
+      }
+      return;
+    }
+    const existingButtons = Array.from(toolbar.querySelectorAll("toolbarbutton")).filter(isTodolistButton);
+    let btn = existingButtons[0] || null;
+    if (existingButtons.length > 1) {
+      for (let i = 1; i < existingButtons.length; i++) {
+        try {
+          existingButtons[i].remove();
+        } catch (_) {
+        }
+      }
+    }
+    if (!btn) {
+      btn = host.createXULElement(doc, "toolbarbutton");
+      btn.id = "todolist-toolbar-button";
+      btn.setAttribute("label", "TaskFlow");
+      btn.setAttribute("tooltiptext", "打开 TaskFlow 学术任务工作台 (Ctrl+Alt+T)");
+      btn.setAttribute("image", `${CHROME_ROOT}icons/taskflow.svg`);
+      btn.setAttribute("class", "zotero-tb-button toolbarbutton-1 chromeclass-toolbar-additional");
+      btn.setAttribute(
+        "style",
+        "cursor: pointer; margin: 0 3px; display: inline-flex; align-items: center; justify-content: center;"
+      );
+      const trigger = (e) => {
+        if (e) {
+          e.preventDefault?.();
+          e.stopPropagation?.();
+        }
+        host.triggerTaskFlowOpen(window);
+      };
+      btn.addEventListener("command", trigger);
+      btn.addEventListener("mouseenter", () => updateToolbarBadge(host, doc, host._cachedData));
+    }
+    btn.setAttribute("image", `${CHROME_ROOT}icons/taskflow.svg`);
+    if (!doc.getElementById("taskflow-toolbar-style")) {
+      const style = doc.createElementNS("http://www.w3.org/1999/xhtml", "style");
+      style.id = "taskflow-toolbar-style";
+      style.textContent = `
+      #todolist-toolbar-button { position:relative; }
+      #todolist-toolbar-button[data-taskflow-count]::after {
+        content:attr(data-taskflow-count); position:absolute; top:0; inset-inline-end:-2px;
+        min-width:13px; height:13px; padding:0 3px; box-sizing:border-box; border-radius:7px;
+        font:600 9px/13px system-ui,sans-serif; text-align:center;
+        color:light-dark(#254e7b,#c7def8); background:light-dark(#dceaf9,#294560);
+        border:1px solid var(--material-background,Canvas); pointer-events:none;
+      }
+    `;
+      (doc.head || doc.documentElement).appendChild(style);
+      windowElements.push(style);
+    }
+    const toolbarChildren = Array.from(toolbar.children || []);
+    const flexibleSpacerIndex = toolbarChildren.findIndex((child) => {
+      const tag = String(child.localName || child.tagName || "").toLowerCase();
+      return tag === "toolbarspring" || tag === "spacer" && Number(child.getAttribute("flex") || 0) > 0 || child.id === "zotero-tb-search" || child.id === "zotero-tb-search-textbox" || child.classList?.contains("zotero-search-box") || child.classList?.contains("search-box");
+    });
+    const leadingActionItems = flexibleSpacerIndex >= 0 ? toolbarChildren.slice(0, flexibleSpacerIndex) : toolbarChildren;
+    const toolbarButtons = leadingActionItems.filter(
+      (child) => String(child.localName || child.tagName || "").toLowerCase() === "toolbarbutton" && !isTodolistButton(child) && !child.hidden && child.getAttribute("hidden") !== "true" && child.getAttribute("collapsed") !== "true"
+    );
+    const anchor = toolbarButtons.reverse().find((child) => {
+      try {
+        const style = window.getComputedStyle(child);
+        return style.display !== "none" && style.visibility !== "collapse";
+      } catch (_error) {
+        return true;
+      }
+    }) || null;
+    if (anchor && anchor.parentNode === toolbar) {
+      if (anchor.nextSibling !== btn) {
+        anchor.parentNode.insertBefore(btn, anchor.nextSibling);
+      }
+    } else {
+      const searchBox = doc.getElementById("zotero-tb-search-textbox") || doc.getElementById("zotero-tb-search") || toolbar.querySelector("input") || toolbar.querySelector(".zotero-search-box") || (flexibleSpacerIndex >= 0 ? toolbarChildren[flexibleSpacerIndex] : null);
+      if (searchBox && searchBox.parentNode === toolbar) {
+        toolbar.insertBefore(btn, searchBox);
+      } else {
+        toolbar.appendChild(btn);
+      }
+    }
+    if (!windowElements.includes(btn)) {
+      windowElements.push(btn);
+    }
+    updateToolbarBadge(host, doc, host._cachedData);
+    if (!host._cachedData) {
+      host.loadData().then((data) => {
+        if (!retryState.cancelled && !window.closed && doc.getElementById(btn.id) === btn) {
+          updateToolbarBadge(host, doc, host._cachedData || data);
+        }
+      }).catch((error) => Zotero.logError?.("[TaskFlow] Toolbar task count failed: " + error));
+    }
+    if (retryCount === 0) {
+      const delays = [400, 1200, 2500];
+      delays.forEach((d) => {
+        const timer = window.setTimeout(() => {
+          retryState.timers.delete(timer);
+          if (!retryState.cancelled) {
+            repositionToolbarButton(host, window);
+          }
+        }, d);
+        retryState.timers.add(timer);
+      });
+    }
+  }
+  function repositionToolbarButton(host, window) {
+    if (!window || !window.document) return;
+    if (!host.isMainWindow(window)) {
+      try {
+        window.document.getElementById("todolist-toolbar-button")?.remove();
+      } catch (_) {
+      }
+      return;
+    }
+    const doc = window.document;
+    const btn = doc.getElementById("todolist-toolbar-button");
+    if (!btn) return;
+    const toolbar = btn.parentNode || doc.getElementById("zotero-items-toolbar") || doc.getElementById("zotero-item-toolbar") || doc.getElementById("zotero-tb") || doc.getElementById("zotero-toolbar") || (doc.getElementById("zotero-pane")?.querySelector("toolbar") || null);
+    if (!toolbar) return;
+    const isBtn = (b) => b.id === "todolist-toolbar-button";
+    const toolbarChildren = Array.from(toolbar.children || []);
+    const flexibleSpacerIndex = toolbarChildren.findIndex((child) => {
+      const tag = String(child.localName || child.tagName || "").toLowerCase();
+      return tag === "toolbarspring" || tag === "spacer" && Number(child.getAttribute("flex") || 0) > 0 || child.id === "zotero-tb-search" || child.id === "zotero-tb-search-textbox" || child.classList?.contains("zotero-search-box");
+    });
+    const leadingActionItems = flexibleSpacerIndex >= 0 ? toolbarChildren.slice(0, flexibleSpacerIndex) : toolbarChildren;
+    const toolbarButtons = leadingActionItems.filter(
+      (child) => String(child.localName || child.tagName || "").toLowerCase() === "toolbarbutton" && !isBtn(child) && !child.hidden && child.getAttribute("hidden") !== "true" && child.getAttribute("collapsed") !== "true"
+    );
+    const anchor = toolbarButtons.reverse().find((child) => {
+      try {
+        const style = window.getComputedStyle(child);
+        return style.display !== "none" && style.visibility !== "collapse";
+      } catch (_error) {
+        return true;
+      }
+    });
+    if (anchor && anchor.parentNode === toolbar) {
+      if (anchor.nextSibling !== btn) {
+        anchor.parentNode.insertBefore(btn, anchor.nextSibling);
+      }
+    }
+  }
+
+  // src/modules/toolbar/shortcutsGroup.ts
+  function injectTabIconStyle(doc, windowElements) {
+    try {
+      if (!doc.getElementById("todolist-tab-style")) {
+        const style = doc.createElement("style");
+        style.id = "todolist-tab-style";
+        style.textContent = `
+        tab[type="todolist"] .tab-icon,
+        .tab[type="todolist"] .tab-icon {
+          list-style-image: url("${CHROME_ROOT}icons/taskflow.svg") !important;
+          width: 16px !important;
+          height: 16px !important;
+        }
+      `;
+        (doc.head || doc.documentElement).appendChild(style);
+        windowElements.push(style);
+      }
+    } catch (_) {
+    }
+  }
+  function setupGlobalShortcuts(host, window, windowElements) {
+    const handleGlobalKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === "t" || e.key === "T")) {
+        e.preventDefault?.();
+        e.stopPropagation?.();
+        host.triggerTaskFlowOpen(window);
+      } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "t" || e.key === "T")) {
+        e.preventDefault?.();
+        e.stopPropagation?.();
+        host.createTaskFromReader(window);
+      }
+    };
+    window.addEventListener("keydown", handleGlobalKeyDown, true);
+    windowElements.push({
+      remove: () => window.removeEventListener("keydown", handleGlobalKeyDown, true)
+    });
+  }
+  function injectItemContextMenu(host, window, doc, windowElements) {
+    if (host._menuManagerId) return;
+    const itemMenu = doc.getElementById("zotero-itemmenu");
+    if (!itemMenu) return;
+    const separator = host.createXULElement(doc, "menuseparator");
+    separator.id = "todolist-itemmenu-separator";
+    itemMenu.appendChild(separator);
+    windowElements.push(separator);
+    const createFromItem = host.createXULElement(doc, "menuitem");
+    createFromItem.id = "todolist-itemmenu-create";
+    createFromItem.setAttribute("label", "添加为待办");
+    createFromItem.addEventListener("command", () => {
+      try {
+        host.createTaskFromSelection(window, doc, itemMenu);
+      } catch (err) {
+        Zotero.logError?.("[TaskFlow] Failed to create task from item context menu: " + err);
+      }
+    });
+    itemMenu.appendChild(createFromItem);
+    windowElements.push(createFromItem);
+    const batchFromItems = host.createXULElement(doc, "menuitem");
+    batchFromItems.id = "todolist-itemmenu-batch";
+    batchFromItems.setAttribute("label", "批量加入研读待办");
+    batchFromItems.addEventListener("command", () => {
+      host.addSelectedLiteratureTasks(window).catch((error) => host.showNotice("批量加入失败", String(error)));
+    });
+    itemMenu.appendChild(batchFromItems);
+    windowElements.push(batchFromItems);
+    const updateItemMenuVisibility = () => {
+      const showCreate = Boolean(host.getPref("itemContextMenuCreate", false));
+      const showBatch = Boolean(host.getPref("itemContextMenuBatch", false));
+      host.setElementVisibility(createFromItem, showCreate);
+      host.setElementVisibility(batchFromItems, showBatch);
+      host.setElementVisibility(separator, showCreate || showBatch);
+    };
+    itemMenu.addEventListener("popupshowing", updateItemMenuVisibility);
+    windowElements.push({
+      remove: () => itemMenu.removeEventListener("popupshowing", updateItemMenuVisibility)
+    });
+    updateItemMenuVisibility();
+  }
+
+  // src/modules/toolbar/messageBridgeGroup.ts
+  function setupHostMessageBridge(host, window, windowElements) {
+    const handleHostMessage = async (event) => {
+      try {
+        const data = event.data;
+        if (!data || typeof data !== "object") return;
+        if (typeof data.type !== "string" || !data.type.startsWith("TASKFLOW_") && !data.type.startsWith("TODOLIST_")) {
+          return;
+        }
+        const sourceWin = event.source;
+        const iframe = window.document.getElementById("todolist-tab-iframe");
+        if (sourceWin && sourceWin !== iframe?.contentWindow) {
+          let sourceURL;
+          try {
+            sourceURL = String(sourceWin.location?.href || "");
+          } catch (_) {
+            return;
+          }
+          if (!/^chrome:\/\/(?:taskflow|todolist)\/content\/(?:index|sidepanel)\.html(?:[?#]|$)/.test(sourceURL)) return;
+        }
+        if (!sourceWin && !iframe?.contentWindow) return;
+        if ((data.type === "TASKFLOW_DIAGNOSTIC" || data.type === "TODOLIST_DIAGNOSTIC") && data.record) {
+          host.recordDiagnostic(data.record);
+          return;
+        }
+        if (iframe && (event.source === iframe.contentWindow || !sourceWin)) {
+          iframe._todolistReady = true;
+        }
+        const replyResult = (msgObj) => {
+          try {
+            if (sourceWin && typeof sourceWin.postMessage === "function") {
+              sourceWin.postMessage(msgObj, "*");
+            } else if (iframe?.contentWindow) {
+              iframe.contentWindow.postMessage(msgObj, "*");
+            }
+          } catch (_) {
+          }
+        };
+        if (data.type === "TASKFLOW_READY" || data.type === "TODOLIST_READY") {
+          host._uiClients ||= /* @__PURE__ */ new Set();
+          if (sourceWin) host._uiClients.add(sourceWin);
+          if (iframe) iframe._todolistReady = true;
+          host.loadData().then((storedData) => {
+            const pendingNav = iframe?._todolistPending || null;
+            if (iframe) iframe._todolistPending = null;
+            replyResult({
+              type: "TODOLIST_INIT_DATA",
+              data: storedData,
+              hostTheme: host.getHostTheme(),
+              pending: pendingNav
+            });
+          }).catch((error) => {
+            host.recordDiagnostic({ action: "初始化 Zotero 数据", message: String(error), stack: error?.stack });
+            replyResult({ type: "TODOLIST_INIT_ERROR", error: String(error?.message || error) });
+          });
+          return;
+        }
+        if ((data.type === "TASKFLOW_STORAGE_SET" || data.type === "TODOLIST_STORAGE_SET") && data.payload) {
+          host.saveData(data.payload).then((saved) => {
+            if (data.requestId) {
+              replyResult({
+                type: "TODOLIST_STORAGE_SET_RESULT",
+                requestId: data.requestId,
+                data: saved,
+                success: true
+              });
+            }
+          }).catch(
+            (error) => replyResult({
+              type: "TODOLIST_STORAGE_SET_RESULT",
+              requestId: data.requestId,
+              success: false,
+              error: String(error)
+            })
+          );
+          return;
+        }
+        if (data.type === "TASKFLOW_NOTIFY" || data.type === "TODOLIST_NOTIFY") {
+          const success = await host.showNotice(data.title || "任务提醒", data.body || "") !== false;
+          replyResult({ type: "TODOLIST_NOTIFY_RESULT", requestId: data.requestId, success });
+          return;
+        }
+        if ((data.type === "TASKFLOW_LOCATE_ITEM" || data.type === "TODOLIST_LOCATE_ITEM") && data.key) {
+          await host.locateLiteratureItem(data.key, data.libraryID, window);
+          return;
+        }
+        if ((data.type === "TASKFLOW_OPEN_PDF" || data.type === "TODOLIST_OPEN_PDF") && data.key) {
+          await host.openTaskPdf({
+            zoteroPdfUri: data.key,
+            zoteroLibraryID: data.libraryID,
+            zoteroPage: data.page,
+            zoteroAnnotationKey: data.annotationKey
+          });
+          return;
+        }
+        if (data.type === "TASKFLOW_OPEN_PREFERENCES" || data.type === "TODOLIST_OPEN_PREFERENCES") {
+          await host.openPreferencesPane(window);
+          return;
+        }
+        if (data.type === "TASKFLOW_GET_ACTIVE_ITEM" || data.type === "TODOLIST_GET_ACTIVE_ITEM") {
+          const activeItem = host.getCurrentActiveItem(window);
+          replyResult({
+            type: "TODOLIST_GET_ACTIVE_ITEM_RESULT",
+            requestId: data.requestId,
+            item: activeItem ? serializeLiteratureItem(activeItem) : null
+          });
+          return;
+        }
+        if (data.type === "TASKFLOW_ADD_DROPPED_ITEMS" || data.type === "TODOLIST_ADD_DROPPED_ITEMS") {
+          try {
+            const result = await host.addDroppedLiteratureTasks(data.itemIDs);
+            replyResult({ type: "TODOLIST_ADD_DROPPED_ITEMS_RESULT", requestId: data.requestId, success: true, result });
+          } catch (error) {
+            replyResult({
+              type: "TODOLIST_ADD_DROPPED_ITEMS_RESULT",
+              requestId: data.requestId,
+              success: false,
+              error: String(error?.message || error)
+            });
+          }
+          return;
+        }
+        if ((data.type === "TASKFLOW_SYNC_NOTE" || data.type === "TODOLIST_SYNC_NOTE") && data.key) {
+          const item = resolveItemReference(data.key, data.libraryID);
+          if (item) {
+            const note = await host.syncTasksToChildNote(item);
+            if (data.requestId) {
+              replyResult({
+                type: "TODOLIST_SYNC_NOTE_RESULT",
+                requestId: data.requestId,
+                success: Boolean(note),
+                noteId: note?.id
+              });
+            }
+          }
+          return;
+        }
+        if (data.type === "TASKFLOW_GET_COLLECTIONS" || data.type === "TODOLIST_GET_COLLECTIONS") {
+          const collections = host.getZoteroCollections(data.libraryID);
+          if (data.requestId) {
+            replyResult({
+              type: "TODOLIST_GET_COLLECTIONS_RESULT",
+              requestId: data.requestId,
+              collections
+            });
+          }
+          return;
+        }
+        if ((data.type === "TASKFLOW_CREATE_COLLECTION_PLAN" || data.type === "TODOLIST_CREATE_COLLECTION_PLAN") && data.collectionID) {
+          const col = Zotero.Collections?.get?.(data.collectionID);
+          if (col) {
+            await host.createCollectionReadingPlan(col, window);
+          }
+          return;
+        }
+        if ((data.type === "TASKFLOW_SWITCH_WINDOW_MODE" || data.type === "TODOLIST_SWITCH_WINDOW_MODE") && data.mode) {
+          await host.switchWindowMode(data.mode, window);
+          return;
+        }
+        if (data.type === "TASKFLOW_EXPORT_DATA" || data.type === "TODOLIST_EXPORT_DATA") {
+          await host.exportData(data.format || "json");
+          return;
+        }
+        if (data.type === "TASKFLOW_IMPORT_DATA" || data.type === "TODOLIST_IMPORT_DATA") {
+          await host.importDataFile(data.mode || "merge", window);
+          return;
+        }
+        if (data.type === "TASKFLOW_CLEAR_DATA" || data.type === "TODOLIST_CLEAR_DATA") {
+          await host.clearAllData(window);
+          return;
+        }
+        if (data.type === "TASKFLOW_COPY_SUMMARY" || data.type === "TODOLIST_COPY_SUMMARY") {
+          await host.copyTasksSummary(window);
+          return;
+        }
+        if (data.type === "TASKFLOW_PRINT" || data.type === "TODOLIST_PRINT") {
+          await host.printTasks(window);
+          return;
+        }
+      } catch (e) {
+        Zotero.logError?.("[TaskFlow] Host message processing error: " + e);
+        host.recordDiagnostic({
+          action: "Zotero 主窗口 " + event.data?.type,
+          message: String(e?.message || e),
+          stack: e?.stack
+        });
+        try {
+          event.source?.postMessage(
+            { requestId: event.data?.requestId, success: false, error: String(e?.message || e) },
+            "*"
+          );
+        } catch (_) {
+        }
+      }
+    };
+    window.addEventListener("message", handleHostMessage);
+    windowElements.push({
+      remove: () => window.removeEventListener("message", handleHostMessage)
+    });
+  }
+
   // src/modules/windowToolbar.ts
   var TaskFlowWindowToolbar = class extends TaskFlowWindowMenus {
     addToWindow(window) {
@@ -2776,266 +3372,10 @@ PDF 锚点直达：${pageLink}`;
       if (injectedElements.has(window)) return;
       const windowElements = [];
       this.ensureLocalization(doc);
-      if (!this._menuManagerId) {
-        const itemMenu = doc.getElementById("zotero-itemmenu");
-        if (itemMenu) {
-          const separator = this.createXULElement(doc, "menuseparator");
-          separator.id = "todolist-itemmenu-separator";
-          itemMenu.appendChild(separator);
-          windowElements.push(separator);
-          const createFromItem = this.createXULElement(doc, "menuitem");
-          createFromItem.id = "todolist-itemmenu-create";
-          createFromItem.setAttribute("label", "添加为待办");
-          createFromItem.addEventListener("command", (e) => {
-            try {
-              this.createTaskFromSelection(window, doc, itemMenu);
-            } catch (err) {
-              Zotero.logError?.("[TaskFlow] Failed to create task from item context menu: " + err);
-            }
-          });
-          itemMenu.appendChild(createFromItem);
-          windowElements.push(createFromItem);
-          const batchFromItems = this.createXULElement(doc, "menuitem");
-          batchFromItems.id = "todolist-itemmenu-batch";
-          batchFromItems.setAttribute("label", "批量加入研读待办");
-          batchFromItems.addEventListener("command", () => {
-            this.addSelectedLiteratureTasks(window).catch((error) => this.showNotice("批量加入失败", String(error)));
-          });
-          itemMenu.appendChild(batchFromItems);
-          windowElements.push(batchFromItems);
-          const updateItemMenuVisibility = () => {
-            const showCreate = Boolean(this.getPref("itemContextMenuCreate", false));
-            const showBatch = Boolean(this.getPref("itemContextMenuBatch", false));
-            this.setElementVisibility(createFromItem, showCreate);
-            this.setElementVisibility(batchFromItems, showBatch);
-            this.setElementVisibility(separator, showCreate || showBatch);
-          };
-          itemMenu.addEventListener("popupshowing", updateItemMenuVisibility);
-          windowElements.push({
-            remove: () => itemMenu.removeEventListener("popupshowing", updateItemMenuVisibility)
-          });
-          updateItemMenuVisibility();
-        }
-      }
-      try {
-        if (!doc.getElementById("todolist-tab-style")) {
-          const style = doc.createElement("style");
-          style.id = "todolist-tab-style";
-          style.textContent = `
-            tab[type="todolist"] .tab-icon,
-            .tab[type="todolist"] .tab-icon {
-              list-style-image: url("${CHROME_ROOT}icons/taskflow.svg") !important;
-              width: 16px !important;
-              height: 16px !important;
-            }
-          `;
-          (doc.head || doc.documentElement).appendChild(style);
-          windowElements.push(style);
-        }
-      } catch (_) {
-      }
-      const handleGlobalKeyDown = (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === "t" || e.key === "T")) {
-          e.preventDefault?.();
-          e.stopPropagation?.();
-          this.triggerTaskFlowOpen(window);
-        } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "t" || e.key === "T")) {
-          e.preventDefault?.();
-          e.stopPropagation?.();
-          this.createTaskFromReader(window);
-        }
-      };
-      window.addEventListener("keydown", handleGlobalKeyDown, true);
-      windowElements.push({
-        remove: () => window.removeEventListener("keydown", handleGlobalKeyDown, true)
-      });
-      const handleHostMessage = async (event) => {
-        try {
-          const data = event.data;
-          if (!data || typeof data !== "object") return;
-          if (typeof data.type !== "string" || !data.type.startsWith("TASKFLOW_") && !data.type.startsWith("TODOLIST_")) return;
-          const prefix = data.type.startsWith("TASKFLOW_") ? "TASKFLOW_" : "TODOLIST_";
-          const sourceWin = event.source;
-          const iframe = window.document.getElementById("todolist-tab-iframe");
-          if (sourceWin && sourceWin !== iframe?.contentWindow) {
-            let sourceURL;
-            try {
-              sourceURL = String(sourceWin.location?.href || "");
-            } catch (_) {
-              return;
-            }
-            if (!/^chrome:\/\/(?:taskflow|todolist)\/content\/(?:index|sidepanel)\.html(?:[?#]|$)/.test(sourceURL)) return;
-          }
-          if (!sourceWin && !iframe?.contentWindow) return;
-          if ((data.type === "TASKFLOW_DIAGNOSTIC" || data.type === "TODOLIST_DIAGNOSTIC") && data.record) {
-            this.recordDiagnostic(data.record);
-            return;
-          }
-          if (iframe && (event.source === iframe.contentWindow || !sourceWin)) {
-            iframe._todolistReady = true;
-          }
-          const replyResult = (msgObj) => {
-            try {
-              if (sourceWin && typeof sourceWin.postMessage === "function") {
-                sourceWin.postMessage(msgObj, "*");
-              } else if (iframe?.contentWindow) {
-                iframe.contentWindow.postMessage(msgObj, "*");
-              }
-            } catch (_) {
-            }
-          };
-          if (data.type === "TASKFLOW_READY" || data.type === "TODOLIST_READY") {
-            this._uiClients ||= /* @__PURE__ */ new Set();
-            if (sourceWin) this._uiClients.add(sourceWin);
-            if (iframe) iframe._todolistReady = true;
-            this.loadData().then((storedData) => {
-              const pendingNav = iframe?._todolistPending || null;
-              if (iframe) iframe._todolistPending = null;
-              replyResult({
-                type: "TODOLIST_INIT_DATA",
-                data: storedData,
-                hostTheme: this.getHostTheme(),
-                pending: pendingNav
-              });
-            }).catch((error) => {
-              this.recordDiagnostic({ action: "初始化 Zotero 数据", message: String(error), stack: error?.stack });
-              replyResult({ type: "TODOLIST_INIT_ERROR", error: String(error?.message || error) });
-            });
-            return;
-          }
-          if ((data.type === "TASKFLOW_STORAGE_SET" || data.type === "TODOLIST_STORAGE_SET") && data.payload) {
-            this.saveData(data.payload).then((saved) => {
-              if (data.requestId) {
-                replyResult({
-                  type: "TODOLIST_STORAGE_SET_RESULT",
-                  requestId: data.requestId,
-                  data: saved,
-                  success: true
-                });
-              }
-            }).catch((error) => replyResult({
-              type: "TODOLIST_STORAGE_SET_RESULT",
-              requestId: data.requestId,
-              success: false,
-              error: String(error)
-            }));
-            return;
-          }
-          if (data.type === "TASKFLOW_NOTIFY" || data.type === "TODOLIST_NOTIFY") {
-            const success = await this.showNotice(data.title || "任务提醒", data.body || "") !== false;
-            replyResult({ type: "TODOLIST_NOTIFY_RESULT", requestId: data.requestId, success });
-            return;
-          }
-          if ((data.type === "TASKFLOW_LOCATE_ITEM" || data.type === "TODOLIST_LOCATE_ITEM") && data.key) {
-            await this.locateLiteratureItem(data.key, data.libraryID, window);
-            return;
-          }
-          if ((data.type === "TASKFLOW_OPEN_PDF" || data.type === "TODOLIST_OPEN_PDF") && data.key) {
-            await this.openTaskPdf({
-              zoteroPdfUri: data.key,
-              zoteroLibraryID: data.libraryID,
-              zoteroPage: data.page,
-              zoteroAnnotationKey: data.annotationKey
-            });
-            return;
-          }
-          if (data.type === "TASKFLOW_OPEN_PREFERENCES" || data.type === "TODOLIST_OPEN_PREFERENCES") {
-            await this.openPreferencesPane(window);
-            return;
-          }
-          if (data.type === "TASKFLOW_GET_ACTIVE_ITEM" || data.type === "TODOLIST_GET_ACTIVE_ITEM") {
-            const activeItem = this.getCurrentActiveItem(window);
-            replyResult({
-              type: "TODOLIST_GET_ACTIVE_ITEM_RESULT",
-              requestId: data.requestId,
-              item: activeItem ? serializeLiteratureItem2(activeItem) : null
-            });
-            return;
-          }
-          if (data.type === "TASKFLOW_ADD_DROPPED_ITEMS" || data.type === "TODOLIST_ADD_DROPPED_ITEMS") {
-            try {
-              const result = await this.addDroppedLiteratureTasks(data.itemIDs);
-              replyResult({ type: "TODOLIST_ADD_DROPPED_ITEMS_RESULT", requestId: data.requestId, success: true, result });
-            } catch (error) {
-              replyResult({
-                type: "TODOLIST_ADD_DROPPED_ITEMS_RESULT",
-                requestId: data.requestId,
-                success: false,
-                error: String(error?.message || error)
-              });
-            }
-            return;
-          }
-          if ((data.type === "TASKFLOW_SYNC_NOTE" || data.type === "TODOLIST_SYNC_NOTE") && data.key) {
-            const item = resolveItemReference(data.key, data.libraryID);
-            if (item) {
-              const note = await this.syncTasksToChildNote(item);
-              if (data.requestId) {
-                replyResult({
-                  type: "TODOLIST_SYNC_NOTE_RESULT",
-                  requestId: data.requestId,
-                  success: Boolean(note),
-                  noteId: note?.id
-                });
-              }
-            }
-            return;
-          }
-          if (data.type === "TASKFLOW_GET_COLLECTIONS" || data.type === "TODOLIST_GET_COLLECTIONS") {
-            const collections = this.getZoteroCollections(data.libraryID);
-            if (data.requestId) {
-              replyResult({
-                type: "TODOLIST_GET_COLLECTIONS_RESULT",
-                requestId: data.requestId,
-                collections
-              });
-            }
-            return;
-          }
-          if ((data.type === "TASKFLOW_CREATE_COLLECTION_PLAN" || data.type === "TODOLIST_CREATE_COLLECTION_PLAN") && data.collectionID) {
-            const col = Zotero.Collections?.get?.(data.collectionID);
-            if (col) {
-              await this.createCollectionReadingPlan(col, window);
-            }
-            return;
-          }
-          if ((data.type === "TASKFLOW_SWITCH_WINDOW_MODE" || data.type === "TODOLIST_SWITCH_WINDOW_MODE") && data.mode) {
-            await this.switchWindowMode(data.mode, window);
-            return;
-          }
-          if (data.type === "TASKFLOW_EXPORT_DATA" || data.type === "TODOLIST_EXPORT_DATA") {
-            await this.exportData(data.format || "json");
-            return;
-          }
-          if (data.type === "TASKFLOW_IMPORT_DATA" || data.type === "TODOLIST_IMPORT_DATA") {
-            await this.importDataFile(data.mode || "merge", window);
-            return;
-          }
-          if (data.type === "TASKFLOW_CLEAR_DATA" || data.type === "TODOLIST_CLEAR_DATA") {
-            await this.clearAllData(window);
-            return;
-          }
-          if (data.type === "TASKFLOW_COPY_SUMMARY" || data.type === "TODOLIST_COPY_SUMMARY") {
-            await this.copyTasksSummary(window);
-            return;
-          }
-          if (data.type === "TASKFLOW_PRINT" || data.type === "TODOLIST_PRINT") {
-            await this.printTasks(window);
-            return;
-          }
-        } catch (e) {
-          Zotero.logError?.("[TaskFlow] Host message processing error: " + e);
-          this.recordDiagnostic({ action: "Zotero 主窗口 " + event.data?.type, message: String(e?.message || e), stack: e?.stack });
-          try {
-            event.source?.postMessage({ requestId: event.data?.requestId, success: false, error: String(e?.message || e) }, "*");
-          } catch (_) {
-          }
-        }
-      };
-      window.addEventListener("message", handleHostMessage);
-      windowElements.push({
-        remove: () => window.removeEventListener("message", handleHostMessage)
-      });
+      injectItemContextMenu(this, window, doc, windowElements);
+      injectTabIconStyle(doc, windowElements);
+      setupGlobalShortcuts(this, window, windowElements);
+      setupHostMessageBridge(this, window, windowElements);
       const toolbarRetryState = { cancelled: false, timers: /* @__PURE__ */ new Set() };
       windowElements.push({
         remove: () => {
@@ -3048,202 +3388,16 @@ PDF 锚点直达：${pageLink}`;
       injectedElements.set(window, windowElements);
     }
     updateAllToolbarBadges() {
-      try {
-        if (typeof Services !== "undefined" && Services.wm?.getEnumerator) {
-          const windows = Services.wm.getEnumerator("navigator:browser");
-          while (windows.hasMoreElements()) {
-            const win = windows.getNext();
-            if (win?.document && !win.closed) {
-              this.updateToolbarBadge(win.document, this._cachedData);
-            }
-          }
-        }
-      } catch (_) {
-      }
+      updateAllToolbarBadges(this);
     }
     updateToolbarBadge(doc, data) {
-      const button = doc?.getElementById("todolist-toolbar-button");
-      if (!button) return;
-      const today = this.localDateString(/* @__PURE__ */ new Date());
-      const tasks = (data?.tasks || []).filter((task) => task);
-      const overdue = tasks.filter((task) => !task.completed && task.dueDate && task.dueDate < today).length;
-      const count = tasks.filter((task) => {
-        if (task.completed || task.status === "done" || task.dueDate && task.dueDate < today) return false;
-        return !task.status || task.status === "todo" || task.status === "in-progress";
-      }).length;
-      const showBadge = Boolean(this.getPref("toolbarShowBadge", true));
-      if (showBadge && count) button.setAttribute("data-taskflow-count", count > 99 ? "99+" : String(count));
-      else button.removeAttribute("data-taskflow-count");
-      if (doc.l10n?.setAttributes) {
-        doc.l10n.setAttributes(button, "taskflow-toolbar-status", { count, overdue });
-      } else {
-        const text = `TaskFlow: ${count} to do or in progress (excluding overdue), ${overdue} overdue (Ctrl+Alt+T)`;
-        button.setAttribute("tooltiptext", text);
-        button.setAttribute("aria-label", text);
-      }
+      updateToolbarBadge(this, doc, data);
     }
     injectToolbarButton(window, windowElements, retryCount = 0, retryState = { cancelled: false, timers: /* @__PURE__ */ new Set() }) {
-      if (retryState.cancelled) return;
-      if (!window || !window.document) return;
-      const doc = window.document;
-      if (!this.isMainWindow(window)) {
-        try {
-          doc.getElementById("todolist-toolbar-button")?.remove();
-        } catch (_) {
-        }
-        return;
-      }
-      const toolbar = doc.getElementById("zotero-items-toolbar") || doc.getElementById("zotero-item-toolbar") || doc.getElementById("zotero-tb") || doc.getElementById("zotero-toolbar") || (doc.getElementById("zotero-pane")?.querySelector("toolbar") || null);
-      if (!toolbar) {
-        if (retryCount < 10) {
-          const timer = window.setTimeout(() => {
-            retryState.timers.delete(timer);
-            if (!retryState.cancelled) this.injectToolbarButton(window, windowElements, retryCount + 1, retryState);
-          }, 300);
-          retryState.timers.add(timer);
-        }
-        return;
-      }
-      const isTodolistButton = (button) => button.id === "todolist-toolbar-button" || ((button.getAttribute("label") === "TaskFlow" || button.getAttribute("label") === "Todolist") && String(button.getAttribute("image") || "").includes("/icons/taskflow.svg") || String(button.getAttribute("image") || "").includes("/icons/todolist.svg"));
-      const existingButtons = Array.from(doc.querySelectorAll("toolbarbutton")).filter(isTodolistButton);
-      let btn = existingButtons[0] || null;
-      if (existingButtons.length > 1) {
-        for (let i = 1; i < existingButtons.length; i++) {
-          existingButtons[i];
-          try {
-            existingButtons[i].remove();
-          } catch (_) {
-          }
-        }
-      }
-      if (!btn) {
-        btn = this.createXULElement(doc, "toolbarbutton");
-        btn.id = "todolist-toolbar-button";
-        btn.setAttribute("label", "TaskFlow");
-        btn.setAttribute("tooltiptext", "打开 TaskFlow 学术任务工作台 (Ctrl+Alt+T)");
-        btn.setAttribute("image", `${CHROME_ROOT}icons/taskflow.svg`);
-        btn.setAttribute("class", "zotero-tb-button toolbarbutton-1 chromeclass-toolbar-additional");
-        btn.setAttribute(
-          "style",
-          "cursor: pointer; margin: 0 3px; display: inline-flex; align-items: center; justify-content: center;"
-        );
-        const trigger = (e) => {
-          if (e) {
-            e.preventDefault?.();
-            e.stopPropagation?.();
-          }
-          this.triggerTaskFlowOpen(window);
-        };
-        btn.addEventListener("command", trigger);
-        btn.addEventListener("mouseenter", () => this.updateToolbarBadge(doc, this._cachedData));
-      }
-      btn.setAttribute("image", `${CHROME_ROOT}icons/taskflow.svg`);
-      if (!doc.getElementById("taskflow-toolbar-style")) {
-        const style = doc.createElementNS("http://www.w3.org/1999/xhtml", "style");
-        style.id = "taskflow-toolbar-style";
-        style.textContent = `
-          #todolist-toolbar-button { position:relative; }
-          #todolist-toolbar-button[data-taskflow-count]::after {
-            content:attr(data-taskflow-count); position:absolute; top:0; inset-inline-end:-2px;
-            min-width:13px; height:13px; padding:0 3px; box-sizing:border-box; border-radius:7px;
-            font:600 9px/13px system-ui,sans-serif; text-align:center;
-            color:light-dark(#254e7b,#c7def8); background:light-dark(#dceaf9,#294560);
-            border:1px solid var(--material-background,Canvas); pointer-events:none;
-          }
-        `;
-        (doc.head || doc.documentElement).appendChild(style);
-        windowElements.push(style);
-      }
-      const toolbarChildren = Array.from(toolbar.children || []);
-      const flexibleSpacerIndex = toolbarChildren.findIndex((child) => {
-        const tag = String(child.localName || child.tagName || "").toLowerCase();
-        return tag === "toolbarspring" || tag === "spacer" && Number(child.getAttribute("flex") || 0) > 0 || child.id === "zotero-tb-search" || child.id === "zotero-tb-search-textbox" || child.classList?.contains("zotero-search-box") || child.classList?.contains("search-box");
-      });
-      const leadingActionItems = flexibleSpacerIndex >= 0 ? toolbarChildren.slice(0, flexibleSpacerIndex) : toolbarChildren;
-      const toolbarButtons = leadingActionItems.filter(
-        (child) => String(child.localName || child.tagName || "").toLowerCase() === "toolbarbutton" && !isTodolistButton(child) && !child.hidden && child.getAttribute("hidden") !== "true" && child.getAttribute("collapsed") !== "true"
-      );
-      const anchor = toolbarButtons.reverse().find((child) => {
-        try {
-          const style = window.getComputedStyle(child);
-          return style.display !== "none" && style.visibility !== "collapse";
-        } catch (_error) {
-          return true;
-        }
-      }) || null;
-      if (anchor && anchor.parentNode === toolbar) {
-        if (anchor.nextSibling !== btn) {
-          anchor.parentNode.insertBefore(btn, anchor.nextSibling);
-        }
-      } else {
-        const searchBox = doc.getElementById("zotero-tb-search-textbox") || doc.getElementById("zotero-tb-search") || toolbar.querySelector("input") || toolbar.querySelector(".zotero-search-box") || (flexibleSpacerIndex >= 0 ? toolbarChildren[flexibleSpacerIndex] : null);
-        if (searchBox && searchBox.parentNode === toolbar) {
-          toolbar.insertBefore(btn, searchBox);
-        } else {
-          toolbar.appendChild(btn);
-        }
-      }
-      if (!windowElements.includes(btn)) {
-        windowElements.push(btn);
-      }
-      this.updateToolbarBadge(doc, this._cachedData);
-      if (!this._cachedData) {
-        this.loadData().then((data) => {
-          if (!retryState.cancelled && !window.closed && doc.getElementById(btn.id) === btn) {
-            this.updateToolbarBadge(doc, this._cachedData || data);
-          }
-        }).catch((error) => Zotero.logError?.("[TaskFlow] Toolbar task count failed: " + error));
-      }
-      if (retryCount === 0) {
-        const delays = [400, 1200, 2500];
-        delays.forEach((d) => {
-          const timer = window.setTimeout(() => {
-            retryState.timers.delete(timer);
-            if (!retryState.cancelled) {
-              this.repositionToolbarButton(window);
-            }
-          }, d);
-          retryState.timers.add(timer);
-        });
-      }
+      injectToolbarButton(this, window, windowElements, retryCount, retryState);
     }
     repositionToolbarButton(window) {
-      if (!window || !window.document) return;
-      if (!this.isMainWindow(window)) {
-        try {
-          window.document.getElementById("todolist-toolbar-button")?.remove();
-        } catch (_) {
-        }
-        return;
-      }
-      const doc = window.document;
-      const btn = doc.getElementById("todolist-toolbar-button");
-      if (!btn) return;
-      const toolbar = btn.parentNode || doc.getElementById("zotero-items-toolbar") || doc.getElementById("zotero-item-toolbar") || doc.getElementById("zotero-tb") || doc.getElementById("zotero-toolbar") || (doc.getElementById("zotero-pane")?.querySelector("toolbar") || null);
-      if (!toolbar) return;
-      const isTodolistButton = (b) => b.id === "todolist-toolbar-button";
-      const toolbarChildren = Array.from(toolbar.children || []);
-      const flexibleSpacerIndex = toolbarChildren.findIndex((child) => {
-        const tag = String(child.localName || child.tagName || "").toLowerCase();
-        return tag === "toolbarspring" || tag === "spacer" && Number(child.getAttribute("flex") || 0) > 0 || child.id === "zotero-tb-search" || child.id === "zotero-tb-search-textbox" || child.classList?.contains("zotero-search-box");
-      });
-      const leadingActionItems = flexibleSpacerIndex >= 0 ? toolbarChildren.slice(0, flexibleSpacerIndex) : toolbarChildren;
-      const toolbarButtons = leadingActionItems.filter(
-        (child) => String(child.localName || child.tagName || "").toLowerCase() === "toolbarbutton" && !isTodolistButton(child) && !child.hidden && child.getAttribute("hidden") !== "true" && child.getAttribute("collapsed") !== "true"
-      );
-      const anchor = toolbarButtons.reverse().find((child) => {
-        try {
-          const style = window.getComputedStyle(child);
-          return style.display !== "none" && style.visibility !== "collapse";
-        } catch (_error) {
-          return true;
-        }
-      });
-      if (anchor && anchor.parentNode === toolbar) {
-        if (anchor.nextSibling !== btn) {
-          anchor.parentNode.insertBefore(btn, anchor.nextSibling);
-        }
-      }
+      repositionToolbarButton(this, window);
     }
     removeFromWindow(window) {
       if (!window || !window.document) return;
@@ -3304,7 +3458,7 @@ PDF 锚点直达：${pageLink}`;
       const result = [];
       const seen = /* @__PURE__ */ new Set();
       for (const item of rawSelection) {
-        const lit = getLiteratureItem2(item);
+        const lit = getLiteratureItem(item);
         if (lit && !seen.has(lit.id)) {
           seen.add(lit.id);
           result.push(lit);
@@ -3319,7 +3473,7 @@ PDF 锚点直达：${pageLink}`;
         const itemID = reader?.itemID || tabs.selectedTab.data?.itemID;
         if (itemID) {
           const item = Zotero.Items.get(itemID);
-          return getLiteratureItem2(item);
+          return getLiteratureItem(item);
         }
       }
       const selected = this.getSelectedRegularItems(window);
@@ -3329,7 +3483,7 @@ PDF 锚点直达：${pageLink}`;
       const win = window || (Zotero.getMainWindow ? Zotero.getMainWindow() : null);
       let targetItem = null;
       if (Array.isArray(items) && items.length > 0) {
-        targetItem = getLiteratureItem2(items[0]);
+        targetItem = getLiteratureItem(items[0]);
       }
       if (!targetItem) {
         const selected = this.getSelectedRegularItems(win);
@@ -3346,7 +3500,7 @@ PDF 锚点直达：${pageLink}`;
             const row = pane.getRowForNode(trigger);
             if (row && row.ref) {
               const rawItem = Zotero.Items.get(row.ref.id || row.ref);
-              targetItem = getLiteratureItem2(rawItem);
+              targetItem = getLiteratureItem(rawItem);
             }
           } catch (_) {
           }
@@ -3356,7 +3510,7 @@ PDF 锚点直达：${pageLink}`;
         targetItem = this.getCurrentActiveItem(win);
       }
       if (targetItem) {
-        const serialized = serializeLiteratureItem2(targetItem);
+        const serialized = serializeLiteratureItem(targetItem);
         this.showNotice("已选取文献", `正在为《${serialized.title.slice(0, 22)}...》创建研读待办`);
         this.openTaskFlow({ mode: "create_from_item", item: serialized }, win);
       } else {
