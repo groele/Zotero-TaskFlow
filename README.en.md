@@ -206,7 +206,7 @@ For contributors and developers:
 # Install test dependencies
 npm ci
 
-# Run the complete test suite (152 unit and integration tests)
+# Run the complete test suite (178 architecture guard, unit and integration tests)
 npm test
 
 # Build the release XPI and verify checksums
