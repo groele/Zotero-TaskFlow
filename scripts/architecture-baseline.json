@@ -4,10 +4,10 @@
   "capturedAt": "2026-11-06",
   "debtCleared": true,
   "note": "Known §5.9 debt. Listed files may stay at or below the recorded line count, but must never grow; any other source file above 360 lines fails the guard. Remove an entry only after splitting that module below 360 lines. Every entry must still exist and must still exceed the ceiling - stale entries are rejected by the baseline integrity test.",
-  "lastReleasedVersion": "15.0.0",
+  "lastReleasedVersion": "15.0.1",
   "splitHistory": [
     {
-      "version": "15.0.0",
+      "version": "15.0.1",
       "date": "2026-11-06",
       "resolved": [
         "Decomposed monolithic src/itemPane.ts (848 lines) into itemPane/ submodules (DOM view, context menu, drag & drop, task scheduler)",

@@ -2445,8 +2445,8 @@ PDF 锚点直达：${pageLink}`;
           const noteItem = Zotero.Items.get(nid);
           if (noteItem && noteItem.isNote && noteItem.isNote()) {
             const content = noteItem.getNote();
-            const hasTaskFlowTag = typeof noteItem.hasTag === "function" && (noteItem.hasTag("TaskFlow") || noteItem.hasTag("Todolist"));
-            if (hasTaskFlowTag || content && (content.includes("[TaskFlow]") || content.includes("[Todolist]") || content.includes("TaskFlow") || content.includes("Todolist"))) {
+            const hasTaskFlowTag = typeof noteItem.hasTag === "function" && noteItem.hasTag("TaskFlow");
+            if (hasTaskFlowTag || content && (content.includes("[TaskFlow]") || content.includes("TaskFlow"))) {
               targetNote = noteItem;
               break;
             }
@@ -2458,9 +2458,6 @@ PDF 锚点直达：${pageLink}`;
         try {
           if (typeof targetNote.hasTag === "function" && !targetNote.hasTag("TaskFlow")) {
             targetNote.addTag("TaskFlow");
-          }
-          if (typeof targetNote.hasTag === "function" && targetNote.hasTag("Todolist")) {
-            targetNote.removeTag("Todolist");
           }
         } catch (_) {
         }
@@ -2852,7 +2849,7 @@ PDF 锚点直达：${pageLink}`;
   };
 
   // src/modules/toolbar/buttonGroup.ts
-  var isTodolistButton = (button) => button.id === "todolist-toolbar-button" || ((button.getAttribute("label") === "TaskFlow" || button.getAttribute("label") === "Todolist") && String(button.getAttribute("image") || "").includes("/icons/taskflow.svg") || String(button.getAttribute("image") || "").includes("/icons/todolist.svg"));
+  var isTodolistButton = (button) => button.id === "todolist-toolbar-button" || button.getAttribute("label") === "TaskFlow" && String(button.getAttribute("image") || "").includes("/icons/taskflow.svg");
   function updateToolbarBadge(host, doc, data) {
     const button = doc?.getElementById("todolist-toolbar-button");
     if (!button) return;
@@ -3439,7 +3436,7 @@ PDF 锚点直达：${pageLink}`;
   };
 
   // src/modules/window.ts
-  var TaskFlowWindow = class extends TaskFlowWindowToolbar {
+  var TaskFlowWindow = class _TaskFlowWindow extends TaskFlowWindowToolbar {
     getSelectedRegularItems(window) {
       const pane = window?.ZoteroPane || (Zotero.getActiveZoteroPane ? Zotero.getActiveZoteroPane() : null) || (Zotero.getMainWindow ? Zotero.getMainWindow().ZoteroPane : null);
       let rawSelection = [];
@@ -3519,14 +3516,6 @@ PDF 锚点直达：${pageLink}`;
       }
     }
     triggerTaskFlowOpen(window = null) {
-      if (!this._inTriggerDispatch && typeof this.triggerTodolistOpen === "function" && this.triggerTodolistOpen !== this.triggerTaskFlowOpen && this.triggerTodolistOpen._isAlias !== true) {
-        this._inTriggerDispatch = true;
-        try {
-          return this.triggerTodolistOpen(window);
-        } finally {
-          this._inTriggerDispatch = false;
-        }
-      }
       const win = window || (Zotero.getMainWindow ? Zotero.getMainWindow() : null);
       return this.openTaskFlow({ mode: "open" }, win);
     }
@@ -3534,13 +3523,8 @@ PDF 锚点直达：${pageLink}`;
       return this.triggerTaskFlowOpen(window);
     }
     openTaskFlow(options = {}, targetWindow = null) {
-      if (!this._inOpenDispatch && typeof this.openTodolist === "function" && this.openTodolist !== this.openTaskFlow && this.openTodolist._isAlias !== true) {
-        this._inOpenDispatch = true;
-        try {
-          return this.openTodolist(options, targetWindow);
-        } finally {
-          this._inOpenDispatch = false;
-        }
+      if (typeof this.openTodolist === "function" && this.openTodolist !== _TaskFlowWindow.prototype.openTodolist) {
+        return this.openTodolist(options, targetWindow);
       }
       try {
         const mainWin = targetWindow && targetWindow.Zotero_Tabs ? targetWindow : Zotero.getMainWindow ? Zotero.getMainWindow() : Services.wm.getMostRecentWindow("navigator:browser");

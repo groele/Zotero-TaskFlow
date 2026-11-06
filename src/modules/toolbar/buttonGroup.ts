@@ -10,9 +10,8 @@ declare let Zotero: any;
 
 export const isTodolistButton = (button: any): boolean =>
   button.id === 'todolist-toolbar-button' ||
-  (((button.getAttribute('label') === 'TaskFlow' || button.getAttribute('label') === 'Todolist') &&
-    String(button.getAttribute('image') || '').includes('/icons/taskflow.svg')) ||
-    String(button.getAttribute('image') || '').includes('/icons/todolist.svg'));
+  (button.getAttribute('label') === 'TaskFlow' &&
+    String(button.getAttribute('image') || '').includes('/icons/taskflow.svg'));
 
 export function updateToolbarBadge(host: any, doc: Document, data: any): void {
   const button = doc?.getElementById('todolist-toolbar-button');

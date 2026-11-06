@@ -3,6 +3,23 @@
     "taskflow@groele.org": {
       "updates": [
         {
+          "version": "15.0.1",
+          "update_link": "https://github.com/groele/Zotero-TaskFlow/releases/download/v15.0.1/zotero-taskflow-15.0.1.xpi",
+          "update_hash": "sha512:cdc339bed8b4c3402043244cdbd4669861a8500b816061b8be7206b002497f4b5e29f78b168254aa6368750d7d8a8136357b1bcf2b78ffce1c8a3456f3b0d52d",
+          "applications": {
+            "zotero": {
+              "strict_min_version": "10.0",
+              "strict_max_version": "12.*"
+            }
+          },
+          "browser_specific_settings": {
+            "zotero": {
+              "strict_min_version": "10.0",
+              "strict_max_version": "12.*"
+            }
+          }
+        },
+        {
           "version": "15.0.0",
           "update_link": "https://github.com/groele/Zotero-TaskFlow/releases/download/v15.0.0/zotero-taskflow-15.0.0.xpi",
           "update_hash": "sha512:c0bd2c2aef4200f10681b7be5522a113903b71d46d168673670b0507c73564185d187fb9aac885e7e69beac3948ef9815a3c2997c647cbec10170ff4baa97560",

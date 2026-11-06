@@ -74,15 +74,10 @@ export async function syncTasksToChildNote(
         if (noteItem && noteItem.isNote && noteItem.isNote()) {
           const content = noteItem.getNote();
           const hasTaskFlowTag =
-            typeof noteItem.hasTag === 'function' &&
-            (noteItem.hasTag('TaskFlow') || noteItem.hasTag('Todolist'));
+            typeof noteItem.hasTag === 'function' && noteItem.hasTag('TaskFlow');
           if (
             hasTaskFlowTag ||
-            (content &&
-              (content.includes('[TaskFlow]') ||
-                content.includes('[Todolist]') ||
-                content.includes('TaskFlow') ||
-                content.includes('Todolist')))
+            (content && (content.includes('[TaskFlow]') || content.includes('TaskFlow')))
           ) {
             targetNote = noteItem;
             break;
@@ -96,9 +91,6 @@ export async function syncTasksToChildNote(
       try {
         if (typeof targetNote.hasTag === 'function' && !targetNote.hasTag('TaskFlow')) {
           targetNote.addTag('TaskFlow');
-        }
-        if (typeof targetNote.hasTag === 'function' && targetNote.hasTag('Todolist')) {
-          targetNote.removeTag('Todolist');
         }
       } catch (_) {}
       await targetNote.saveTx();

@@ -104,14 +104,6 @@ export class TaskFlowWindow extends TaskFlowWindowToolbar {
 
 
     triggerTaskFlowOpen(window = null) {
-      if (!this._inTriggerDispatch && typeof this.triggerTodolistOpen === 'function' && this.triggerTodolistOpen !== this.triggerTaskFlowOpen && (this.triggerTodolistOpen as any)._isAlias !== true) {
-        this._inTriggerDispatch = true;
-        try {
-          return this.triggerTodolistOpen(window);
-        } finally {
-          this._inTriggerDispatch = false;
-        }
-      }
       const win = window || (Zotero.getMainWindow ? Zotero.getMainWindow() : null);
       return this.openTaskFlow({ mode: 'open' }, win);
     }
@@ -123,13 +115,8 @@ export class TaskFlowWindow extends TaskFlowWindowToolbar {
 
 
     openTaskFlow(options = {}, targetWindow = null) {
-      if (!this._inOpenDispatch && typeof this.openTodolist === 'function' && this.openTodolist !== this.openTaskFlow && (this.openTodolist as any)._isAlias !== true) {
-        this._inOpenDispatch = true;
-        try {
-          return this.openTodolist(options, targetWindow);
-        } finally {
-          this._inOpenDispatch = false;
-        }
+      if (typeof this.openTodolist === 'function' && this.openTodolist !== TaskFlowWindow.prototype.openTodolist) {
+        return this.openTodolist(options, targetWindow);
       }
       try {
         const mainWin = (targetWindow && targetWindow.Zotero_Tabs)

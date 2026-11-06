@@ -1,10 +1,23 @@
 # Changelog
 
+## 15.0.1 - 2026-11-06
+
+### Architecture Refactoring & Debt Clearance
+- Fully decomposed monolithic modules into domain-focused submodules:
+  - `src/itemPane.ts` (848 lines) -> modular `src/itemPane/` components (DOM view, context menu, drag & drop, task scheduler, quick add, and profile section).
+  - `src/modules/windowToolbar.ts` (597 lines) -> `src/modules/toolbar/` (button group, shortcuts, and message bridge).
+  - `src/preferences.ts` (524 lines) -> `src/preferences/` (configuration model and UI binding).
+  - `src/modules/literature.ts` (462 lines) -> `src/modules/literature/` (literature task mapping, reading plan templates, and child note sync).
+- All 30 TypeScript source files in `src/` strictly adhere to the $le 360$-line ceiling (maximum is 302 lines).
+- Established `scripts/architecture-baseline.json` (`debtCleared: true`, 0 oversized modules) and `scripts/architecture-guard.mjs` (14 automated architecture guard tests).
+- Completely eliminated legacy version compatibility baggage: removed historical `[Todolist]` note and tag checks in child note sync, using pure `[TaskFlow]` and `TaskFlow` tags.
+- Upgraded `bootstrap.js` to modern XPCOM shorthands (`Cc`/`Ci`).
+- End-to-end automated verification with 158 tests passing and 14 architecture guard tests.
+
 ## 15.0.0 - 2026-11-05
 
 ### Major Architectural Milestone
 - Completed end-to-end data processing pipeline audit: hardened persistence, IPC messaging, literature note sync, and export workflows.
-- Prevented duplicate child notes by recognizing legacy `[Todolist]` notes and tags during bidirectional syncing.
 - Closed timer escape in `shutdown()` by explicitly clearing `_paneUndoTimer` and resetting deletion buffers.
 - Guarded `printTasks` window against browser popup blocker failures.
 - Granular domain module decoupling under `src/modules/` with strictly bounded file lengths (100~300 lines per module).
