@@ -22,6 +22,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (rel) => fs.readFileSync(path.join(root, rel), 'utf8');
@@ -225,6 +226,22 @@ test('§5.3 runtime scripts contain no deprecated Gecko/Zotero APIs', (t) => {
   }
   assert.deepEqual(hits, [], `§5.3 deprecated API violations:\n${hits.join('\n')}`);
   t.diagnostic(`scanned ${runtimeFiles.length} runtime files against ${banned.length} deprecated API patterns`);
+});
+
+test('§5.4 runtime and bootstrap scripts have valid JavaScript syntax', (t) => {
+  const scriptsToCheck = [
+    'bootstrap.js',
+    'prefs.js',
+    ...walk('chrome/content/scripts', ['.js']),
+    ...walk('scripts', ['.mjs'])
+  ];
+  for (const rel of scriptsToCheck) {
+    const full = path.join(root, rel);
+    assert.doesNotThrow(() => {
+      execFileSync(process.execPath, ['--check', full], { stdio: 'pipe' });
+    }, `Syntax error in ${rel}`);
+  }
+  t.diagnostic(`verified syntax for ${scriptsToCheck.length} scripts including bootstrap.js`);
 });
 
 test('§6 version fields are aligned across manifest, package, lock, brand, UI, update feed and baseline', (t) => {

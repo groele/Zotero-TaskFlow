@@ -116,16 +116,28 @@ async function startup({ id, version, resourceURI, rootURI }, reason) {
       ['locale', 'taskflow', 'zh-CN', rootURI + 'locale/zh-CN/'],
     ]);
 
+    const mainWindow = Zotero?.getMainWindow?.();
     const ctx = {
       rootURI,
       addonId: id,
       version,
+      Zotero,
+      Services,
+      Components,
+      Cc: typeof Cc !== 'undefined' ? Cc : Components?.classes,
+      Ci: typeof Ci !== 'undefined' ? Ci : Components?.interfaces,
+      ChromeUtils: typeof ChromeUtils !== 'undefined' ? ChromeUtils : mainWindow?.ChromeUtils,
+      IOUtils: typeof IOUtils !== 'undefined' ? IOUtils : mainWindow?.IOUtils,
+      PathUtils: typeof PathUtils !== 'undefined' ? PathUtils : mainWindow?.PathUtils,
+      fetch: typeof fetch !== 'undefined' ? fetch : mainWindow?.fetch?.bind(mainWindow),
+      setTimeout: typeof setTimeout !== 'undefined' ? setTimeout : mainWindow?.setTimeout?.bind(mainWindow),
+      clearTimeout: typeof clearTimeout !== 'undefined' ? clearTimeout : mainWindow?.clearTimeout?.bind(mainWindow),
     };
     ctx._globalThis = ctx;
 
     Services.scriptloader.loadSubScript(`${rootURI}chrome/content/js/taskRules.js`, ctx);
     Services.scriptloader.loadSubScript(`${rootURI}chrome/content/js/literatureWorkflow.js`, ctx);
-    Services.scriptloader.loadSubScript(${rootURI}chrome/content/scripts/itemPane.js, ctx);
+    Services.scriptloader.loadSubScript(`${rootURI}chrome/content/scripts/itemPane.js`, ctx);
     Services.scriptloader.loadSubScript(`${rootURI}chrome/content/scripts/index.js`, ctx);
   } catch (error) {
     Zotero?.logError?.('Failed to startup TaskFlow addon: ' + error);

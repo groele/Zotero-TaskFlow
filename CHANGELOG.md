@@ -1,6 +1,6 @@
 # Changelog
 
-## 15.0.1 - 2026-11-06
+## 16.0.0 - 2026-11-06
 
 ### Architecture Refactoring & Debt Clearance
 - Fully decomposed monolithic modules into domain-focused submodules:

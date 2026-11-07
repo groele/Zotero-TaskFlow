@@ -131,6 +131,13 @@ export function injectToolbarButton(
         color:light-dark(#254e7b,#c7def8); background:light-dark(#dceaf9,#294560);
         border:1px solid var(--material-background,Canvas); pointer-events:none;
       }
+      #todolist-toolbar-button .toolbarbutton-icon,
+      #todolist-toolbar-button image {
+        width: 18px !important;
+        height: 18px !important;
+        max-width: 18px !important;
+        max-height: 18px !important;
+      }
     `;
     (doc.head || doc.documentElement).appendChild(style);
     windowElements.push(style);
