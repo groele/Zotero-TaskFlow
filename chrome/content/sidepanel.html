@@ -200,13 +200,13 @@
         <input type="hidden" id="task-academic-type" value="literature_reading">
       </div>
 
-      <!-- Compact Title & Description Block -->
+      <!-- Title & Description Block -->
       <div class="task-input-stack">
         <div class="form-group compact-group">
           <input type="text" id="task-title" required placeholder="任务标题：准备做些什么？ *" autocomplete="off">
         </div>
         <div class="form-group compact-group">
-          <textarea id="task-description" rows="1" placeholder="任务细节或备注说明（可选）..."></textarea>
+          <textarea id="task-description" rows="3" placeholder="任务细节、背景或备注说明（可选）..."></textarea>
         </div>
       </div>
 
@@ -391,7 +391,13 @@
   <script src="js/literatureWorkflow.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/storage.js"></script>
+  <script src="js/taskManager/taskQueries.js"></script>
+  <script src="js/taskManager/taskBatch.js"></script>
+  <script src="js/taskManager/taskOperations.js"></script>
   <script src="js/taskManager.js"></script>
+  <script src="js/modal/modalSubtasks.js"></script>
+  <script src="js/modal/modalLiterature.js"></script>
+  <script src="js/modal/modalForm.js"></script>
   <script src="js/modal.js"></script>
   <script src="js/calendar.js"></script>
   <script src="js/dragDrop.js"></script>
@@ -405,6 +411,12 @@
   <script src="js/recurring.js"></script>
   <script src="js/zoteroBridge.js"></script>
   <script src="js/taskCard.js"></script>
+  <script src="js/ui/uiState.js"></script>
+  <script src="js/ui/uiActions.js"></script>
+  <script src="js/ui/uiViews.js"></script>
+  <script src="js/ui/uiDelegation.js"></script>
+  <script src="js/ui/uiInlineEdit.js"></script>
+  <script src="js/ui/uiEvents.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/app.js"></script>
 </body>

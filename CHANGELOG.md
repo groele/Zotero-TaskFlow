@@ -1,5 +1,22 @@
 # Changelog
 
+## 16.0.1 - 2026-11-10
+
+### User Experience & Spatial Optimization
+- Optimized task editing modal: expanded modal dimensions from 660px to 720px width and up to 780px height with modern 12px border radius.
+- Enhanced task title input height to 38px with focus glow ring and 13.5px typography.
+- Enhanced task description multi-line textarea with rows="3", min-height 84px, line-height 1.55, dynamic vertical resizing and auto-expansion.
+- Polished academic scene chips, priority controls, category selectors, and primary action buttons.
+
+### Modular Architecture & Zero-Debt Governance
+- Decomposed oversized frontend scripts into high-cohesion, maintainable submodules strictly within the $\le 360$-line ceiling:
+  - `modal.js` decomposed into `modalSubtasks.js`, `modalLiterature.js`, `modalForm.js`, and `modal.js`.
+  - `taskManager.js` decomposed into `taskQueries.js`, `taskBatch.js`, `taskOperations.js`, and `taskManager.js`.
+  - `ui.js` decomposed into `uiState.js`, `uiActions.js`, `uiViews.js`, `uiDelegation.js`, `uiInlineEdit.js`, `uiEvents.js`, and `ui.js`.
+  - Streamlined `zoteroBridge.js` down to 303 lines while preserving 100% self-containment for test sandboxes.
+- Eliminated dangling CSS rule in `redesign.css` and added cross-sandbox global window object bindings for all submodules.
+- Verified 100% pass across all 15 architecture guard tests and 158 test suite specifications.
+
 ## 16.0.0 - 2026-11-06
 
 ### Architecture Refactoring & Debt Clearance

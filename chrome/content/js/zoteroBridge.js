@@ -34,9 +34,8 @@ const ZoteroBridge = {
       console.log('[TaskFlow] Running in Zotero environment');
     }
 
-    // Process initial options from window.arguments or window._todolistPending
     const initialOptions = window.arguments?.[0]?.options || window._taskflowPending || window._todolistPending;
-    if (initialOptions && initialOptions.mode && initialOptions.mode !== 'open') {
+    if (initialOptions?.mode && initialOptions.mode !== 'open') {
       this.handleHostNavigation(initialOptions);
     }
   },
@@ -48,36 +47,15 @@ const ZoteroBridge = {
         const mode = params.get('mode');
         this._isSubwindow = mode === 'subwindow' || window.arguments?.[0]?.options?.currentWindowType === 'subwindow';
 
-        if (window.arguments && window.arguments[0] && window.arguments[0].Zotero) {
-          window.Zotero = window.arguments[0].Zotero;
-          this.isZotero = true;
-          return;
+        if (window.arguments?.[0]?.Zotero) { window.Zotero = window.arguments[0].Zotero; this.isZotero = true; return; }
+        if (window.Zotero) { this.isZotero = true; return; }
+        if (window.parent && window.parent !== window && window.parent.Zotero) { window.Zotero = window.parent.Zotero; this.isZotero = true; return; }
+        if (window.location?.protocol === 'chrome:' && ['taskflow', 'todolist'].includes(window.location.hostname) &&
+            /^\/content\/(?:index|sidepanel)\.html$/.test(window.location.pathname) && window.opener?.Zotero) {
+          window.Zotero = window.opener.Zotero; this.isZotero = true; return;
         }
-        if (window.Zotero) {
-          this.isZotero = true;
-          return;
-        }
-        if (window.parent && window.parent !== window && window.parent.Zotero) {
-          window.Zotero = window.parent.Zotero;
-          this.isZotero = true;
-          return;
-        }
-        // Zotero's Services.ww.openWindow() does not reliably expose plain JS
-        // properties passed as window.arguments[0] in every Gecko version.
-        // A TaskFlow-owned chrome page opened by Zotero still has the main
-        // window as its opener, so recover the host from that trusted context.
-        if (window.location?.protocol === 'chrome:' &&
-            ['taskflow', 'todolist'].includes(window.location.hostname) &&
-            /^\/content\/(?:index|sidepanel)\.html$/.test(window.location.pathname) &&
-            window.opener?.Zotero) {
-          window.Zotero = window.opener.Zotero;
-          this.isZotero = true;
-          return;
-        }
-        // In iframe under chrome://todolist/
         if (window.location && (window.location.protocol === 'chrome:' || window.parent !== window)) {
-          this.isZotero = true;
-          return;
+          this.isZotero = true; return;
         }
       }
     } catch (_) {}
@@ -90,181 +68,105 @@ const ZoteroBridge = {
       const data = event.data;
       if (!data || typeof data !== 'object') return;
 
-      // Handle async request callbacks
       if (data.requestId && this._requestCallbacks.has(data.requestId)) {
         const cb = this._requestCallbacks.get(data.requestId);
         this._requestCallbacks.delete(data.requestId);
         cb(data);
         return;
       }
-
-      // Handle initial data handshake
-      if ((data.type === 'TASKFLOW_INIT_ERROR' || data.type === 'TODOLIST_INIT_ERROR')) {
+      if (data.type === 'TASKFLOW_INIT_ERROR' || data.type === 'TODOLIST_INIT_ERROR') {
         clearTimeout(this._readyTimer);
         this._rejectReady?.(new Error(data.error || 'Zotero 数据初始化失败'));
       }
-      if ((data.type === 'TASKFLOW_INIT_DATA' || data.type === 'TODOLIST_INIT_DATA')) {
+      if (data.type === 'TASKFLOW_INIT_DATA' || data.type === 'TODOLIST_INIT_DATA') {
         if (data.hostTheme) this.setHostTheme(data.hostTheme);
         if (data.data && typeof Storage !== 'undefined') {
           Storage.acceptData(data.data);
           clearTimeout(this._readyTimer);
           this._resolveReady?.();
         }
-        if (data.pending) {
-          this.handleHostNavigation(data.pending);
-        }
+        if (data.pending) this.handleHostNavigation(data.pending);
       }
-
       if ((data.type === 'TASKFLOW_DATA_CHANGED' || data.type === 'TODOLIST_DATA_CHANGED') && data.data) {
-        if (!this._hasDirectDataListener) {
-          Storage.acceptData(data.data);
-        }
+        if (!this._hasDirectDataListener) Storage.acceptData(data.data);
       }
-      if ((data.type === 'TASKFLOW_HOST_THEME' || data.type === 'TODOLIST_HOST_THEME')) this.setHostTheme(data.theme);
-
-      // Handle direct navigation request from host
-      if ((data.type === 'TASKFLOW_NAVIGATE' || data.type === 'TODOLIST_NAVIGATE')) {
-        this.handleHostNavigation(data.options);
-      }
+      if (data.type === 'TASKFLOW_HOST_THEME' || data.type === 'TODOLIST_HOST_THEME') this.setHostTheme(data.theme);
+      if (data.type === 'TASKFLOW_NAVIGATE' || data.type === 'TODOLIST_NAVIGATE') this.handleHostNavigation(data.options);
     });
   },
 
   sendToHost(msg) {
     if (!this.isZotero) return;
     try {
-      if (window.parent && window.parent !== window) {
-        window.parent.postMessage(msg, '*');
-        return;
-      }
-      // For standalone chrome windows, use the recovered Zotero object
-      // directly. Window.postMessage across native chrome windows is not a
-      // dependable bootstrap channel in Zotero/Gecko.
+      if (window.parent && window.parent !== window) { window.parent.postMessage(msg, '*'); return; }
       if (window.Zotero && (window.Zotero.TaskFlow || window.Zotero.Todolist)) {
         const todolist = window.Zotero.TaskFlow || window.Zotero.Todolist;
         const mainWin = window.Zotero.getMainWindow ? window.Zotero.getMainWindow() : null;
-        switch (msg.type) {
-          case 'TASKFLOW_READY':
-          case 'TODOLIST_READY': {
+        const type = String(msg.type).replace('TASKFLOW_', '').replace('TODOLIST_', '');
+        switch (type) {
+          case 'READY':
             this.runHostAction(msg, async () => {
               const storedData = await todolist.loadData();
-              window.postMessage({
-                type: 'TODOLIST_INIT_DATA',
-                data: storedData,
-                hostTheme: todolist.getHostTheme?.(),
-                pending: window.arguments?.[0]?.options || window._taskflowPending || window._todolistPending || null
-              }, '*');
+              window.postMessage({ type: 'TODOLIST_INIT_DATA', data: storedData, hostTheme: todolist.getHostTheme?.(),
+                pending: window.arguments?.[0]?.options || window._taskflowPending || window._todolistPending || null }, '*');
             });
             break;
-          }
-          case 'TASKFLOW_SWITCH_WINDOW_MODE':
-          case 'TODOLIST_SWITCH_WINDOW_MODE':
-            this.runHostAction(msg, () => todolist.switchWindowMode?.(msg.mode, window));
-            break;
-          case 'TASKFLOW_OPEN_PREFERENCES':
-          case 'TODOLIST_OPEN_PREFERENCES':
-            this.runHostAction(msg, () => todolist.openPreferencesPane?.(mainWin || window));
-            break;
-          case 'TASKFLOW_LOCATE_ITEM':
-          case 'TODOLIST_LOCATE_ITEM': {
-            if (todolist.locateLiteratureItem) {
-              this.runHostAction(msg, () => todolist.locateLiteratureItem(msg.key, msg.libraryID, mainWin));
-              break;
-            }
+          case 'SWITCH_WINDOW_MODE': this.runHostAction(msg, () => todolist.switchWindowMode?.(msg.mode, window)); break;
+          case 'OPEN_PREFERENCES': this.runHostAction(msg, () => todolist.openPreferencesPane?.(mainWin || window)); break;
+          case 'LOCATE_ITEM':
+            if (todolist.locateLiteratureItem) { this.runHostAction(msg, () => todolist.locateLiteratureItem(msg.key, msg.libraryID, mainWin)); break; }
             const item = todolist.resolveItemReference?.(msg.key, msg.libraryID);
-            if (item) {
-              const pane = mainWin?.ZoteroPane || window.Zotero.getActiveZoteroPane?.();
-              this.runHostAction(msg, () => pane?.selectItem?.(item.id));
-            }
+            if (item) { const pane = mainWin?.ZoteroPane || window.Zotero.getActiveZoteroPane?.(); this.runHostAction(msg, () => pane?.selectItem?.(item.id)); }
             break;
-          }
-          case 'TASKFLOW_OPEN_PDF':
-          case 'TODOLIST_OPEN_PDF': {
-            this.runHostAction(msg, () => todolist.openTaskPdf({ zoteroPdfUri: msg.key, zoteroLibraryID: msg.libraryID,
-              zoteroPage: msg.page, zoteroAnnotationKey: msg.annotationKey }));
+          case 'OPEN_PDF':
+            this.runHostAction(msg, () => todolist.openTaskPdf({ zoteroPdfUri: msg.key, zoteroLibraryID: msg.libraryID, zoteroPage: msg.page, zoteroAnnotationKey: msg.annotationKey }));
             break;
-          }
-          case 'TASKFLOW_EXPORT_DATA':
-          case 'TODOLIST_EXPORT_DATA':
-            this.runHostAction(msg, () => todolist.exportData?.(msg.format || 'json'));
-            break;
-          case 'TASKFLOW_IMPORT_DATA':
-          case 'TODOLIST_IMPORT_DATA':
-            this.runHostAction(msg, () => todolist.importDataFile?.(msg.mode || 'merge', mainWin || window));
-            break;
-          case 'TASKFLOW_CLEAR_DATA':
-          case 'TODOLIST_CLEAR_DATA':
-            this.runHostAction(msg, () => todolist.clearAllData?.(mainWin || window));
-            break;
-          case 'TASKFLOW_COPY_SUMMARY':
-          case 'TODOLIST_COPY_SUMMARY':
-            this.runHostAction(msg, () => todolist.copyTasksSummary?.(mainWin || window));
-            break;
-          case 'TASKFLOW_PRINT':
-          case 'TODOLIST_PRINT':
-            this.runHostAction(msg, () => todolist.printTasks?.(mainWin || window));
-            break;
-          case 'TASKFLOW_NOTIFY':
-          case 'TODOLIST_NOTIFY': {
+          case 'EXPORT_DATA': this.runHostAction(msg, () => todolist.exportData?.(msg.format || 'json')); break;
+          case 'IMPORT_DATA': this.runHostAction(msg, () => todolist.importDataFile?.(msg.mode || 'merge', mainWin || window)); break;
+          case 'CLEAR_DATA': this.runHostAction(msg, () => todolist.clearAllData?.(mainWin || window)); break;
+          case 'COPY_SUMMARY': this.runHostAction(msg, () => todolist.copyTasksSummary?.(mainWin || window)); break;
+          case 'PRINT': this.runHostAction(msg, () => todolist.printTasks?.(mainWin || window)); break;
+          case 'NOTIFY':
             this.runHostAction(msg, async () => {
               const success = Boolean(todolist.showNotice) && (await todolist.showNotice(msg.title, msg.body)) !== false;
               const callback = this._requestCallbacks.get(msg.requestId);
               if (callback) { this._requestCallbacks.delete(msg.requestId); callback({ success }); }
             });
             break;
-          }
-          case 'TASKFLOW_SYNC_NOTE':
-          case 'TODOLIST_SYNC_NOTE': {
-            const item = todolist.resolveItemReference?.(msg.key, msg.libraryID);
-            if (item) {
+          case 'SYNC_NOTE': {
+            const itemRef = todolist.resolveItemReference?.(msg.key, msg.libraryID);
+            if (itemRef) {
               this.runHostAction(msg, async () => {
-                const note = await todolist.syncTasksToChildNote(item);
-                if (msg.requestId && this._requestCallbacks.has(msg.requestId)) {
-                  const cb = this._requestCallbacks.get(msg.requestId);
-                  this._requestCallbacks.delete(msg.requestId);
-                  cb({ success: Boolean(note), noteKey: note?.key });
-                }
+                const note = await todolist.syncTasksToChildNote(itemRef);
+                const cb = this._requestCallbacks.get(msg.requestId);
+                if (cb) { this._requestCallbacks.delete(msg.requestId); cb({ success: Boolean(note), noteKey: note?.key }); }
               });
             }
             break;
           }
-          case 'TASKFLOW_GET_COLLECTIONS':
-          case 'TODOLIST_GET_COLLECTIONS': {
+          case 'GET_COLLECTIONS': {
             const collections = todolist.getZoteroCollections?.(msg.libraryID) || [];
-            if (msg.requestId && this._requestCallbacks.has(msg.requestId)) {
-              const cb = this._requestCallbacks.get(msg.requestId);
-              this._requestCallbacks.delete(msg.requestId);
-              cb({ collections });
-            }
+            const cb = this._requestCallbacks.get(msg.requestId);
+            if (cb) { this._requestCallbacks.delete(msg.requestId); cb({ collections }); }
             break;
           }
-          case 'TASKFLOW_ADD_DROPPED_ITEMS':
-          case 'TODOLIST_ADD_DROPPED_ITEMS': {
+          case 'ADD_DROPPED_ITEMS':
             this.runHostAction(msg, async () => {
               const result = await todolist.addDroppedLiteratureTasks(msg.itemIDs);
               const callback = this._requestCallbacks.get(msg.requestId);
-              if (callback) {
-                this._requestCallbacks.delete(msg.requestId);
-                callback({ success: true, result });
-              }
+              if (callback) { this._requestCallbacks.delete(msg.requestId); callback({ success: true, result }); }
             });
             break;
-          }
-          case 'TASKFLOW_GET_ACTIVE_ITEM':
-          case 'TODOLIST_GET_ACTIVE_ITEM': {
+          case 'GET_ACTIVE_ITEM': {
             const activeItem = todolist.getCurrentActiveItem?.(mainWin || window);
-            if (msg.requestId && this._requestCallbacks.has(msg.requestId)) {
-              const cb = this._requestCallbacks.get(msg.requestId);
-              this._requestCallbacks.delete(msg.requestId);
-              cb({ item: activeItem ? todolist.serializeLiteratureItem(activeItem) : null });
-            }
+            const cb = this._requestCallbacks.get(msg.requestId);
+            if (cb) { this._requestCallbacks.delete(msg.requestId); cb({ item: activeItem ? todolist.serializeLiteratureItem(activeItem) : null }); }
             break;
           }
         }
         return;
       }
-      if (window.opener) {
-        window.opener.postMessage(msg, '*');
-      }
+      if (window.opener) window.opener.postMessage(msg, '*');
     } catch (e) {
       this.failHostAction(msg, e);
     }
@@ -294,15 +196,8 @@ const ZoteroBridge = {
     if (!this.isZotero) return Promise.resolve(false);
     return new Promise((resolve, reject) => {
       const requestId = 'notify_' + (++this._pendingRequestId) + '_' + Date.now();
-      const timer = setTimeout(() => {
-        this._requestCallbacks.delete(requestId);
-        reject(new Error('提醒未能发送'));
-      }, 5000);
-      this._requestCallbacks.set(requestId, data => {
-        clearTimeout(timer);
-        if (data.success) resolve(true);
-        else reject(new Error(data.error || '提醒未能发送'));
-      });
+      const timer = setTimeout(() => { this._requestCallbacks.delete(requestId); reject(new Error('提醒未能发送')); }, 5000);
+      this._requestCallbacks.set(requestId, data => { clearTimeout(timer); if (data.success) resolve(true); else reject(new Error(data.error || '提醒未能发送')); });
       this.sendToHost({ type: 'TASKFLOW_NOTIFY', title, body, requestId });
     });
   },
@@ -310,10 +205,7 @@ const ZoteroBridge = {
   saveStorage(payload) {
     return new Promise((resolve, reject) => {
       const requestId = 'save_' + (++this._pendingRequestId) + '_' + Date.now();
-      const timer = setTimeout(() => {
-        this._requestCallbacks.delete(requestId);
-        reject(new Error('Zotero 保存确认超时，请重新打开窗口检查数据'));
-      }, 5000);
+      const timer = setTimeout(() => { this._requestCallbacks.delete(requestId); reject(new Error('Zotero 保存确认超时，请重新打开窗口检查数据')); }, 5000);
       this._requestCallbacks.set(requestId, data => {
         clearTimeout(timer);
         if (data.success && data.data) resolve(data.data);
@@ -328,76 +220,37 @@ const ZoteroBridge = {
       const hasModal = typeof Modal !== 'undefined';
       const hasDialog = hasModal && (Modal.dialog || document.getElementById('task-modal'));
       if (document.readyState !== 'loading' && hasModal && hasDialog) {
-        try {
-          if (!Modal.dialog) {
-            Modal.ensureInitialized?.();
-          }
-          fn();
-        } catch (err) {
-          console.error('[ZoteroBridge] Navigation action execution error:', err);
-        }
+        try { if (!Modal.dialog) Modal.ensureInitialized?.(); fn(); } catch (err) { console.error('[ZoteroBridge] Navigation action execution error:', err); }
       } else if (attempt < 40) {
         setTimeout(() => tryRun(attempt + 1), 80);
       }
     };
-
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => tryRun(0), { once: true });
-    } else {
-      tryRun(0);
-    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => tryRun(0), { once: true });
+    else tryRun(0);
   },
 
   handleHostNavigation(options) {
     if (!options) return;
-
     if (options.mode === 'create_from_item' && options.item) {
       const item = options.item;
       this.executeWhenReady(() => {
         Modal.openAdd({
-          title: `研读：${item.title}`,
-          category: '论文研读',
+          title: `研读：${item.title}`, category: '论文研读',
           dueDate: LiteratureWorkflow.dateAfter(LiteratureWorkflow.days(Storage._zoteroCache?.settings?.defaultDueDays)),
-          tags: item.tags || [],
-          zoteroItemKey: item.key,
-          zoteroLibraryID: item.libraryID,
-          zoteroItemID: item.id,
-          zoteroAutoTitle: true,
-          zoteroLinkStatus: 'active',
-          zoteroItemTitle: item.title,
-          zoteroAuthors: item.authors,
-          zoteroYear: item.year,
-          zoteroPublication: item.publication || '',
-          zoteroUri: item.zoteroUri,
-          zoteroPdfUri: item.pdfUri,
-          academicType: 'literature_reading'
+          tags: item.tags || [], zoteroItemKey: item.key, zoteroLibraryID: item.libraryID, zoteroItemID: item.id,
+          zoteroAutoTitle: true, zoteroLinkStatus: 'active', zoteroItemTitle: item.title, zoteroAuthors: item.authors,
+          zoteroYear: item.year, zoteroPublication: item.publication || '', zoteroUri: item.zoteroUri,
+          zoteroPdfUri: item.pdfUri, academicType: 'literature_reading'
         });
       });
     } else if (options.mode === 'create_from_collection' && options.collectionName) {
-      this.executeWhenReady(() => {
-        Modal.openAdd({
-          title: `专题研读：${options.collectionName}`,
-          category: '论文研读',
-          tags: [options.collectionName]
-        });
-      });
+      this.executeWhenReady(() => { Modal.openAdd({ title: `专题研读：${options.collectionName}`, category: '论文研读', tags: [options.collectionName] }); });
     } else if (options.mode === 'filter_item' && options.itemKey) {
-      this.executeWhenReady(() => {
-        if (typeof TaskManager !== 'undefined') {
-          TaskManager.setLiteratureFilter(options.itemKey);
-          if (typeof UI !== 'undefined' && UI.render) {
-            UI.render();
-          }
-        }
-      });
+      this.executeWhenReady(() => { if (typeof TaskManager !== 'undefined') { TaskManager.setLiteratureFilter(options.itemKey); UI?.render?.(); } });
     } else if (options.mode === 'open_modal_prefill' && options.prefill) {
-      this.executeWhenReady(() => {
-        Modal.openAdd(options.prefill);
-      });
+      this.executeWhenReady(() => { Modal.openAdd(options.prefill); });
     } else if (options.mode === 'edit_task' && options.taskId) {
-      this.executeWhenReady(() => {
-        Promise.resolve(Modal.openEdit(options.taskId)).catch(error => console.error('[TaskFlow] 编辑任务失败', error));
-      });
+      this.executeWhenReady(() => { Promise.resolve(Modal.openEdit(options.taskId)).catch(error => console.error('[TaskFlow] 编辑任务失败', error)); });
     } else if (options.mode === 'view_task' && options.taskId) {
       this.executeWhenReady(() => {
         const card = [...document.querySelectorAll('.task-card')].find(el => el.dataset.taskId === options.taskId);
@@ -410,114 +263,59 @@ const ZoteroBridge = {
     }
   },
 
-  locateItem(key, libraryID) {
-    this.sendToHost({ type: 'TASKFLOW_LOCATE_ITEM', key, libraryID });
-  },
-
+  locateItem(key, libraryID) { this.sendToHost({ type: 'TASKFLOW_LOCATE_ITEM', key, libraryID }); },
   applyWindowLayout() {
     const compact = Boolean(this._isSubwindow && Storage.getPreference('subwindowCompactMode', true));
     document.documentElement.classList.toggle('subwindow-mode', compact);
     document.body?.classList?.toggle('subwindow-mode', compact);
   },
-
   addDroppedItems(itemIDs) {
     if (!this.isZotero) return Promise.reject(new Error('请在 Zotero 中拖入文献'));
     return new Promise((resolve, reject) => {
       const requestId = 'drop_' + (++this._pendingRequestId) + '_' + Date.now();
-      const timer = setTimeout(() => {
-        this._requestCallbacks.delete(requestId);
-        reject(new Error('创建研读待办确认超时，请检查任务列表后重试'));
-      }, 10000);
-      this._requestCallbacks.set(requestId, data => {
-        clearTimeout(timer);
-        if (data.success) resolve(data.result);
-        else reject(new Error(data.error || '创建研读待办失败'));
-      });
+      const timer = setTimeout(() => { this._requestCallbacks.delete(requestId); reject(new Error('创建研读待办确认超时，请检查任务列表后重试')); }, 10000);
+      this._requestCallbacks.set(requestId, data => { clearTimeout(timer); if (data.success) resolve(data.result); else reject(new Error(data.error || '创建研读待办失败')); });
       this.sendToHost({ type: 'TASKFLOW_ADD_DROPPED_ITEMS', itemIDs, requestId });
     });
   },
-
   setHostTheme(theme) {
     if (!['light', 'dark'].includes(theme)) return;
     this._hostTheme = theme;
-    Promise.resolve().then(() => {
-      if (typeof UI !== 'undefined' && UI.currentTheme === 'zotero') UI.applyTheme('zotero');
-    });
+    Promise.resolve().then(() => { if (typeof UI !== 'undefined' && UI.currentTheme === 'zotero') UI.applyTheme('zotero'); });
   },
-
-  openPdf(key, libraryID, page = null, annotationKey = null) {
-    this.sendToHost({ type: 'TASKFLOW_OPEN_PDF', key, libraryID, page, annotationKey });
-  },
-
-  openPreferences() {
-    this.sendToHost({ type: 'TASKFLOW_OPEN_PREFERENCES' });
-  },
-
-  switchWindowMode(mode) {
-    this.sendToHost({ type: 'TASKFLOW_SWITCH_WINDOW_MODE', mode });
-  },
-
-  exportData(format = 'json') {
-    this.sendToHost({ type: 'TASKFLOW_EXPORT_DATA', format });
-  },
-
+  openPdf(key, libraryID, page = null, annotationKey = null) { this.sendToHost({ type: 'TASKFLOW_OPEN_PDF', key, libraryID, page, annotationKey }); },
+  openPreferences() { this.sendToHost({ type: 'TASKFLOW_OPEN_PREFERENCES' }); },
+  switchWindowMode(mode) { this.sendToHost({ type: 'TASKFLOW_SWITCH_WINDOW_MODE', mode }); },
+  exportData(format = 'json') { this.sendToHost({ type: 'TASKFLOW_EXPORT_DATA', format }); },
   async syncChildNote(key, libraryID) {
     if (!this.isZotero) return { success: false };
     return new Promise((resolve) => {
       const requestId = 'sync_' + (++this._pendingRequestId) + '_' + Date.now();
-      const timer = setTimeout(() => {
-        this._requestCallbacks.delete(requestId);
-        resolve({ success: false });
-      }, 3000);
-      this._requestCallbacks.set(requestId, (data) => {
-        clearTimeout(timer);
-        resolve(data);
-      });
+      const timer = setTimeout(() => { this._requestCallbacks.delete(requestId); resolve({ success: false }); }, 3000);
+      this._requestCallbacks.set(requestId, data => { clearTimeout(timer); resolve(data); });
       this.sendToHost({ type: 'TASKFLOW_SYNC_NOTE', key, libraryID, requestId });
     });
   },
-
   async getCollections(libraryID) {
     if (!this.isZotero) return [];
     return new Promise((resolve) => {
       const requestId = 'col_' + (++this._pendingRequestId) + '_' + Date.now();
-      const timer = setTimeout(() => {
-        this._requestCallbacks.delete(requestId);
-        resolve([]);
-      }, 3000);
-      this._requestCallbacks.set(requestId, (data) => {
-        clearTimeout(timer);
-        resolve(data.collections || []);
-      });
+      const timer = setTimeout(() => { this._requestCallbacks.delete(requestId); resolve([]); }, 3000);
+      this._requestCallbacks.set(requestId, data => { clearTimeout(timer); resolve(data.collections || []); });
       this.sendToHost({ type: 'TASKFLOW_GET_COLLECTIONS', libraryID, requestId });
     });
   },
-
-  createCollectionPlan(collectionID) {
-    this.sendToHost({ type: 'TASKFLOW_CREATE_COLLECTION_PLAN', collectionID });
-  },
-
+  createCollectionPlan(collectionID) { this.sendToHost({ type: 'TASKFLOW_CREATE_COLLECTION_PLAN', collectionID }); },
   async getActiveItem() {
     if (!this.isZotero) return null;
     return new Promise((resolve) => {
       const requestId = 'req_' + (++this._pendingRequestId) + '_' + Date.now();
-      const timer = setTimeout(() => {
-        this._requestCallbacks.delete(requestId);
-        resolve(null);
-      }, 2000);
-
-      this._requestCallbacks.set(requestId, (data) => {
-        clearTimeout(timer);
-        resolve(data.item || null);
-      });
-
+      const timer = setTimeout(() => { this._requestCallbacks.delete(requestId); resolve(null); }, 2000);
+      this._requestCallbacks.set(requestId, data => { clearTimeout(timer); resolve(data.item || null); });
       this.sendToHost({ type: 'TASKFLOW_GET_ACTIVE_ITEM', requestId });
     });
   }
 };
 
-// Make accessible on window
 window.ZoteroBridge = ZoteroBridge;
-
-// Initialize ZoteroBridge immediately
 ZoteroBridge.init();

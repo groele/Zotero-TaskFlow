@@ -157,11 +157,11 @@ taskflow-pref-release-info-footer =
     .aria-label = Release Information
 taskflow-pref-release-title = Release Information
 taskflow-pref-release-notes-label = Release Notes
-taskflow-pref-release-notes-content = Updated to v16.0.0 with oversized module decomposition, architecture guard verification, and elimination of legacy version baggage.
+taskflow-pref-release-notes-content = Updated to v16.0.1 with task modal spatial and textarea optimizations, modular decomposition under 360 lines, and zero debt integrity.
 taskflow-pref-build-date-label = Build Date
-taskflow-pref-build-date-value = 2026-11-06
+taskflow-pref-build-date-value = 2026-11-10
 taskflow-pref-package-download-label = Package Download
-taskflow-pref-package-download-link = Download TaskFlow v16.0.0
+taskflow-pref-package-download-link = Download TaskFlow v16.0.1
 taskflow-pref-repository-label = Source Repository
 taskflow-pref-repository-link = GitHub Repository
 

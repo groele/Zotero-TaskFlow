@@ -4,8 +4,17 @@
   "capturedAt": "2026-11-06",
   "debtCleared": true,
   "note": "Known §5.9 debt. Listed files may stay at or below the recorded line count, but must never grow; any other source file above 360 lines fails the guard. Remove an entry only after splitting that module below 360 lines. Every entry must still exist and must still exceed the ceiling - stale entries are rejected by the baseline integrity test.",
-  "lastReleasedVersion": "16.0.0",
+  "lastReleasedVersion": "16.0.1",
   "splitHistory": [
+    {
+      "version": "16.0.1",
+      "date": "2026-11-10",
+      "resolved": [
+        "Optimized task editing modal layout, title height and multi-line textarea dimensions",
+        "Decomposed monolithic frontend modules (modal.js, taskManager.js, ui.js) under 360 lines",
+        "Streamlined zoteroBridge.js down to 303 lines with zero debt integrity"
+      ]
+    },
     {
       "version": "16.0.0",
       "date": "2026-11-06",
