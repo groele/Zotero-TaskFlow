@@ -112,9 +112,24 @@ export const TaskRules: any = {
   applyTimerAction(data, action) {
     if (!action) return;
     const { type, taskId, timer, startTime, stoppedAt, sessionId } = action;
-    if (!['start', 'stop'].includes(type)) throw new Error('计时操作无效');
-    const task = data.tasks.find(t => t.id === taskId);
+    if (!['start', 'stop', 'stop_all'].includes(type)) throw new Error('计时操作无效');
     data.activeTimers = Object.assign(Object.create(null), data.activeTimers);
+    if (type === 'stop_all') {
+      const stopTs = Number.isFinite(stoppedAt) ? stoppedAt : Date.now();
+      for (const [id, active] of Object.entries(data.activeTimers)) {
+        if (!active || !Number.isFinite((active as any).startTime)) continue;
+        const targetTask = data.tasks.find(t => t.id === id);
+        if (targetTask) {
+          targetTask.timeEntries = [
+            ...(targetTask.timeEntries || []),
+            { date: new Date(stopTs).toISOString(), duration: Math.max(0, stopTs - (active as any).startTime) }
+          ];
+        }
+      }
+      data.activeTimers = Object.create(null);
+      return;
+    }
+    const task = data.tasks.find(t => t.id === taskId);
     if (type === 'start') {
       if (!timer || !Number.isFinite(timer.startTime)) throw new Error('计时数据无效');
       if (task && !data.activeTimers[taskId]) data.activeTimers[taskId] = timer;
@@ -164,7 +179,8 @@ export const TaskRules: any = {
       if ((task.timeEntries || []).some(entry => !entry || !Number.isFinite(entry.duration) || entry.duration < 0 ||
           !Number.isFinite(Date.parse(entry.date)))) throw new Error('计时历史格式无效');
       task.title = task.title.trim();
-      task.status = task.completed ? 'done' : (task.status === 'in-progress' ? 'in-progress' : 'todo');
+      task.status = task.completed ? 'done' : (['in-progress', 'overdue'].includes(task.status) ? task.status : 'todo');
+      task.statusExplicit = Boolean(!task.completed && task.statusExplicit && ['todo', 'in-progress', 'overdue'].includes(task.status));
       if (!task.completed) task.completedAt = null;
       if (task.completed) task.subtasks.forEach(st => { st.completed = true; });
     }

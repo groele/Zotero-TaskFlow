@@ -4,8 +4,17 @@
   "capturedAt": "2026-11-06",
   "debtCleared": true,
   "note": "Known §5.9 debt. Listed files may stay at or below the recorded line count, but must never grow; any other source file above 360 lines fails the guard. Remove an entry only after splitting that module below 360 lines. Every entry must still exist and must still exceed the ceiling - stale entries are rejected by the baseline integrity test.",
-  "lastReleasedVersion": "16.0.1",
+  "lastReleasedVersion": "16.0.2",
   "splitHistory": [
+    {
+      "version": "16.0.2",
+      "date": "2026-11-12",
+      "resolved": [
+        "Unified Kanban explicit status and overdue column rules across taskBatch, taskQueries, and taskManager",
+        "Wired ItemPane library item drops, card drag reordering, active timer unload/shutdown settlement, and cross-window pending refresh queuing",
+        "Extracted src/preferences/dependencies.ts for parent-child switch dependency sync, Prefs observer, and Fluent l10n status helpers while keeping all src/ files <= 360 lines"
+      ]
+    },
     {
       "version": "16.0.1",
       "date": "2026-11-10",

@@ -135,7 +135,7 @@ export function renderTaskList(
   for (const t of tasks) {
     const taskCard = createEl(doc, 'div', `td-task-card ${t.completed ? 'is-completed' : ''}`);
     taskCard.dataset.taskId = t.id;
-    makeTaskCardDraggable(taskCard, t, host);
+    makeTaskCardDraggable(taskCard, t, host, state);
     attachTaskCardContextMenu(taskCard, t, host, state);
 
     const row = createEl(doc, 'div', 'td-task-row');

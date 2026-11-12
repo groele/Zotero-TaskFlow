@@ -5,6 +5,7 @@ const TaskOperations = {
     task.completed = Boolean(completed);
     task.completedAt = completed ? (task.completedAt || new Date().toISOString()) : null;
     task.status = completed ? 'done' : 'todo';
+    task.statusExplicit = false;
     if (completed) (task.subtasks || []).forEach(st => { st.completed = true; });
   },
 
@@ -49,6 +50,7 @@ const TaskOperations = {
       title: original.title + ' (副本)',
       completed: false,
       status: 'todo',
+      statusExplicit: false,
       completedAt: null,
       createdAt: new Date().toISOString(),
       order: Math.max(-1, ...this._tasks.map(t => t.order || 0)) + 1,
@@ -90,6 +92,7 @@ const TaskOperations = {
       task.completed = false;
       task.completedAt = null;
       task.status = Utils.isOverdue(task.dueDate) ? 'overdue' : 'todo';
+      task.statusExplicit = false;
     }
 
     await Storage.saveTasks(this._tasks, this._baseline);
@@ -115,6 +118,7 @@ const TaskOperations = {
       task.completed = false;
       task.completedAt = null;
       task.status = Utils.isOverdue(task.dueDate) ? 'overdue' : 'todo';
+      task.statusExplicit = false;
     }
 
     this.appendRecurringTask(task);

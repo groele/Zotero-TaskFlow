@@ -198,6 +198,13 @@ export class TaskFlowStoragePersistence extends TaskFlowBase {
     }
 
 
+    async settleActiveTimers() {
+      const data = await this.loadData();
+      if (!data?.activeTimers || !Object.keys(data.activeTimers).length) return;
+      await this.saveData({ timerAction: { type: 'stop_all', stoppedAt: Date.now() } });
+    }
+
+
     async updateTaskState(id, change) {
       const data = await this.loadData();
       const task = data.tasks.find(t => t.id === id);

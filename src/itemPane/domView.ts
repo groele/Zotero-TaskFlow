@@ -184,6 +184,7 @@ export function renderActionGrid(
   const btnOpenBoard = createEl(doc, 'button', 'td-action-btn td-action-workspace', '待办看板');
   btnOpenBoard.type = 'button';
   btnOpenBoard.title = '在主标签页中打开 TaskFlow 任务看板';
+  btnOpenBoard.setAttribute('data-l10n-id', 'taskflow-item-pane-btn-board');
   btnOpenBoard.addEventListener('click', () => {
     host.openTaskFlow({ mode: 'filter_item', itemKey: target.key }, Zotero.getMainWindow?.());
   });
@@ -192,6 +193,7 @@ export function renderActionGrid(
   const btnSubwin = createEl(doc, 'button', 'td-action-btn td-action-workspace', '伴读窗口');
   btnSubwin.type = 'button';
   btnSubwin.title = '打开轻量伴读窗口，适合与 PDF 左右分屏对照';
+  btnSubwin.setAttribute('data-l10n-id', 'taskflow-item-pane-btn-subwindow');
   btnSubwin.addEventListener('click', () => {
     host.openStandaloneWindow({ mode: 'filter_item', itemKey: target.key }, Zotero.getMainWindow?.(), 'subwindow');
   });
@@ -200,6 +202,7 @@ export function renderActionGrid(
   const btnSyncNote = createEl(doc, 'button', 'td-action-btn td-action-notes', '同步子笔记');
   btnSyncNote.type = 'button';
   btnSyncNote.title = '将本文献的所有研读待办同步导出为文献子笔记 (云端)';
+  btnSyncNote.setAttribute('data-l10n-id', 'taskflow-item-pane-btn-sync-note');
   const isReadOnly = typeof target.isEditable === 'function' && !target.isEditable();
   if (isReadOnly) {
     btnSyncNote.disabled = true;
@@ -221,6 +224,7 @@ export function renderActionGrid(
     const btnPdf = createEl(doc, 'button', 'td-action-btn td-action-btn-pdf', '打开 PDF');
     btnPdf.type = 'button';
     btnPdf.title = '在 Zotero 内置阅读器中打开该文献的 PDF 全文';
+    btnPdf.setAttribute('data-l10n-id', 'taskflow-item-pane-btn-open-pdf');
     btnPdf.addEventListener('click', () => {
       host.openPdfAttachment(target);
     });
@@ -236,6 +240,7 @@ export function renderActionGrid(
     );
     btnMilestones.type = 'button';
     btnMilestones.title = '按当前研读模板为本文献追加生成 5 项精读里程碑待办';
+    btnMilestones.setAttribute('data-l10n-id', 'taskflow-item-pane-btn-milestones');
     btnMilestones.addEventListener('click', async () => {
       await host.createReadingMilestones(target, Zotero.getMainWindow?.(), profileSelect.value);
       state?.refresh?.();

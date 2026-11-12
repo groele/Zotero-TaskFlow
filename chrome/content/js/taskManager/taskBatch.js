@@ -79,25 +79,30 @@ const TaskBatch = {
       changes.completed = true;
       changes.completedAt = task.completedAt || now;
       changes.status = 'done';
+      changes.statusExplicit = true;
     } else if (column === 'todo') {
       changes.completed = false;
       changes.completedAt = null;
       changes.status = 'todo';
+      changes.statusExplicit = true;
     } else if (column === 'in-progress') {
       changes.completed = false;
       changes.completedAt = null;
       changes.status = 'in-progress';
+      changes.statusExplicit = true;
     } else if (column === 'overdue') {
       changes.completed = false;
       changes.completedAt = null;
       changes.status = 'overdue';
-      if (!Utils.isOverdue(task.dueDate)) return null;
+      changes.statusExplicit = true;
     } else {
       return null;
     }
 
     Object.assign(task, changes);
-    if (column === 'done') this.setCompletion(task, true);
+    if (column === 'done') {
+      task.subtasks?.forEach(st => { st.completed = true; });
+    }
     this.appendRecurringTask(task);
     task.updatedAt = now;
 

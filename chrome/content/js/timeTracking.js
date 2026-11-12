@@ -47,6 +47,15 @@ const TimeTracking = {
     return elapsed;
   },
 
+  // Settle all active timers on window unload or shutdown so offline wall-clock time never leaks
+  async settleAllTimers() {
+    const activeEntries = Object.keys(this.activeTimers || {});
+    if (!activeEntries.length) return false;
+    const saved = await Storage.saveAll({ timerAction: { type: 'stop_all', stoppedAt: Date.now() } });
+    this.activeTimers = saved.activeTimers || {};
+    return true;
+  },
+
   // Get current elapsed time
   getElapsedTime(taskId) {
     const timer = Object.hasOwn(this.activeTimers, taskId) ? this.activeTimers[taskId] : null;

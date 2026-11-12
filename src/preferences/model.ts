@@ -159,6 +159,7 @@ export const FIELDS: Record<string, FieldItem[]> = {
     ['autoTagFromItem', '从文献新建待办时自动继承文献在 Zotero 的标签', 'check'],
   ],
   reminders: [
+    ['enableSound', '启用任务到期与专注完成提示音', 'check'],
     ['dailySummary', '启用每日学术待办晨报提醒', 'check'],
     ['summaryTime', '每日晨报提醒时间', 'time'],
   ]

@@ -176,3 +176,58 @@ test('native localization loads one alias-complete resource once per document an
     assert(ids.includes('taskflow-item-pane-sidenav'), `${locale} should have taskflow-item-pane-sidenav`);
   }
 });
+
+test('item pane drop creates literature reading tasks and card drag reorders task order cleanly', async t => {
+  const native = fixture([paper(1), paper(2)]);
+  const dom = new JSDOM('<body><div id="pane"></div></body>'); t.after(() => dom.window.close());
+  const doc = dom.window.document, body = doc.getElementById('pane');
+  native.host.registerItemPaneSection();
+  const pane = native.pane();
+  const target = paper(1);
+  const refresh = async () => {
+    pane.onRender({ doc, body, item: target });
+    await pane.onAsyncRender({ doc, body, item: target });
+  };
+  pane.onInit({ doc, body, item: target, refresh }); t.after(() => pane.onDestroy({ body }));
+  await refresh();
+
+  const wrapper = body.querySelector('.td-pane-wrap');
+  const libDrop = new doc.defaultView.Event('drop', { bubbles: true, cancelable: true });
+  Object.defineProperty(libDrop, 'dataTransfer', {
+    value: { types: ['zotero/item'], getData: key => (key === 'zotero/item' ? '2' : ''), dropEffect: '' }
+  });
+  wrapper.dispatchEvent(libDrop);
+  assert.equal(libDrop.defaultPrevented, true);
+  await waitFor(() => native.disk().tasks.some(task => task.zoteroItemKey === 'PAPER2'));
+
+  await native.host.saveData({
+    taskChanges: {
+      added: [
+        { id: 'pane_t1', title: 'First task', zoteroItemKey: 'PAPER1', zoteroLibraryID: 1, order: 0 },
+        { id: 'pane_t2', title: 'Second task', zoteroItemKey: 'PAPER1', zoteroLibraryID: 1, order: 1 }
+      ]
+    }
+  });
+  await refresh();
+
+  const cards = [...body.querySelectorAll('.td-task-card')];
+  assert.deepEqual(cards.map(c => c.dataset.taskId), ['pane_t1', 'pane_t2']);
+  const store = {};
+  const startEv = new doc.defaultView.Event('dragstart', { bubbles: true, cancelable: true });
+  Object.defineProperty(startEv, 'dataTransfer', {
+    value: { setData: (k, v) => { store[k] = v; }, effectAllowed: '' }
+  });
+  cards[1].dispatchEvent(startEv);
+  assert.equal(store['text/x-taskflow-id'], 'pane_t2');
+
+  const dropCardEv = new doc.defaultView.Event('drop', { bubbles: true, cancelable: true });
+  Object.defineProperty(dropCardEv, 'dataTransfer', {
+    value: { types: ['text/x-taskflow-id'], getData: k => store[k] || '', dropEffect: '' }
+  });
+  cards[0].dispatchEvent(dropCardEv);
+  assert.equal(dropCardEv.defaultPrevented, true);
+  await waitFor(() => {
+    const p1 = native.disk().tasks.filter(task => task.zoteroItemKey === 'PAPER1');
+    return p1[0]?.id === 'pane_t2' && p1[1]?.id === 'pane_t1';
+  });
+});

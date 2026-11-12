@@ -10,6 +10,7 @@ import {
   bindMaintenanceActions,
   reportOperationError
 } from './preferences/uiBinding';
+import { registerPreferenceObserver, setStatusL10n, updateDependencies } from './preferences/dependencies';
 
 export { DEFAULTS, FIELDS, getPref, setPref, setPrefs, PREFIX };
 
@@ -53,12 +54,15 @@ window.TaskFlow_Preferences = (() => {
         // Bind Maintenance Actions (export, import, print, copy, clear, reset)
         bindMaintenanceActions(doc, win, runOperation);
 
-        if (statusEl) {
-          statusEl.textContent = '设置已加载；修改会自动保存。';
-        }
+        updateDependencies(doc);
+        registerPreferenceObserver(doc, win);
+
+        setStatusL10n(statusEl, 'taskflow-pref-status-loaded', '设置已加载；修改会自动保存。');
       } catch (err: any) {
         if (statusEl) {
-          statusEl.textContent = '加载设置时发生异常: ' + err.message;
+          setStatusL10n(statusEl, 'taskflow-pref-status-load-error', '加载设置时发生异常: ' + err.message, {
+            message: String(err?.message || err)
+          });
           statusEl.className = 'todolist-pref-status todolist-pref-error';
         }
       }

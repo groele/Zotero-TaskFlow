@@ -26,31 +26,23 @@ const UI = {
       if (typeof Tags !== 'undefined') Tags.customTags = data.customTags || [];
       if (typeof Templates !== 'undefined') Templates.customTemplates = data.customTemplates || [];
       if (typeof Advanced !== 'undefined') Advanced.searchHistory = data.searchHistory || [];
-      if (!this._storageReady || TaskManager._mutating) return;
-      TaskManager._tasks = Storage.clone(data.tasks || []);
-      TaskManager._baseline = Storage.clone(TaskManager._tasks);
-      const ids = new Set(TaskManager._tasks.map(t => t.id));
-      TaskManager._selectedTasks = new Set([...TaskManager._selectedTasks].filter(id => ids.has(id)));
-      if (typeof TimeTracking !== 'undefined') TimeTracking.activeTimers = data.activeTimers || {};
-      if (data.settings) {
-        this.currentSortOrder = data.settings.sortOrder || 'dueDate';
-        this.showCompleted = data.settings.showCompleted !== false;
-        if (data.settings.theme !== this.currentTheme) {
-          this.currentTheme = data.settings.theme;
-          this.applyTheme(this.currentTheme);
-        }
-        const sortSelect = document.getElementById('sort-select');
-        if (sortSelect) sortSelect.value = this.currentSortOrder;
-        const viewChanged = data.settings.defaultView !== this._settings.defaultView;
-        this._settings = data.settings;
-        ZoteroBridge.applyWindowLayout();
-        if (viewChanged) this.switchView(data.settings.defaultView);
+      if (!this._storageReady) return;
+      if (TaskManager._mutating) {
+        TaskManager._pendingSnapshot = Storage.clone(data);
+        TaskManager._pendingRefresh = true;
+        return;
       }
-      this.render();
-      this.updateBatchBar();
+      TaskManager._pendingRefresh = false;
+      TaskManager._pendingSnapshot = null;
+      this.applyStorageUpdate(data);
     });
     chrome.storage.onChanged?.addListener((changes, area) => {
-      if (area === 'local' && !TaskManager._mutating) Diagnostics.run('刷新任务数据', async () => Storage.acceptData(await Storage.getAll()));
+      if (area !== 'local') return;
+      if (TaskManager._mutating) {
+        TaskManager._pendingExternalRefresh = true;
+        return;
+      }
+      Diagnostics.run('刷新任务数据', async () => Storage.acceptData(await Storage.getAll()));
     });
     const sortSelect = document.getElementById('sort-select');
     if (sortSelect) sortSelect.value = this.currentSortOrder;
@@ -74,6 +66,31 @@ const UI = {
         this.checkPendingTask();
       }
     });
+  },
+
+  applyStorageUpdate(data) {
+    if (!data) return;
+    TaskManager._tasks = Storage.clone(data.tasks || []);
+    TaskManager._baseline = Storage.clone(TaskManager._tasks);
+    const ids = new Set(TaskManager._tasks.map(t => t.id));
+    TaskManager._selectedTasks = new Set([...TaskManager._selectedTasks].filter(id => ids.has(id)));
+    if (typeof TimeTracking !== 'undefined') TimeTracking.activeTimers = data.activeTimers || {};
+    if (data.settings) {
+      this.currentSortOrder = data.settings.sortOrder || 'dueDate';
+      this.showCompleted = data.settings.showCompleted !== false;
+      if (data.settings.theme !== this.currentTheme) {
+        this.currentTheme = data.settings.theme;
+        this.applyTheme(this.currentTheme);
+      }
+      const sortSelect = document.getElementById('sort-select');
+      if (sortSelect) sortSelect.value = this.currentSortOrder;
+      const viewChanged = data.settings.defaultView !== this._settings.defaultView;
+      this._settings = data.settings;
+      ZoteroBridge.applyWindowLayout();
+      if (viewChanged) this.switchView(data.settings.defaultView);
+    }
+    this.render();
+    this.updateBatchBar();
   },
 
   // Check for pending task from context menu

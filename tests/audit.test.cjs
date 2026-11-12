@@ -232,9 +232,11 @@ test('settings omit unsupported controls, keep active options available, and sav
   win.Zotero = native.context.Zotero;
   win.eval(read('chrome/content/scripts/preferences.js'));
   win.Todolist_Preferences.init(win);
-  for (const key of ['academicPresets', 'enableSound', 'pomodoroFocus', 'pomodoroShortBreak', 'pomodoroLongBreak', 'autoArchiveDays']) {
+  for (const key of ['academicPresets', 'pomodoroFocus', 'pomodoroShortBreak', 'pomodoroLongBreak', 'autoArchiveDays']) {
     assert.equal(win.document.getElementById(`pref-${key}`), null, key);
   }
+  assert.equal(win.document.getElementById('pref-enableSound').disabled, false);
+  assert.equal(win.document.getElementById('pref-enableSound').checked, true);
   for (const key of ['subwindowCompactMode', 'locateOnTaskClick', 'dragDropFromLibrary', 'pdfReaderJumpPage']) {
     assert.equal(win.document.getElementById(`pref-${key}`).disabled, false, key);
   }
@@ -296,4 +298,82 @@ test('resetting preferences commits once, refreshes controls and rolls back on d
   assert.equal(win.document.getElementById('pref-defaultView').value, 'list');
   assert.equal(win.document.getElementById('pref-theme').value, 'zotero');
   assert.equal(reset.disabled, false);
+});
+
+test('preference parent switches govern child disabled states across init, change, observer, and reset, with Fluent option l10n ids', async t => {
+  const groups = ['window', 'view', 'literature', 'sync', 'tags', 'academic', 'reader', 'reminders'];
+  const dom = new JSDOM('<body><div id="todolist-preferences-pane"></div><p id="todolist-pref-status"></p>' +
+    groups.map(group => `<div id="todolist-pref-${group}"></div>`).join('') +
+    '<button id="todolist-btn-reset-defaults">Reset</button></body>', { runScripts: 'outside-only' });
+  t.after(() => dom.window.close());
+  const win = dom.window;
+  const native = makeHost();
+  const prefValues = new Map([
+    ['extensions.taskflow.enableItemPane', false],
+    ['extensions.taskflow.autoSyncChildNote', true],
+    ['extensions.taskflow.dailySummary', false]
+  ]);
+  const observers = new Map();
+  let nextObsId = 1;
+  native.context.Zotero.Prefs = {
+    get: key => prefValues.get(key),
+    set: (key, value) => prefValues.set(key, value),
+    registerObserver: (branch, cb) => {
+      const id = nextObsId++;
+      observers.set(id, { branch, cb });
+      return id;
+    },
+    unregisterObserver: id => observers.delete(id)
+  };
+  win.Zotero = native.context.Zotero;
+  win.confirm = () => true;
+  win.eval(read('chrome/content/scripts/preferences.js'));
+  win.TaskFlow_Preferences.init(win);
+
+  const doc = win.document;
+  // Init dependencies
+  assert.equal(doc.getElementById('pref-itemPaneShowProgressBar').disabled, true);
+  assert.equal(doc.getElementById('pref-itemPaneShowSubtasks').disabled, true);
+  assert.equal(doc.getElementById('pref-childNoteTitle').disabled, false);
+  assert.equal(doc.getElementById('pref-summaryTime').disabled, true);
+  // Fluent l10n ids on select options and status
+  assert.equal(doc.getElementById('todolist-pref-status').getAttribute('data-l10n-id'), 'taskflow-pref-status-loaded');
+  assert.equal(doc.querySelector('#pref-defaultView option[value="kanban"]').getAttribute('data-l10n-id'), 'taskflow-pref-opt-defaultView-kanban');
+
+  // Toggle parent switch on
+  const dailyCheck = doc.getElementById('pref-dailySummary');
+  dailyCheck.checked = true;
+  dailyCheck.dispatchEvent(new win.Event('change', { bubbles: true }));
+  await waitFor(() => prefValues.get('extensions.taskflow.dailySummary') === true);
+  assert.equal(doc.getElementById('pref-summaryTime').disabled, false);
+
+  // External Prefs observer updates controls and dependencies
+  assert.equal(observers.size, 1);
+  prefValues.set('extensions.taskflow.autoSyncChildNote', false);
+  for (const { cb } of observers.values()) cb();
+  assert.equal(doc.getElementById('pref-autoSyncChildNote').checked, false);
+  assert.equal(doc.getElementById('pref-childNoteTitle').disabled, true);
+
+  // Reset restores defaults and re-applies dependencies
+  doc.getElementById('todolist-btn-reset-defaults').click();
+  await waitFor(() => doc.getElementById('todolist-pref-status').getAttribute('data-l10n-id') === 'taskflow-pref-status-reset');
+  assert.equal(doc.getElementById('pref-itemPaneShowProgressBar').disabled, false);
+  assert.equal(doc.getElementById('pref-summaryTime').disabled, true);
+
+  // Unload unregisters Prefs observer
+  win.dispatchEvent(new win.Event('unload'));
+  assert.equal(observers.size, 0);
+});
+
+test('avgDaysEarly computes local calendar day delta without UTC midnight skew', async t => {
+  const p = await page(); t.after(p.close);
+  const completedNoon = new Date(2026, 4, 10, 14, 0, 0).toISOString();
+  await p.Storage.saveAll({
+    tasks: [
+      { id: 'd0', title: 'Same day', completed: true, dueDate: '2026-05-10', completedAt: completedNoon },
+      { id: 'd2', title: 'Two days early', completed: true, dueDate: '2026-05-12', completedAt: completedNoon }
+    ]
+  });
+  const stats = await p.DataManager.getStats();
+  assert.equal(stats.avgDaysEarly, 1);
 });

@@ -3,6 +3,7 @@
  */
 
 import { DEFAULTS, FIELDS, FieldItem, getPref, setPref, setPrefs } from './model';
+import { setStatusL10n, updateDependencies } from './dependencies';
 
 declare let Zotero: any;
 
@@ -21,21 +22,24 @@ export function reportOperationError(zot: any, doc: Document, action: string, er
   const host = zot?.TaskFlow || zot?.Todolist;
   Promise.resolve(host?.recordDiagnostic?.({ action, message: String(error?.message || error), stack: error?.stack })).catch(() => {});
   const status = getEl(doc, 'taskflow-pref-status');
-  if (status) status.textContent = `${action}失败：${String(error?.message || error)}`;
+  const message = String(error?.message || error);
+  setStatusL10n(status, 'taskflow-pref-status-op-error', `${action}失败：${message}`, { action, message });
 }
 
 export async function saveControl(doc: Document, key: string, control: any, value: any): Promise<void> {
   control.disabled = true;
+  updateDependencies(doc);
   try {
     await setPref(key, value);
     const status = getEl(doc, 'taskflow-pref-status');
-    if (status) status.textContent = '设置已保存。';
+    setStatusL10n(status, 'taskflow-pref-status-saved', '设置已保存。');
   } catch (error) {
     reportOperationError((doc.defaultView as any)?.Zotero, doc, '保存设置', error);
   } finally {
     control.disabled = false;
     if (control.type === 'checkbox') control.checked = Boolean(getPref(key));
     else control.value = String(getPref(key));
+    updateDependencies(doc);
   }
 }
 
@@ -87,6 +91,7 @@ export function renderGroup(doc: Document, containerId: string, items: FieldItem
         const option = doc.createElementNS(HTML, 'option') as HTMLOptionElement;
         option.value = optVal;
         option.textContent = optLabel;
+        option.setAttribute('data-l10n-id', `taskflow-pref-opt-${key}-${optVal}`);
         if (String(currentVal) === String(optVal)) {
           option.selected = true;
         }
@@ -126,6 +131,7 @@ export function renderGroup(doc: Document, containerId: string, items: FieldItem
       container.appendChild(row);
     }
   }
+  updateDependencies(doc);
 }
 
 export async function renderCustomTagsManager(doc: Document, win: any): Promise<void> {
@@ -312,15 +318,15 @@ export function bindMaintenanceActions(
   getEl(doc, 'taskflow-btn-clear-all')?.addEventListener('click', () =>
     runOperation('清空数据', async () => {
       if (!win.confirm('⚠️ 警告：确定要清空所有待办任务、历史记录与自定义标签吗？此操作无法撤销！')) {
-        if (statusEl) statusEl.textContent = '数据未清空。';
+        setStatusL10n(statusEl, 'taskflow-pref-status-unchanged', '数据未清空。');
         return;
       }
       const cleared = await zot?.TaskFlow?.clearAllData?.(win);
       if (cleared) {
         await renderCustomTagsManager(doc, win);
-        if (statusEl) statusEl.textContent = '所有数据已清空。';
-      } else if (statusEl) {
-        statusEl.textContent = '数据未清空。';
+        setStatusL10n(statusEl, 'taskflow-pref-status-cleared', '所有数据已清空。');
+      } else {
+        setStatusL10n(statusEl, 'taskflow-pref-status-unchanged', '数据未清空。');
       }
     })
   );
@@ -336,7 +342,8 @@ export function bindMaintenanceActions(
           for (const [group, fields] of Object.entries(FIELDS)) {
             renderGroup(doc, `todolist-pref-${group}`, fields);
           }
-          if (statusEl) statusEl.textContent = '默认设置已恢复。';
+          updateDependencies(doc);
+          setStatusL10n(statusEl, 'taskflow-pref-status-reset', '默认设置已恢复。');
         } finally {
           resetBtn.disabled = false;
         }

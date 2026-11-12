@@ -25,6 +25,11 @@ taskflow-item-pane-create = Add Task
 taskflow-item-pane-open-board = Open TaskFlow Workspace
 taskflow-item-pane-open-pdf = Open PDF Companion
 taskflow-item-pane-sync-note = 📝 Sync to Child Note
+taskflow-item-pane-btn-board = Task Board
+taskflow-item-pane-btn-subwindow = Companion Window
+taskflow-item-pane-btn-sync-note = Sync Child Note
+taskflow-item-pane-btn-open-pdf = Open PDF
+taskflow-item-pane-btn-milestones = Add Reading Milestones
 
 # Compatibility aliases
 todolist-menu-open = Zotero TaskFlow Academic Workspace
@@ -64,7 +69,13 @@ taskflow-toolbar-status =
 # Preferences
 taskflow-pref-title = Zotero TaskFlow
 taskflow-pref-status-loading = Loading settings…
+taskflow-pref-status-loaded = Settings loaded; changes are saved automatically.
 taskflow-pref-status-saved = Settings saved.
+taskflow-pref-status-reset = Default preferences restored.
+taskflow-pref-status-cleared = All task data cleared.
+taskflow-pref-status-unchanged = Data was not cleared.
+taskflow-pref-status-load-error = Failed to load settings: { $message }
+taskflow-pref-status-op-error = { $action } failed: { $message }
 
 # Card 1: Workspace & Primary Views
 taskflow-pref-card-view-title = 1. Workspace & Primary Views
@@ -157,11 +168,11 @@ taskflow-pref-release-info-footer =
     .aria-label = Release Information
 taskflow-pref-release-title = Release Information
 taskflow-pref-release-notes-label = Release Notes
-taskflow-pref-release-notes-content = Updated to v16.0.1 with task modal spatial and textarea optimizations, modular decomposition under 360 lines, and zero debt integrity.
+taskflow-pref-release-notes-content = Updated to v16.0.2 with Kanban explicit status consistency, ItemPane drag-and-drop & card reordering, active timer unload/shutdown settlement, cross-window refresh queuing, preference dependency sync, and local date alignment.
 taskflow-pref-build-date-label = Build Date
-taskflow-pref-build-date-value = 2026-11-10
+taskflow-pref-build-date-value = 2026-11-12
 taskflow-pref-package-download-label = Package Download
-taskflow-pref-package-download-link = Download TaskFlow v16.0.1
+taskflow-pref-package-download-link = Download TaskFlow v16.0.2
 taskflow-pref-repository-label = Source Repository
 taskflow-pref-repository-link = GitHub Repository
 
@@ -207,3 +218,39 @@ taskflow-pref-field-pomodoroLongBreak = Long Break Duration (minutes)
 taskflow-pref-field-dailySummary = Deliver daily morning summary notification of due reading tasks
 taskflow-pref-field-summaryTime = Daily morning summary delivery time
 taskflow-pref-field-autoArchiveDays = Auto-archive completed tasks after specified days (0 = never)
+
+# Dynamic Select Options Fluent Localization
+taskflow-pref-opt-windowMode-tab = 📑 Zotero Built-in Tab (Integrates into main tab bar)
+taskflow-pref-opt-windowMode-subwindow = 🗗 Companion Subwindow (460×760, floating alongside PDF reader)
+taskflow-pref-opt-windowMode-window = ⬚ Standalone Desktop Window (1120×760, full overview)
+taskflow-pref-opt-defaultView-list = 📋 Task List
+taskflow-pref-opt-defaultView-kanban = 🔄 Status Kanban
+taskflow-pref-opt-defaultView-calendar = 📅 Academic Calendar
+taskflow-pref-opt-defaultView-stats = 📊 Progress Analytics
+taskflow-pref-opt-theme-zotero = Follow Zotero Native Appearance
+taskflow-pref-opt-theme-light = ☀️ Light
+taskflow-pref-opt-theme-dark = 🌙 Dark
+taskflow-pref-opt-theme-auto = 🔄 Follow System
+taskflow-pref-opt-sortOrder-dueDate = By Due Date
+taskflow-pref-opt-sortOrder-priority = By Priority
+taskflow-pref-opt-sortOrder-created = By Created Time (Newest First)
+taskflow-pref-opt-sortOrder-alpha = By Title Alphabetically
+taskflow-pref-opt-defaultDueDays-3 = 3 Days
+taskflow-pref-opt-defaultDueDays-7 = 1 Week
+taskflow-pref-opt-defaultDueDays-14 = 2 Weeks
+taskflow-pref-opt-defaultDueDays-30 = 30 Days
+taskflow-pref-opt-readingProfile-general = General Reading (Background / Method / Results / Discussion)
+taskflow-pref-opt-readingProfile-theory = Theory Paper (Axioms / Lemmas / Proofs / Corollaries)
+taskflow-pref-opt-readingProfile-experiment = Empirical Paper (Benchmarks / Metrics / Ablation Study)
+taskflow-pref-opt-readingProfile-review = Survey Paper (Taxonomy / Evolution / Future Directions)
+taskflow-pref-opt-readingProfile-algorithm = Algorithm & Reproduction (Complexity / Pseudocode / Open Source)
+taskflow-pref-opt-defaultTaskType-literature_reading = 📖 Literature Reading & Study
+taskflow-pref-opt-defaultTaskType-writing = ✍️ Paper Writing & Revision
+taskflow-pref-opt-defaultTaskType-experiment = 🔬 Experiment Design & Reproduction
+taskflow-pref-opt-defaultTaskType-submission = ⏰ Conference / Journal Deadlines
+taskflow-pref-opt-defaultTaskType-peer_review = 📑 Peer Review & Refereeing
+taskflow-pref-opt-defaultPriority-high = High Priority (P1)
+taskflow-pref-opt-defaultPriority-medium = Medium Priority (P2)
+taskflow-pref-opt-defaultPriority-low = Low Priority (P3)
+taskflow-pref-opt-readerShortcutAction-create_instant = Create task immediately with selection & page
+taskflow-pref-opt-readerShortcutAction-open_modal = Open task edit dialog to customize

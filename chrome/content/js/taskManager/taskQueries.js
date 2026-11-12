@@ -169,12 +169,15 @@ const TaskQueries = {
   // Resolve a task's kanban column with explicit user drag priority
   getKanbanStatus(task) {
     if (!task) return 'todo';
-    if (task.completed) return 'done';
-    if (Utils.isOverdue(task.dueDate)) return 'overdue';
+    if (task.completed || task.status === 'done') return 'done';
 
     // 1. Explicit user status takes priority (from kanban drag or explicit setting)
-    if (task.status === 'in-progress') return 'in-progress';
-    if (task.status === 'todo') return 'todo';
+    if (task.statusExplicit && ['todo', 'in-progress', 'overdue'].includes(task.status)) {
+      return task.status;
+    }
+    if (task.status === 'in-progress' || task.status === 'overdue') {
+      return task.status;
+    }
 
     // 2. Inferred status from date and subtask progress
     if (Utils.isOverdue(task.dueDate)) {

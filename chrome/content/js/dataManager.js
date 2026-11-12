@@ -130,9 +130,11 @@ const DataManager = {
     let avgDaysEarly = 0;
     if (completedWithDate.length > 0) {
       const totalDaysEarly = completedWithDate.reduce((sum, t) => {
-        const due = new Date(t.dueDate);
-        const completedDate = new Date(t.completedAt);
-        return sum + (due - completedDate) / (1000 * 60 * 60 * 24);
+        const due = Utils.parseLocalDate(t.dueDate);
+        const completedRaw = new Date(t.completedAt);
+        if (!due || Number.isNaN(due.getTime()) || Number.isNaN(completedRaw.getTime())) return sum;
+        const completedDay = new Date(completedRaw.getFullYear(), completedRaw.getMonth(), completedRaw.getDate());
+        return sum + Math.round((due - completedDay) / (1000 * 60 * 60 * 24));
       }, 0);
       avgDaysEarly = Math.round(totalDaysEarly / completedWithDate.length * 10) / 10;
     }

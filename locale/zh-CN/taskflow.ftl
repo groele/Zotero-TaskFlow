@@ -25,6 +25,11 @@ taskflow-item-pane-create = 添加待办
 taskflow-item-pane-open-board = 打开 TaskFlow 看板
 taskflow-item-pane-open-pdf = 打开 PDF 伴读
 taskflow-item-pane-sync-note = 📝 同步为文献笔记
+taskflow-item-pane-btn-board = 待办看板
+taskflow-item-pane-btn-subwindow = 伴读窗口
+taskflow-item-pane-btn-sync-note = 同步子笔记
+taskflow-item-pane-btn-open-pdf = 打开 PDF
+taskflow-item-pane-btn-milestones = 追加精读清单
 
 # 兼容别名
 todolist-menu-open = Zotero TaskFlow 学术任务看板
@@ -64,7 +69,13 @@ taskflow-toolbar-status =
 # 偏好设置面板 (Preferences)
 taskflow-pref-title = Zotero TaskFlow
 taskflow-pref-status-loading = 正在加载设置项…
+taskflow-pref-status-loaded = 设置已加载；修改会自动保存。
 taskflow-pref-status-saved = 设置已保存。
+taskflow-pref-status-reset = 默认设置已恢复。
+taskflow-pref-status-cleared = 所有数据已清空。
+taskflow-pref-status-unchanged = 数据未清空。
+taskflow-pref-status-load-error = 加载设置时发生异常: { $message }
+taskflow-pref-status-op-error = { $action }失败：{ $message }
 
 # 卡片 1: 工作区与主视图形态
 taskflow-pref-card-view-title = 1. 工作区与主视图形态
@@ -157,11 +168,11 @@ taskflow-pref-release-info-footer =
     .aria-label = 版本信息
 taskflow-pref-release-title = 版本信息
 taskflow-pref-release-notes-label = 版本说明
-taskflow-pref-release-notes-content = 升级至 v16.0.1：全面优化任务模态框空间与多行输入框尺寸，彻底拆解巨型文件为高内聚子模块，消除架构欠账与语法隐患。
+taskflow-pref-release-notes-content = 升级至 v16.0.2：统一看板显式状态与逾期列规则、补全侧栏文献拖入与卡片排序、退出时自动结算计时器、修复跨窗口并发刷新同步、完善设置联动与提示音开关及本地日历日期计算。
 taskflow-pref-build-date-label = 构建日期
-taskflow-pref-build-date-value = 2026-11-10
+taskflow-pref-build-date-value = 2026-11-12
 taskflow-pref-package-download-label = 最新安装包
-taskflow-pref-package-download-link = 下载 TaskFlow v16.0.1
+taskflow-pref-package-download-link = 下载 TaskFlow v16.0.2
 taskflow-pref-repository-label = 项目仓库
 taskflow-pref-repository-link = GitHub 仓库
 
@@ -207,3 +218,39 @@ taskflow-pref-field-pomodoroLongBreak = 长休息时长 (分钟)
 taskflow-pref-field-dailySummary = 每天早晨定时推送学术待办晨报与到期提醒通知
 taskflow-pref-field-summaryTime = 学术晨报提醒推送时间
 taskflow-pref-field-autoArchiveDays = 自动归档或隐藏多少天前已完成的历史待办 (0 表示永不自动归档)
+
+# 动态下拉选项 Fluent 本地化 (Dynamic Select Options)
+taskflow-pref-opt-windowMode-tab = 📑 Zotero 内部选项卡 (无缝融入主界面标签栏)
+taskflow-pref-opt-windowMode-subwindow = 🗗 伴读紧凑子窗口 (460×760，轻量浮动，边看文献边做任务)
+taskflow-pref-opt-windowMode-window = ⬚ 独立桌面大窗口 (1120×760，大屏全景规划)
+taskflow-pref-opt-defaultView-list = 📋 任务清单列表
+taskflow-pref-opt-defaultView-kanban = 🔄 状态看板分栏
+taskflow-pref-opt-defaultView-calendar = 📅 学术日历视图
+taskflow-pref-opt-defaultView-stats = 📊 进度统计分析
+taskflow-pref-opt-theme-zotero = 跟随 Zotero 原生外观
+taskflow-pref-opt-theme-light = ☀️ 清爽明亮
+taskflow-pref-opt-theme-dark = 🌙 专注暗黑
+taskflow-pref-opt-theme-auto = 🔄 跟随操作系统
+taskflow-pref-opt-sortOrder-dueDate = 按截止日期先后
+taskflow-pref-opt-sortOrder-priority = 按重要紧急优先级
+taskflow-pref-opt-sortOrder-created = 按创建时间倒序
+taskflow-pref-opt-sortOrder-alpha = 按标题名称字母
+taskflow-pref-opt-defaultDueDays-3 = 3 天
+taskflow-pref-opt-defaultDueDays-7 = 一周
+taskflow-pref-opt-defaultDueDays-14 = 两周
+taskflow-pref-opt-defaultDueDays-30 = 30 天
+taskflow-pref-opt-readingProfile-general = 通用研读 (背景/方法/结果/讨论)
+taskflow-pref-opt-readingProfile-theory = 理论论文 (公理/引理/定理证明/推论)
+taskflow-pref-opt-readingProfile-experiment = 实验论文 (基准数据集/指标/消融实验)
+taskflow-pref-opt-readingProfile-review = 综述论文 (分类体系/演进脉络/未来方向)
+taskflow-pref-opt-readingProfile-algorithm = 算法与复现 (复杂度/伪代码/开源验证)
+taskflow-pref-opt-defaultTaskType-literature_reading = 📖 论文研读与精读
+taskflow-pref-opt-defaultTaskType-writing = ✍️ 论文写作与修改
+taskflow-pref-opt-defaultTaskType-experiment = 🔬 实验设计与代码复现
+taskflow-pref-opt-defaultTaskType-submission = ⏰ 会议期刊截稿 DDL
+taskflow-pref-opt-defaultTaskType-peer_review = 📑 审稿与评阅
+taskflow-pref-opt-defaultPriority-high = 高优先级 (P1)
+taskflow-pref-opt-defaultPriority-medium = 中优先级 (P2)
+taskflow-pref-opt-defaultPriority-low = 低优先级 (P3)
+taskflow-pref-opt-readerShortcutAction-create_instant = 提取选中文字与页码后立即创建待办
+taskflow-pref-opt-readerShortcutAction-open_modal = 打开待办编辑框以便调整

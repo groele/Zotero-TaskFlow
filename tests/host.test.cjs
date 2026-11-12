@@ -238,3 +238,34 @@ test('preference changes persist only their own key and log async host failures'
   assert.equal(preferences.get('extensions.taskflow.childNoteIncludeQuotes'), false);
   assert.match(win.document.getElementById('todolist-pref-status').textContent, /保存设置失败/);
 });
+
+test('cross-window updates arriving during TaskManager._mutating are queued and applied once mutation ends', async t => {
+  const native = makeHost();
+  const a = await page('index.html', null, native.host); t.after(a.close);
+  const b = await page('sidepanel.html', null, native.host); t.after(b.close);
+
+  const origSaveTasks = a.Storage.saveTasks.bind(a.Storage);
+  let releaseMutation;
+  const mutationBlocked = new Promise(resolve => { releaseMutation = resolve; });
+  let firstCall = true;
+  a.Storage.saveTasks = async (...args) => {
+    if (firstCall) {
+      firstCall = false;
+      await mutationBlocked;
+    }
+    return origSaveTasks(...args);
+  };
+
+  const pendingAdd = a.TaskManager.addTask({ title: 'Window A Task' });
+  await waitFor(() => a.TaskManager._mutating === true);
+  await b.TaskManager.addTask({ title: 'Window B Concurrent Task' });
+  await native.host.saveData({ settings: { theme: 'dark', sortOrder: 'priority' } });
+  assert.equal(a.TaskManager._pendingRefresh, true);
+
+  releaseMutation();
+  await pendingAdd;
+  await waitFor(() => a.TaskManager.getTasks().some(t => t.title === 'Window B Concurrent Task'));
+  assert.equal(a.UI.currentTheme, 'dark');
+  assert.equal(a.UI.currentSortOrder, 'priority');
+  assert.ok(a.doc.body.textContent.includes('Window B Concurrent Task'));
+});

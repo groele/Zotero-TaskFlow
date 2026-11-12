@@ -31,6 +31,9 @@
       await Advanced.init();
       await Tags.init();
       await TimeTracking.init();
+      window.addEventListener('unload', () => {
+        TimeTracking.settleAllTimers?.().catch?.(() => {});
+      }, { once: true });
       await Modal.init();
       Calendar.init();
       await UI.init();

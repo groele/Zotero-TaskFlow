@@ -1,5 +1,16 @@
 # Changelog
 
+## 16.0.2 - 2026-11-12
+
+### Bug Fixes & Reliability
+- Unified Kanban column status resolution (`getKanbanStatus`) and move persistence (`moveTaskToKanbanColumn`) via explicit `statusExplicit` tracking so dragging overdue tasks to `todo`/`in-progress` or non-overdue tasks to `overdue` stays consistent while preserving `dueDate`.
+- Wired ItemPane drop handling (`setupPaneDragAndDrop`) to accept Zotero library item drags (`zotero/item` / `text/x-zotero-item`) via `host.addDroppedLiteratureTasks` and added card drag-and-drop order persistence (`makeTaskCardDraggable`).
+- Settled running `activeTimers` into `timeEntries` on workspace `unload` (`TimeTracking.settleAllTimers`) and `TaskFlowHost.shutdown` (`settleActiveTimers`) via `TaskRules.applyTimerAction({ type: 'stop_all' })` to prevent offline wall-clock accumulation.
+- Surfaced `zoteroLinkStatus` (`missing`/`trashed`) warning badges inside Kanban cards (`createKanbanTask`), matching list cards.
+- Queued cross-window updates (`_pendingRefresh` / `_pendingSnapshot` / `_pendingExternalRefresh`) received while `TaskManager._mutating` is active and applied them cleanly once the mutation finishes.
+- Exposed `enableSound` preference control in Reminders group, added parent-child `updateDependencies()` sync across init/change/Prefs observer/reset in `src/preferences/dependencies.ts`, and attached symmetric Fluent `data-l10n-id` attributes on dynamic `<option>` elements, status messages, and ItemPane action buttons.
+- Fixed local calendar date parsing in `DataManager.getStatistics` (`avgDaysEarly`) and `TaskFlowStorage.exportData` export filenames.
+
 ## 16.0.1 - 2026-11-10
 
 ### User Experience & Spatial Optimization

@@ -116,6 +116,9 @@ export class TaskFlowHost extends TaskFlowWindow {
     async shutdown() {
       this._shuttingDown = true;
 
+      try { await this.settleActiveTimers?.(); } catch (_) {}
+      try { await this._saveQueue; } catch (_) {}
+
       // Close open standalone companion windows
       if (typeof Services !== 'undefined' && Services.wm) {
         const standaloneWindows = [];

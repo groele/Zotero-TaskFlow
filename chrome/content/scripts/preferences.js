@@ -139,6 +139,7 @@
       ["autoTagFromItem", "从文献新建待办时自动继承文献在 Zotero 的标签", "check"]
     ],
     reminders: [
+      ["enableSound", "启用任务到期与专注完成提示音", "check"],
       ["dailySummary", "启用每日学术待办晨报提醒", "check"],
       ["summaryTime", "每日晨报提醒时间", "time"]
     ]
@@ -207,6 +208,95 @@
     return setPrefs({ [key]: val });
   }
 
+  // src/preferences/dependencies.ts
+  var DEPENDENCY_RULES = {
+    enableItemPane: ["itemPaneShowProgressBar", "itemPaneShowSubtasks"],
+    autoSyncChildNote: [
+      "childNoteTitle",
+      "childNoteIncludeSubtasks",
+      "childNoteIncludeQuotes",
+      "childNoteAutoUpdateOnSubtask"
+    ],
+    autoTagOnCreate: ["tagForPending"],
+    autoTagOnComplete: ["tagForCompleted"],
+    dailySummary: ["summaryTime"]
+  };
+  function setStatusL10n(statusEl, l10nId, fallbackText, l10nArgs) {
+    if (!statusEl) return;
+    if (l10nId) {
+      statusEl.setAttribute("data-l10n-id", l10nId);
+      if (l10nArgs) {
+        statusEl.setAttribute("data-l10n-args", JSON.stringify(l10nArgs));
+      } else {
+        statusEl.removeAttribute("data-l10n-args");
+      }
+    } else {
+      statusEl.removeAttribute("data-l10n-id");
+      statusEl.removeAttribute("data-l10n-args");
+    }
+    statusEl.textContent = fallbackText;
+  }
+  function updateDependencies(doc) {
+    if (!doc) return;
+    for (const [parentKey, children] of Object.entries(DEPENDENCY_RULES)) {
+      const parentCtrl = doc.getElementById(`pref-${parentKey}`);
+      const enabled = parentCtrl ? Boolean(parentCtrl.checked) : Boolean(getPref(parentKey));
+      for (const childKey of children) {
+        const childCtrl = doc.getElementById(`pref-${childKey}`);
+        if (!childCtrl) continue;
+        childCtrl.disabled = !enabled;
+        const row = childCtrl.closest(".todolist-check-row, .todolist-control-row");
+        if (row) {
+          row.classList.toggle("is-disabled", !enabled);
+          row.setAttribute("aria-disabled", String(!enabled));
+        }
+      }
+    }
+  }
+  function syncControlsFromPrefs(doc) {
+    if (!doc) return;
+    for (const fields of Object.values(FIELDS)) {
+      for (const [key, , type] of fields) {
+        const ctrl = doc.getElementById(`pref-${key}`);
+        if (!ctrl) continue;
+        const val = getPref(key);
+        if (type === "check") ctrl.checked = Boolean(val);
+        else ctrl.value = String(val ?? "");
+      }
+    }
+    updateDependencies(doc);
+  }
+  function registerPreferenceObserver(doc, win) {
+    const zot = win?.Zotero || doc.defaultView?.Zotero;
+    if (typeof zot?.Prefs?.registerObserver !== "function") return;
+    const hostWin = win || doc.defaultView;
+    if (hostWin?.__taskflowPrefObserverToken != null) return;
+    try {
+      const token = zot.Prefs.registerObserver(
+        PREFIX,
+        () => {
+          syncControlsFromPrefs(doc);
+        },
+        true
+      );
+      if (hostWin && token !== void 0) {
+        hostWin.__taskflowPrefObserverToken = token;
+        hostWin.addEventListener?.(
+          "unload",
+          () => {
+            try {
+              zot.Prefs.unregisterObserver?.(token);
+            } catch (_) {
+            }
+            if (hostWin) hostWin.__taskflowPrefObserverToken = void 0;
+          },
+          { once: true }
+        );
+      }
+    } catch (_) {
+    }
+  }
+
   // src/preferences/uiBinding.ts
   var HTML = "http://www.w3.org/1999/xhtml";
   function getEl(doc, id) {
@@ -218,20 +308,23 @@
     Promise.resolve(host?.recordDiagnostic?.({ action, message: String(error?.message || error), stack: error?.stack })).catch(() => {
     });
     const status = getEl(doc, "taskflow-pref-status");
-    if (status) status.textContent = `${action}失败：${String(error?.message || error)}`;
+    const message = String(error?.message || error);
+    setStatusL10n(status, "taskflow-pref-status-op-error", `${action}失败：${message}`, { action, message });
   }
   async function saveControl(doc, key, control, value) {
     control.disabled = true;
+    updateDependencies(doc);
     try {
       await setPref(key, value);
       const status = getEl(doc, "taskflow-pref-status");
-      if (status) status.textContent = "设置已保存。";
+      setStatusL10n(status, "taskflow-pref-status-saved", "设置已保存。");
     } catch (error) {
       reportOperationError(doc.defaultView?.Zotero, doc, "保存设置", error);
     } finally {
       control.disabled = false;
       if (control.type === "checkbox") control.checked = Boolean(getPref(key));
       else control.value = String(getPref(key));
+      updateDependencies(doc);
     }
   }
   function renderGroup(doc, containerId, items) {
@@ -274,6 +367,7 @@
           const option = doc.createElementNS(HTML, "option");
           option.value = optVal;
           option.textContent = optLabel;
+          option.setAttribute("data-l10n-id", `taskflow-pref-opt-${key}-${optVal}`);
           if (String(currentVal) === String(optVal)) {
             option.selected = true;
           }
@@ -307,6 +401,7 @@
         container.appendChild(row);
       }
     }
+    updateDependencies(doc);
   }
   async function renderCustomTagsManager(doc, win) {
     const listEl = getEl(doc, "taskflow-pref-tags-list");
@@ -469,15 +564,15 @@
       "click",
       () => runOperation("清空数据", async () => {
         if (!win.confirm("⚠️ 警告：确定要清空所有待办任务、历史记录与自定义标签吗？此操作无法撤销！")) {
-          if (statusEl) statusEl.textContent = "数据未清空。";
+          setStatusL10n(statusEl, "taskflow-pref-status-unchanged", "数据未清空。");
           return;
         }
         const cleared = await zot?.TaskFlow?.clearAllData?.(win);
         if (cleared) {
           await renderCustomTagsManager(doc, win);
-          if (statusEl) statusEl.textContent = "所有数据已清空。";
-        } else if (statusEl) {
-          statusEl.textContent = "数据未清空。";
+          setStatusL10n(statusEl, "taskflow-pref-status-cleared", "所有数据已清空。");
+        } else {
+          setStatusL10n(statusEl, "taskflow-pref-status-unchanged", "数据未清空。");
         }
       })
     );
@@ -493,7 +588,8 @@
             for (const [group, fields] of Object.entries(FIELDS)) {
               renderGroup(doc, `todolist-pref-${group}`, fields);
             }
-            if (statusEl) statusEl.textContent = "默认设置已恢复。";
+            updateDependencies(doc);
+            setStatusL10n(statusEl, "taskflow-pref-status-reset", "默认设置已恢复。");
           } finally {
             resetBtn.disabled = false;
           }
@@ -532,12 +628,14 @@
           renderCustomTagsManager(doc, win);
           bindTagPaletteAndCreator(doc, win);
           bindMaintenanceActions(doc, win, runOperation);
-          if (statusEl) {
-            statusEl.textContent = "设置已加载；修改会自动保存。";
-          }
+          updateDependencies(doc);
+          registerPreferenceObserver(doc, win);
+          setStatusL10n(statusEl, "taskflow-pref-status-loaded", "设置已加载；修改会自动保存。");
         } catch (err) {
           if (statusEl) {
-            statusEl.textContent = "加载设置时发生异常: " + err.message;
+            setStatusL10n(statusEl, "taskflow-pref-status-load-error", "加载设置时发生异常: " + err.message, {
+              message: String(err?.message || err)
+            });
             statusEl.className = "todolist-pref-status todolist-pref-error";
           }
         }

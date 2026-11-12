@@ -154,15 +154,22 @@ test('quick date pills persist ISO dates and kanban quick-add honors the chosen 
   assert(p.TaskManager.getTasks().find(t => t.title === '完成列新任务').completed);
 });
 
-test('kanban drag preserves due dates; list reorder computes indices after removing source', async t => {
+test('kanban drag prioritizes explicit status over due date and persists overdue moves cleanly; list reorder computes indices after removing source', async t => {
   const p = await page(); t.after(p.close);
   const a = await p.TaskManager.addTask({ title: 'A', dueDate: '2020-01-01' });
   const b = await p.TaskManager.addTask({ title: 'B' });
   const c = await p.TaskManager.addTask({ title: 'C' });
+  assert.equal(p.TaskManager.getKanbanStatus(p.TaskManager.getTaskById(a.id)), 'overdue');
   await p.TaskManager.moveTaskToKanbanColumn(a.id, 'in-progress');
   assert.equal(p.TaskManager.getTaskById(a.id).dueDate, '2020-01-01');
-  assert.equal(p.TaskManager.getKanbanStatus(p.TaskManager.getTaskById(a.id)), 'overdue');
-  assert.equal(await p.TaskManager.moveTaskToKanbanColumn(b.id, 'overdue'), null);
+  assert.equal(p.TaskManager.getKanbanStatus(p.TaskManager.getTaskById(a.id)), 'in-progress');
+  await p.TaskManager.moveTaskToKanbanColumn(a.id, 'todo');
+  assert.equal(p.TaskManager.getTaskById(a.id).dueDate, '2020-01-01');
+  assert.equal(p.TaskManager.getKanbanStatus(p.TaskManager.getTaskById(a.id)), 'todo');
+  const movedB = await p.TaskManager.moveTaskToKanbanColumn(b.id, 'overdue');
+  assert.equal(movedB.status, 'overdue');
+  assert.equal(p.TaskManager.getKanbanStatus(p.TaskManager.getTaskById(b.id)), 'overdue');
+  assert.ok(p.TaskManager.getKanbanTasks().overdue.some(t => t.id === b.id));
   await p.TaskManager.moveTaskInList(a.id, c.id, false, null);
   assert.deepEqual(copy(p.TaskManager.getTasks()).map(t => t.title), ['B', 'A', 'C']);
   await p.TaskManager.moveTaskInList(a.id, c.id, true, null);
@@ -273,4 +280,14 @@ test('failed custom tag/template writes roll back their in-memory state', async 
   await assert.rejects(p.Templates.addCustomTemplate('模板', { title: 'Task' }), /disk full/);
   assert.equal(p.Tags.customTags.length, 0);
   assert.equal(p.Templates.customTemplates.length, 0);
+});
+
+test('kanban cards surface missing and trashed zoteroLinkStatus warnings matching list cards', async t => {
+  const p = await page(); t.after(p.close);
+  await p.TaskManager.addTask({ title: 'Trashed Link', zoteroItemKey: 'KEY1', zoteroLinkStatus: 'trashed' });
+  await p.TaskManager.addTask({ title: 'Missing Link', zoteroItemKey: 'KEY2', zoteroLinkStatus: 'missing' });
+  await p.TaskManager.addTask({ title: 'Active Link', zoteroItemKey: 'KEY3', zoteroLinkStatus: 'active' });
+  await p.UI.switchView('kanban');
+  const warnings = [...p.doc.querySelectorAll('#kanban-view .zotero-link-warning')].map(el => el.textContent);
+  assert.deepEqual(warnings, ['文献在回收站', '文献已删除']);
 });

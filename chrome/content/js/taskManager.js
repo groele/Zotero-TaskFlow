@@ -59,7 +59,8 @@ const TaskManager = {
       priority: taskData.priority || Storage.getPreference('defaultPriority', 'medium'),
       category: String(taskData.category || '').trim(),
       completed: Boolean(taskData.completed),
-      status: taskData.completed ? 'done' : (taskData.status === 'in-progress' ? 'in-progress' : 'todo'),
+      status: taskData.completed ? 'done' : (['todo', 'in-progress', 'overdue'].includes(taskData.status) ? taskData.status : 'todo'),
+      statusExplicit: taskData.completed ? false : Boolean(taskData.statusExplicit || taskData.status === 'in-progress' || taskData.status === 'overdue'),
       createdAt: new Date().toISOString(),
       completedAt: taskData.completed ? new Date().toISOString() : null,
       subtasks: taskData.subtasks || [],
@@ -130,6 +131,7 @@ const TaskManager = {
     if (changes.dueDate !== undefined && this._tasks[index].status === 'overdue') {
       if (!Utils.isOverdue(changes.dueDate)) {
         changes.status = 'todo';
+        changes.statusExplicit = false;
       }
     }
 
@@ -141,7 +143,10 @@ const TaskManager = {
       this.setCompletion(task, task.completed);
     } else if (changes.status !== undefined) {
       this.setCompletion(task, changes.status === 'done');
-      if (!task.completed && changes.status === 'in-progress') task.status = 'in-progress';
+      if (!task.completed && ['todo', 'in-progress', 'overdue'].includes(changes.status)) {
+        task.status = changes.status;
+        task.statusExplicit = changes.statusExplicit !== undefined ? Boolean(changes.statusExplicit) : true;
+      }
     }
     this.appendRecurringTask(task);
     await Storage.saveTasks(this._tasks, this._baseline);
@@ -231,9 +236,29 @@ for (const name of ['addTask', 'updateTask', 'deleteTask', 'undoDelete', 'toggle
         }
       } finally {
         this._mutating = false;
+        const shouldExternalRefresh = this._pendingExternalRefresh;
+        const shouldPendingRefresh = this._pendingRefresh;
+        const pendingSnapshot = this._pendingSnapshot;
+        this._pendingExternalRefresh = false;
+        this._pendingRefresh = false;
+        this._pendingSnapshot = null;
+
         if (typeof UI !== 'undefined' && UI._storageReady) {
-          try { UI.render(); }
-          catch (error) { Diagnostics.report('刷新任务列表', error); }
+          try {
+            if (shouldPendingRefresh && pendingSnapshot && typeof UI.applyStorageUpdate === 'function') {
+              const cacheRev = Storage._zoteroCache?.revision || 0;
+              const snapRev = pendingSnapshot.revision || 0;
+              const latest = cacheRev > snapRev ? Storage._zoteroCache : pendingSnapshot;
+              UI.applyStorageUpdate(latest);
+            } else {
+              UI.render();
+            }
+          } catch (error) {
+            Diagnostics.report('刷新任务列表', error);
+          }
+        }
+        if (shouldExternalRefresh) {
+          Diagnostics.run('刷新任务数据', async () => Storage.acceptData(await Storage.getAll()));
         }
       }
     };

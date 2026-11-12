@@ -223,6 +223,9 @@ const UIViews = {
     }
 
     const isAcademic = !!(task.zoteroItemKey || (task.academicType && task.academicType !== 'general'));
+    const linkWarningHtml = ['missing', 'trashed'].includes(task.zoteroLinkStatus)
+      ? `<span class="zotero-link-warning">${task.zoteroLinkStatus === 'trashed' ? '文献在回收站' : '文献已删除'}</span>`
+      : '';
 
     return `
       <div class="kanban-task ${task.completed ? 'completed' : ''} ${isAcademic ? 'task-academic-kanban' : ''}" data-task-id="${Utils.escapeHtml(task.id)}">
@@ -234,6 +237,7 @@ const UIViews = {
           <span class="kanban-task-priority ${Utils.escapeHtml(task.priority)}" title="优先级: ${Utils.escapeHtml(task.priority)}"></span>
           ${task.dueDate ? `<span class="kanban-task-date ${Utils.isOverdue(task.dueDate) && !task.completed ? 'overdue' : ''}">${Utils.formatRelativeDate(task.dueDate)}</span>` : ''}
           ${task.zoteroPage ? `<span class="kanban-task-page" data-task-id="${Utils.escapeHtml(task.id)}" title="点击直接打开关联 PDF 并跳转至第 ${Utils.escapeHtml(task.zoteroPage)} 页">📖 P.${Utils.escapeHtml(task.zoteroPage)}</span>` : ''}
+          ${linkWarningHtml}
         </div>
         ${progressHtml}
         <div class="kanban-task-actions">

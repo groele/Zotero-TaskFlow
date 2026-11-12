@@ -228,3 +228,26 @@ test('subtask note opt-out still updates explicit completion transitions', async
   await native.host.syncLinkedTaskChanges({ tasks: [task] }, { tasks: [{ ...task, completed: true }] });
   assert.equal(notes, 1);
 });
+
+test('window unload and TaskFlowHost.shutdown settle running activeTimers into timeEntries and clear activeTimers', async t => {
+  const { waitFor } = require('./helpers.cjs');
+  const native = makeHost({
+    tasks: [{ id: 't_shutdown', title: 'Host Shutdown Timer', completed: false }],
+    settings: {},
+    activeTimers: { t_shutdown: { sessionId: 's1', startTime: Date.now() - 5000, elapsed: 0 } }
+  });
+  await native.host.shutdown();
+  assert.deepEqual(native.disk().activeTimers, {});
+  assert.equal(native.disk().tasks[0].timeEntries.length, 1);
+  assert.ok(native.disk().tasks[0].timeEntries[0].duration >= 4000);
+
+  const p = await page('index.html', null, native.host); t.after(p.close);
+  const task = await p.TaskManager.addTask({ title: 'Unload Timer' });
+  await p.TimeTracking.startTimer(task.id);
+  assert.ok(native.disk().activeTimers[task.id]);
+  p.win.dispatchEvent(new p.win.Event('unload'));
+  await waitFor(() => Object.keys(native.disk().activeTimers || {}).length === 0);
+  const savedTask = native.disk().tasks.find(item => item.id === task.id);
+  assert.equal(savedTask.timeEntries.length, 1);
+  assert.ok(savedTask.timeEntries[0].duration >= 0);
+});

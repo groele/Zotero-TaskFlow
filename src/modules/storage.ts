@@ -20,7 +20,8 @@ async exportData(format = 'json') {
           txt: '导出 TaskFlow 纯文本清单'
         };
         fp.init(win, titleMap[format] || '导出 TaskFlow 数据', Ci.nsIFilePicker.modeSave);
-        const dateStr = new Date().toISOString().slice(0, 10);
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         if (format === 'json') {
           fp.appendFilter('JSON Files (*.json)', '*.json');
           fp.defaultString = `taskflow-backup-${dateStr}.json`;

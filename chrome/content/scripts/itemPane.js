@@ -250,6 +250,7 @@
     const btnOpenBoard = createEl(doc, "button", "td-action-btn td-action-workspace", "待办看板");
     btnOpenBoard.type = "button";
     btnOpenBoard.title = "在主标签页中打开 TaskFlow 任务看板";
+    btnOpenBoard.setAttribute("data-l10n-id", "taskflow-item-pane-btn-board");
     btnOpenBoard.addEventListener("click", () => {
       host.openTaskFlow({ mode: "filter_item", itemKey: target.key }, Zotero.getMainWindow?.());
     });
@@ -257,6 +258,7 @@
     const btnSubwin = createEl(doc, "button", "td-action-btn td-action-workspace", "伴读窗口");
     btnSubwin.type = "button";
     btnSubwin.title = "打开轻量伴读窗口，适合与 PDF 左右分屏对照";
+    btnSubwin.setAttribute("data-l10n-id", "taskflow-item-pane-btn-subwindow");
     btnSubwin.addEventListener("click", () => {
       host.openStandaloneWindow({ mode: "filter_item", itemKey: target.key }, Zotero.getMainWindow?.(), "subwindow");
     });
@@ -264,6 +266,7 @@
     const btnSyncNote = createEl(doc, "button", "td-action-btn td-action-notes", "同步子笔记");
     btnSyncNote.type = "button";
     btnSyncNote.title = "将本文献的所有研读待办同步导出为文献子笔记 (云端)";
+    btnSyncNote.setAttribute("data-l10n-id", "taskflow-item-pane-btn-sync-note");
     const isReadOnly = typeof target.isEditable === "function" && !target.isEditable();
     if (isReadOnly) {
       btnSyncNote.disabled = true;
@@ -284,6 +287,7 @@
       const btnPdf = createEl(doc, "button", "td-action-btn td-action-btn-pdf", "打开 PDF");
       btnPdf.type = "button";
       btnPdf.title = "在 Zotero 内置阅读器中打开该文献的 PDF 全文";
+      btnPdf.setAttribute("data-l10n-id", "taskflow-item-pane-btn-open-pdf");
       btnPdf.addEventListener("click", () => {
         host.openPdfAttachment(target);
       });
@@ -298,6 +302,7 @@
       );
       btnMilestones.type = "button";
       btnMilestones.title = "按当前研读模板为本文献追加生成 5 项精读里程碑待办";
+      btnMilestones.setAttribute("data-l10n-id", "taskflow-item-pane-btn-milestones");
       btnMilestones.addEventListener("click", async () => {
         await host.createReadingMilestones(target, Zotero.getMainWindow?.(), profileSelect.value);
         state?.refresh?.();
@@ -308,9 +313,53 @@
   }
 
   // src/itemPane/dragDrop.ts
+  var draggingTaskId = null;
+  function getTransferTypes(dt) {
+    try {
+      return Array.from(dt?.types || []);
+    } catch {
+      return [];
+    }
+  }
+  function parseDroppedItemIds(dt) {
+    if (!dt) return [];
+    const taskDrag = dt.getData?.("text/x-taskflow-id");
+    if (taskDrag) return [];
+    const raw = (dt.getData?.("zotero/item") || dt.getData?.("text/x-zotero-item") || "").trim();
+    const fallback = !raw ? (dt.getData?.("text/plain") || "").trim() : "";
+    const payload = raw || (/^\d+(?:,\d+)*$/.test(fallback) ? fallback : "");
+    if (!/^\d+(?:,\d+)*$/.test(payload)) return [];
+    return payload.split(",").map((v) => Number(v)).filter((id) => Number.isSafeInteger(id) && id > 0);
+  }
+  function acceptsLibraryDrop(e, target, host) {
+    if (!target || draggingTaskId) return false;
+    if (host?.getPref?.("dragDropFromLibrary", true) === false) return false;
+    const types = getTransferTypes(e.dataTransfer);
+    return types.includes("zotero/item") || types.includes("text/x-zotero-item");
+  }
+  async function reorderTasksInHost(host, sourceTaskId, targetTaskId, insertAfter, state) {
+    if (!host?.loadData || !host?.saveData || !sourceTaskId || !targetTaskId || sourceTaskId === targetTaskId) {
+      return false;
+    }
+    const data = await host.loadData();
+    const tasks = Array.isArray(data?.tasks) ? [...data.tasks].sort((a, b) => (a.order || 0) - (b.order || 0)) : [];
+    const sourceIdx = tasks.findIndex((t) => t.id === sourceTaskId);
+    if (sourceIdx === -1) return false;
+    if (!tasks.some((t) => t.id === targetTaskId)) return false;
+    const [moved] = tasks.splice(sourceIdx, 1);
+    const targetIdx = tasks.findIndex((t) => t.id === targetTaskId);
+    if (targetIdx === -1) return false;
+    tasks.splice(insertAfter ? targetIdx + 1 : targetIdx, 0, moved);
+    const updated = tasks.map((task, idx) => ({ task, order: idx })).filter(({ task, order }) => task.order !== order).map(({ task, order }) => ({ id: task.id, changes: { order } }));
+    if (updated.length > 0) {
+      await host.saveData({ taskChanges: { updated } });
+    }
+    await state?.refresh?.();
+    return updated.length > 0;
+  }
   function setupPaneDragAndDrop(wrapper, target, host, state) {
     wrapper.addEventListener("dragover", (e) => {
-      if (!target) return;
+      if (!acceptsLibraryDrop(e, target, host)) return;
       if (e.dataTransfer) {
         e.dataTransfer.dropEffect = "copy";
         e.preventDefault();
@@ -324,22 +373,31 @@
     });
     wrapper.addEventListener("drop", async (e) => {
       wrapper.classList.remove("td-drag-target-active");
-      if (!target) return;
+      if (!target || draggingTaskId) return;
+      if (host?.getPref?.("dragDropFromLibrary", true) === false) return;
+      const itemIDs = parseDroppedItemIds(e.dataTransfer);
+      if (!itemIDs.length) return;
       e.preventDefault();
       e.stopPropagation();
       try {
-        const zoteroItems = e.dataTransfer?.getData("text/x-zotero-item") || e.dataTransfer?.getData("text/plain");
-        if (zoteroItems) {
-          await state?.refresh?.();
+        if (typeof host?.addDroppedLiteratureTasks === "function") {
+          const result = await host.addDroppedLiteratureTasks(itemIDs);
+          host.showNotice?.(
+            "创建文献研读待办",
+            `新增 ${result.added} 篇，跳过已有 ${result.skipped} 篇` + (result.ignored ? `，忽略 ${result.ignored} 个无效项` : "")
+          );
         }
+        await state?.refresh?.();
       } catch (err) {
-        Zotero.logError?.("[TaskFlow] ItemPane drop handling error: " + err);
+        Zotero?.logError?.("[TaskFlow] ItemPane drop handling error: " + err);
+        host?.showNotice?.("创建文献研读待办失败", String(err?.message || err));
       }
     });
   }
-  function makeTaskCardDraggable(card, task, host) {
+  function makeTaskCardDraggable(card, task, host, state) {
     card.setAttribute("draggable", "true");
     card.addEventListener("dragstart", (e) => {
+      draggingTaskId = task.id;
       if (e.dataTransfer) {
         e.dataTransfer.setData("text/x-taskflow-id", task.id);
         e.dataTransfer.setData("text/plain", task.title || "");
@@ -347,8 +405,43 @@
       }
       card.classList.add("is-dragging");
     });
+    card.addEventListener("dragover", (e) => {
+      const types = getTransferTypes(e.dataTransfer);
+      const sourceId = e.dataTransfer?.getData?.("text/x-taskflow-id") || draggingTaskId;
+      if (!sourceId && !types.includes("text/x-taskflow-id")) return;
+      if (sourceId === task.id) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+      card.classList.add("td-card-drag-over");
+    });
+    card.addEventListener("dragleave", (e) => {
+      if (!card.contains(e.relatedTarget)) {
+        card.classList.remove("td-card-drag-over");
+      }
+    });
+    card.addEventListener("drop", async (e) => {
+      card.classList.remove("td-card-drag-over");
+      const sourceId = e.dataTransfer?.getData?.("text/x-taskflow-id") || draggingTaskId;
+      if (!sourceId || sourceId === task.id) return;
+      e.preventDefault();
+      e.stopPropagation();
+      draggingTaskId = null;
+      try {
+        const rect = card.getBoundingClientRect?.();
+        const insertAfter = Boolean(rect && rect.height > 0 && e.clientY > rect.top + rect.height / 2);
+        await reorderTasksInHost(host, sourceId, task.id, insertAfter, state);
+      } catch (err) {
+        Zotero?.logError?.("[TaskFlow] ItemPane card reorder error: " + err);
+        host?.showNotice?.("调整任务顺序失败", String(err?.message || err));
+      }
+    });
     card.addEventListener("dragend", () => {
+      draggingTaskId = null;
       card.classList.remove("is-dragging");
+      card.ownerDocument?.querySelectorAll(".td-card-drag-over").forEach((el) => {
+        el.classList.remove("td-card-drag-over");
+      });
     });
   }
 
@@ -752,7 +845,7 @@
     for (const t of tasks) {
       const taskCard = createEl(doc, "div", `td-task-card ${t.completed ? "is-completed" : ""}`);
       taskCard.dataset.taskId = t.id;
-      makeTaskCardDraggable(taskCard, t, host);
+      makeTaskCardDraggable(taskCard, t, host, state);
       attachTaskCardContextMenu(taskCard, t, host, state);
       const row = createEl(doc, "div", "td-task-row");
       const prio = t.priority || "medium";
