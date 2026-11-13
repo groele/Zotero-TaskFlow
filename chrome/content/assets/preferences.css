@@ -36,14 +36,16 @@
 
 .todolist-pref-header {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
   margin: 0 0 14px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--flow-pref-divider);
 }
 
 .todolist-pref-title-row { display: flex; align-items: center; gap: 8px; }
+.todolist-pref-brand-icon { width: 20px; height: 20px; flex: 0 0 auto; }
 .todolist-pref-title-row h1 {
   margin: 0;
   color: var(--flow-pref-text);
@@ -65,7 +67,7 @@
 }
 
 .todolist-pref-status {
-  margin: 0 0 12px;
+  margin: 0;
   color: var(--flow-pref-muted);
   font-size: 13px;
   overflow-wrap: anywhere;

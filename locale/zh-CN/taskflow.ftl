@@ -168,11 +168,11 @@ taskflow-pref-release-info-footer =
     .aria-label = 版本信息
 taskflow-pref-release-title = 版本信息
 taskflow-pref-release-notes-label = 版本说明
-taskflow-pref-release-notes-content = 升级至 v16.0.2：统一看板显式状态与逾期列规则、补全侧栏文献拖入与卡片排序、退出时自动结算计时器、修复跨窗口并发刷新同步、完善设置联动与提示音开关及本地日历日期计算。
+taskflow-pref-release-notes-content = 升级至 v16.0.3：统一看板显式状态与逾期列规则、补全侧栏文献拖入与卡片排序、退出时自动结算计时器、修复跨窗口并发刷新同步、完善设置联动与提示音开关及本地日历日期计算。
 taskflow-pref-build-date-label = 构建日期
 taskflow-pref-build-date-value = 2026-11-12
 taskflow-pref-package-download-label = 最新安装包
-taskflow-pref-package-download-link = 下载 TaskFlow v16.0.2
+taskflow-pref-package-download-link = 下载 TaskFlow v16.0.3
 taskflow-pref-repository-label = 项目仓库
 taskflow-pref-repository-link = GitHub 仓库
 

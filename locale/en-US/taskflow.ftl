@@ -168,11 +168,11 @@ taskflow-pref-release-info-footer =
     .aria-label = Release Information
 taskflow-pref-release-title = Release Information
 taskflow-pref-release-notes-label = Release Notes
-taskflow-pref-release-notes-content = Updated to v16.0.2 with Kanban explicit status consistency, ItemPane drag-and-drop & card reordering, active timer unload/shutdown settlement, cross-window refresh queuing, preference dependency sync, and local date alignment.
+taskflow-pref-release-notes-content = Updated to v16.0.3 with Kanban explicit status consistency, ItemPane drag-and-drop & card reordering, active timer unload/shutdown settlement, cross-window refresh queuing, preference dependency sync, and local date alignment.
 taskflow-pref-build-date-label = Build Date
 taskflow-pref-build-date-value = 2026-11-12
 taskflow-pref-package-download-label = Package Download
-taskflow-pref-package-download-link = Download TaskFlow v16.0.2
+taskflow-pref-package-download-link = Download TaskFlow v16.0.3
 taskflow-pref-repository-label = Source Repository
 taskflow-pref-repository-link = GitHub Repository
 
