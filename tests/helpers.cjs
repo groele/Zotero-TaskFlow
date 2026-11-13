@@ -44,7 +44,7 @@ function makeHost(seed = { tasks: [], settings: {}, customTags: [] }) {
   let readError = null;
   let pane;
   const logs = [];
-  const context = vm.createContext({ console, setTimeout, clearTimeout, Promise,
+  const context = vm.createContext({ console, setTimeout, clearTimeout, Promise, AbortController, AbortSignal,
     PathUtils: { join: (...parts) => parts.join('/'), profileDir: '/test' },
     IOUtils: { exists: async () => true,
       readUTF8: async file => { if (file.endsWith('taskflow-debug.json') || file.endsWith('todolist-debug.json')) return JSON.stringify(diagnostics); if (readError) throw readError; return JSON.stringify(disk); },

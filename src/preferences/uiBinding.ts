@@ -2,14 +2,32 @@
  * Zotero TaskFlow - Preferences UI Binding & Interactive Controls
  */
 
-import { DEFAULTS, FIELDS, FieldItem, getPref, setPref, setPrefs } from './model';
+import { addAbortableListener, createScopedController, linkParentSignal } from '../lifecycle';
+import { DEFAULTS, FIELDS, getPref, setPref, setPrefs } from './model';
+import type { FieldItem } from './model';
 import { setStatusL10n, updateDependencies } from './dependencies';
-
-declare let Zotero: any;
+import { renderCustomTagsManager } from './tagsBinding';
 
 export const HTML = 'http://www.w3.org/1999/xhtml';
 
-export function getEl(doc: Document, id: string): any {
+const containerControllers = new WeakMap<Element, AbortController>();
+
+function resetContainerSignal(container: Element, doc: Document, parentSignal?: AbortSignal): AbortSignal {
+  containerControllers.get(container)?.abort();
+  const next = createScopedController(doc.defaultView);
+  linkParentSignal(next, parentSignal);
+  containerControllers.set(container, next);
+  return next.signal;
+}
+
+export function getZoteroInstance(
+  win: Window | null | undefined,
+  doc: Document
+): (typeof Zotero) | null {
+  return win?.Zotero || doc.defaultView?.Zotero || (typeof Zotero !== 'undefined' ? Zotero : null);
+}
+
+export function getEl(doc: Document, id: string): HTMLElement | null {
   return (
     doc.getElementById(id) ||
     doc.getElementById(id.replace('taskflow-', 'todolist-')) ||
@@ -17,16 +35,24 @@ export function getEl(doc: Document, id: string): any {
   );
 }
 
-export function reportOperationError(zot: any, doc: Document, action: string, error: any): void {
+export function reportOperationError(
+  zot: (typeof Zotero) | null | undefined,
+  doc: Document,
+  action: string,
+  error: unknown
+): void {
   zot?.logError?.('[TaskFlow] ' + action + ': ' + error);
   const host = zot?.TaskFlow || zot?.Todolist;
-  Promise.resolve(host?.recordDiagnostic?.({ action, message: String(error?.message || error), stack: error?.stack })).catch(() => {});
+  const message = error instanceof Error ? error.message : String(error);
+  const stack = error instanceof Error ? error.stack : undefined;
+  Promise.resolve(host?.recordDiagnostic?.({ action, message, stack })).catch(() => {});
   const status = getEl(doc, 'taskflow-pref-status');
-  const message = String(error?.message || error);
   setStatusL10n(status, 'taskflow-pref-status-op-error', `${action}失败：${message}`, { action, message });
 }
 
-export async function saveControl(doc: Document, key: string, control: any, value: any): Promise<void> {
+type PrefControl = HTMLInputElement | HTMLSelectElement;
+
+export async function saveControl(doc: Document, key: string, control: PrefControl, value: unknown): Promise<void> {
   control.disabled = true;
   updateDependencies(doc);
   try {
@@ -34,23 +60,31 @@ export async function saveControl(doc: Document, key: string, control: any, valu
     const status = getEl(doc, 'taskflow-pref-status');
     setStatusL10n(status, 'taskflow-pref-status-saved', '设置已保存。');
   } catch (error) {
-    reportOperationError((doc.defaultView as any)?.Zotero, doc, '保存设置', error);
+    reportOperationError(doc.defaultView?.Zotero, doc, '保存设置', error);
   } finally {
     control.disabled = false;
-    if (control.type === 'checkbox') control.checked = Boolean(getPref(key));
-    else control.value = String(getPref(key));
+    if (control instanceof HTMLInputElement && control.type === 'checkbox') {
+      control.checked = Boolean(getPref(key));
+    } else {
+      control.value = String(getPref(key));
+    }
     updateDependencies(doc);
   }
 }
 
-export function renderGroup(doc: Document, containerId: string, items: FieldItem[]): void {
+export function renderGroup(
+  doc: Document,
+  containerId: string,
+  items: FieldItem[],
+  parentSignal?: AbortSignal
+): void {
   const container = doc.getElementById(containerId);
   if (!container) return;
+  const signal = resetContainerSignal(container, doc, parentSignal);
   container.replaceChildren();
 
   for (const [key, labelText, type, options] of items) {
     const currentVal = getPref(key);
-    const visibleLabel = labelText;
 
     if (type === 'check') {
       const row = doc.createElementNS(HTML, 'label');
@@ -61,13 +95,19 @@ export function renderGroup(doc: Document, containerId: string, items: FieldItem
       input.id = `pref-${key}`;
       input.className = 'todolist-control';
       input.checked = Boolean(currentVal);
-      input.addEventListener('change', () => {
-        saveControl(doc, key, input, input.checked);
-      });
+      addAbortableListener(
+        input,
+        'change',
+        () => {
+          void saveControl(doc, key, input, input.checked);
+        },
+        undefined,
+        signal
+      );
 
       const span = doc.createElementNS(HTML, 'span');
       span.className = 'todolist-control-label';
-      span.textContent = visibleLabel;
+      span.textContent = labelText;
       span.setAttribute('data-l10n-id', `taskflow-pref-field-${key}`);
 
       row.appendChild(input);
@@ -79,7 +119,7 @@ export function renderGroup(doc: Document, containerId: string, items: FieldItem
 
       const label = doc.createElementNS(HTML, 'label') as HTMLLabelElement;
       label.className = 'todolist-control-label';
-      label.textContent = visibleLabel;
+      label.textContent = labelText;
       label.htmlFor = `pref-${key}`;
       label.setAttribute('data-l10n-id', `taskflow-pref-field-${key}`);
 
@@ -92,16 +132,20 @@ export function renderGroup(doc: Document, containerId: string, items: FieldItem
         option.value = optVal;
         option.textContent = optLabel;
         option.setAttribute('data-l10n-id', `taskflow-pref-opt-${key}-${optVal}`);
-        if (String(currentVal) === String(optVal)) {
-          option.selected = true;
-        }
+        if (String(currentVal) === String(optVal)) option.selected = true;
         select.appendChild(option);
       }
 
-      select.addEventListener('change', () => {
-        const typedVal = typeof DEFAULTS[key] === 'number' ? Number(select.value) : select.value;
-        saveControl(doc, key, select, typedVal);
-      });
+      addAbortableListener(
+        select,
+        'change',
+        () => {
+          const typedVal = typeof DEFAULTS[key] === 'number' ? Number(select.value) : select.value;
+          void saveControl(doc, key, select, typedVal);
+        },
+        undefined,
+        signal
+      );
 
       row.appendChild(label);
       row.appendChild(select);
@@ -112,7 +156,7 @@ export function renderGroup(doc: Document, containerId: string, items: FieldItem
 
       const label = doc.createElementNS(HTML, 'label') as HTMLLabelElement;
       label.className = 'todolist-control-label';
-      label.textContent = visibleLabel;
+      label.textContent = labelText;
       label.htmlFor = `pref-${key}`;
       label.setAttribute('data-l10n-id', `taskflow-pref-field-${key}`);
 
@@ -122,9 +166,15 @@ export function renderGroup(doc: Document, containerId: string, items: FieldItem
       input.className = 'todolist-control';
       input.value = String(currentVal ?? '');
 
-      input.addEventListener('change', () => {
-        saveControl(doc, key, input, input.value.trim());
-      });
+      addAbortableListener(
+        input,
+        'change',
+        () => {
+          void saveControl(doc, key, input, input.value.trim());
+        },
+        undefined,
+        signal
+      );
 
       row.appendChild(label);
       row.appendChild(input);
@@ -134,220 +184,93 @@ export function renderGroup(doc: Document, containerId: string, items: FieldItem
   updateDependencies(doc);
 }
 
-export async function renderCustomTagsManager(doc: Document, win: any): Promise<void> {
-  const listEl = getEl(doc, 'taskflow-pref-tags-list');
-  if (!listEl) return;
-  listEl.replaceChildren();
-
-  const zot = win?.Zotero || (doc.defaultView as any)?.Zotero || (typeof Zotero !== 'undefined' ? Zotero : null);
-  if (!zot?.TaskFlow?.loadData) {
-    const emptySpan = doc.createElementNS(HTML, 'span') as HTMLSpanElement;
-    emptySpan.textContent = '暂无自定义标签 (Zotero 就绪后即可管理)';
-    emptySpan.style.color = 'var(--flow-pref-muted)';
-    emptySpan.style.fontSize = '13px';
-    listEl.appendChild(emptySpan);
-    return;
-  }
-
-  try {
-    const data = await zot.TaskFlow.loadData();
-    const tags = data.customTags || [];
-
-    if (tags.length === 0) {
-      const emptySpan = doc.createElementNS(HTML, 'span') as HTMLSpanElement;
-      emptySpan.textContent = '暂无自定义标签，可在下方输入名称并选择颜色创建。';
-      emptySpan.style.color = 'var(--flow-pref-muted)';
-      emptySpan.style.fontSize = '13px';
-      listEl.appendChild(emptySpan);
-      return;
-    }
-
-    for (const tag of tags) {
-      const badge = doc.createElementNS(HTML, 'span') as HTMLSpanElement;
-      badge.className = 'todolist-pref-tag-badge';
-      badge.style.backgroundColor = (tag.color || '#3b82f6') + '20';
-      badge.style.color = 'var(--flow-pref-text)';
-      badge.style.borderColor = (tag.color || '#3b82f6') + '40';
-
-      const label = doc.createElementNS(HTML, 'span');
-      label.textContent = `${tag.icon || '🏷️'} ${tag.name}`;
-      badge.appendChild(label);
-
-      const delBtn = doc.createElementNS(HTML, 'button') as HTMLButtonElement;
-      delBtn.type = 'button';
-      delBtn.className = 'todolist-pref-tag-delete';
-      delBtn.textContent = '×';
-      delBtn.title = `删除标签 "${tag.name}"`;
-      delBtn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        if (delBtn.disabled) return;
-        delBtn.disabled = true;
-        try {
-          await zot.TaskFlow.saveData({ customTagChanges: { deleted: [tag.id] } });
-          await renderCustomTagsManager(doc, win);
-        } catch (error) {
-          reportOperationError(zot, doc, '删除自定义标签', error);
-        } finally {
-          delBtn.disabled = false;
-        }
-      });
-      badge.appendChild(delBtn);
-
-      listEl.appendChild(badge);
-    }
-  } catch (err) {
-    reportOperationError(zot, doc, '刷新自定义标签', err);
-  }
-}
-
-export function bindTagPaletteAndCreator(doc: Document, win: any): void {
-  let activeTagColor = '#ef4444';
-  const palette = getEl(doc, 'taskflow-tag-color-palette');
-  if (palette) {
-    const dots = palette.querySelectorAll('.todolist-pref-color-dot');
-    dots.forEach((dot: any) => {
-      dot.addEventListener('click', () => {
-        dots.forEach((d: any) => {
-          d.classList.remove('active');
-          d.setAttribute('aria-pressed', 'false');
-        });
-        dot.classList.add('active');
-        dot.setAttribute('aria-pressed', 'true');
-        activeTagColor = dot.getAttribute('data-color') || '#ef4444';
-      });
-    });
-  }
-
-  const addTagBtn = getEl(doc, 'taskflow-btn-add-tag');
-  const tagInput = getEl(doc, 'taskflow-new-tag-name');
-  let addingTag = false;
-
-  const handleAddTag = async () => {
-    if (addingTag) return;
-    const name = tagInput?.value?.trim();
-    if (!name) return;
-    const zot = win?.Zotero || (doc.defaultView as any)?.Zotero || (typeof Zotero !== 'undefined' ? Zotero : null);
-    if (!zot?.TaskFlow && !zot?.Todolist) return;
-
-    addingTag = true;
-    if (addTagBtn) addTagBtn.disabled = true;
-    if (tagInput) tagInput.disabled = true;
-    try {
-      const tag = {
-        id: 'tag_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-        name: name,
-        color: activeTagColor || '#3b82f6',
-        icon: '🏷️'
-      };
-      await zot.TaskFlow.saveData({ customTagChanges: { added: [tag] } });
-      if (tagInput) tagInput.value = '';
-      await renderCustomTagsManager(doc, win);
-    } catch (error) {
-      reportOperationError(zot, doc, '添加自定义标签', error);
-    } finally {
-      addingTag = false;
-      if (addTagBtn) addTagBtn.disabled = false;
-      if (tagInput) tagInput.disabled = false;
-    }
-  };
-
-  addTagBtn?.addEventListener('click', handleAddTag);
-  tagInput?.addEventListener('keydown', (e: KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleAddTag();
-    }
-  });
-}
-
 export function bindMaintenanceActions(
   doc: Document,
-  win: any,
-  runOperation: (action: string, callback: () => any) => Promise<any>
+  win: Window | null | undefined,
+  runOperation: (action: string, callback: () => unknown) => Promise<unknown>,
+  signal?: AbortSignal
 ): void {
   const statusEl = getEl(doc, 'taskflow-pref-status');
-  const zot = win?.Zotero || (doc.defaultView as any)?.Zotero || (typeof Zotero !== 'undefined' ? Zotero : null);
+  const zot = getZoteroInstance(win, doc);
+  const host = zot?.TaskFlow || zot?.Todolist;
+  const confirmHost = win || doc.defaultView;
 
-  getEl(doc, 'taskflow-btn-export-json')?.addEventListener('click', () => {
-    runOperation('导出 JSON', () => zot?.TaskFlow?.exportData?.('json'));
-  });
+  const bindClick = (id: string, handler: () => void): void => {
+    addAbortableListener(getEl(doc, id), 'click', handler, undefined, signal);
+  };
 
-  getEl(doc, 'taskflow-btn-export-csv')?.addEventListener('click', () => {
-    runOperation('导出 CSV', () => zot?.TaskFlow?.exportData?.('csv'));
-  });
+  bindClick('taskflow-btn-export-json', () => void runOperation('导出 JSON', () => host?.exportData?.('json')));
+  bindClick('taskflow-btn-export-csv', () => void runOperation('导出 CSV', () => host?.exportData?.('csv')));
+  bindClick('taskflow-btn-export-markdown', () => void runOperation('导出 Markdown', () => host?.exportData?.('markdown')));
+  bindClick('taskflow-btn-export-txt', () => void runOperation('导出 TXT', () => host?.exportData?.('txt')));
 
-  getEl(doc, 'taskflow-btn-export-markdown')?.addEventListener('click', () => {
-    runOperation('导出 Markdown', () => zot?.TaskFlow?.exportData?.('markdown'));
-  });
-
-  getEl(doc, 'taskflow-btn-export-txt')?.addEventListener('click', () => {
-    runOperation('导出 TXT', () => zot?.TaskFlow?.exportData?.('txt'));
-  });
-
-  getEl(doc, 'taskflow-btn-import-file')?.addEventListener('click', () =>
-    runOperation('导入数据', async () => {
-      const mode = getEl(doc, 'taskflow-import-mode')?.value || 'merge';
+  bindClick('taskflow-btn-import-file', () => {
+    void runOperation('导入数据', async () => {
+      const modeSelect = getEl(doc, 'taskflow-import-mode') as HTMLSelectElement | null;
+      const rawMode = modeSelect?.value || 'merge';
+      const mode = rawMode === 'overwrite' ? 'replace' : rawMode;
       const status = getEl(doc, 'taskflow-import-status');
       if (status) {
         status.textContent = '正在准备导入…';
         status.style.color = 'var(--flow-pref-muted)';
       }
-      const res = await zot?.TaskFlow?.importDataFile?.(mode, win);
+      const res = await host?.importDataFile?.(mode, win);
       if (res?.success) {
         if (status) status.textContent = `✅ 成功导入 ${res.count} 个任务与标签数据！`;
-        renderCustomTagsManager(doc, win);
+        await renderCustomTagsManager(doc, win, signal);
       } else if (res?.error) {
         if (status) {
           status.textContent = `❌ 导入失败：${res.error}`;
           status.style.color = 'var(--flow-pref-danger)';
         }
-      } else {
-        if (status) status.textContent = '';
+      } else if (status) {
+        status.textContent = '';
       }
-    })
-  );
-
-  getEl(doc, 'taskflow-btn-print')?.addEventListener('click', () => {
-    runOperation('打印任务', () => zot?.TaskFlow?.printTasks?.(win));
+    });
   });
 
-  getEl(doc, 'taskflow-btn-copy-summary')?.addEventListener('click', () => {
-    runOperation('复制任务摘要', () => zot?.TaskFlow?.copyTasksSummary?.(win));
-  });
+  bindClick('taskflow-btn-print', () => void runOperation('打印任务', () => host?.printTasks?.(win)));
+  bindClick('taskflow-btn-copy-summary', () => void runOperation('复制任务摘要', () => host?.copyTasksSummary?.(win)));
 
-  getEl(doc, 'taskflow-btn-clear-all')?.addEventListener('click', () =>
-    runOperation('清空数据', async () => {
-      if (!win.confirm('⚠️ 警告：确定要清空所有待办任务、历史记录与自定义标签吗？此操作无法撤销！')) {
+  bindClick('taskflow-btn-clear-all', () => {
+    void runOperation('清空数据', async () => {
+      if (!confirmHost?.confirm?.('⚠️ 警告：确定要清空所有待办任务、历史记录与自定义标签吗？此操作无法撤销！')) {
         setStatusL10n(statusEl, 'taskflow-pref-status-unchanged', '数据未清空。');
         return;
       }
-      const cleared = await zot?.TaskFlow?.clearAllData?.(win);
+      const cleared = await host?.clearAllData?.(win);
       if (cleared) {
-        await renderCustomTagsManager(doc, win);
+        await renderCustomTagsManager(doc, win, signal);
         setStatusL10n(statusEl, 'taskflow-pref-status-cleared', '所有数据已清空。');
       } else {
         setStatusL10n(statusEl, 'taskflow-pref-status-unchanged', '数据未清空。');
       }
-    })
-  );
+    });
+  });
 
-  const resetBtn = getEl(doc, 'taskflow-btn-reset-defaults');
+  const resetBtn = getEl(doc, 'taskflow-btn-reset-defaults') as HTMLButtonElement | null;
   if (resetBtn) {
-    resetBtn.addEventListener('click', () =>
-      runOperation('恢复默认设置', async () => {
-        if (resetBtn.disabled || !win.confirm('确定要恢复 TaskFlow 默认设置吗？')) return;
-        resetBtn.disabled = true;
-        try {
-          await setPrefs(DEFAULTS);
-          for (const [group, fields] of Object.entries(FIELDS)) {
-            renderGroup(doc, `todolist-pref-${group}`, fields);
+    addAbortableListener(
+      resetBtn,
+      'click',
+      () => {
+        void runOperation('恢复默认设置', async () => {
+          if (resetBtn.disabled || !confirmHost?.confirm?.('确定要恢复 TaskFlow 默认设置吗？')) return;
+          resetBtn.disabled = true;
+          try {
+            await setPrefs(DEFAULTS);
+            for (const [group, fields] of Object.entries(FIELDS)) {
+              renderGroup(doc, `todolist-pref-${group}`, fields, signal);
+            }
+            updateDependencies(doc);
+            setStatusL10n(statusEl, 'taskflow-pref-status-reset', '默认设置已恢复。');
+          } finally {
+            resetBtn.disabled = false;
           }
-          updateDependencies(doc);
-          setStatusL10n(statusEl, 'taskflow-pref-status-reset', '默认设置已恢复。');
-        } finally {
-          resetBtn.disabled = false;
-        }
-      })
+        });
+      },
+      undefined,
+      signal
     );
   }
 }

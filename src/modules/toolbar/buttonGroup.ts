@@ -4,30 +4,30 @@
  */
 
 import { CHROME_ROOT } from '../../config';
+import { addAbortableListener, setAbortableTimeout } from '../../lifecycle';
+import type { TaskFlowData, TaskFlowHostLike, TaskRecord, ToolbarRetryState } from '../../types/models';
 
-declare let Services: any;
-declare let Zotero: any;
-
-export const isTodolistButton = (button: any): boolean =>
+export const isTodolistButton = (button: Element): boolean =>
   button.id === 'todolist-toolbar-button' ||
   (button.getAttribute('label') === 'TaskFlow' &&
     String(button.getAttribute('image') || '').includes('/icons/taskflow.svg'));
 
-export function updateToolbarBadge(host: any, doc: Document, data: any): void {
+export function updateToolbarBadge(host: TaskFlowHostLike, doc: Document, data: TaskFlowData | null | undefined): void {
   const button = doc?.getElementById('todolist-toolbar-button');
   if (!button) return;
   const today = host.localDateString(new Date());
-  const tasks = (data?.tasks || []).filter((task: any) => task);
-  const overdue = tasks.filter((task: any) => !task.completed && task.dueDate && task.dueDate < today).length;
-  const count = tasks.filter((task: any) => {
+  const tasks = (data?.tasks || []).filter((task): task is TaskRecord => Boolean(task));
+  const overdue = tasks.filter((task) => !task.completed && task.dueDate && task.dueDate < today).length;
+  const count = tasks.filter((task) => {
     if (task.completed || task.status === 'done' || (task.dueDate && task.dueDate < today)) return false;
     return !task.status || task.status === 'todo' || task.status === 'in-progress';
   }).length;
   const showBadge = Boolean(host.getPref('toolbarShowBadge', true));
   if (showBadge && count) button.setAttribute('data-taskflow-count', count > 99 ? '99+' : String(count));
   else button.removeAttribute('data-taskflow-count');
-  if ((doc as any).l10n?.setAttributes) {
-    (doc as any).l10n.setAttributes(button, 'taskflow-toolbar-status', { count, overdue });
+  const l10n = (doc as Document & { l10n?: { setAttributes?: (el: Element, id: string, args: Record<string, number>) => void } }).l10n;
+  if (l10n?.setAttributes) {
+    l10n.setAttributes(button, 'taskflow-toolbar-status', { count, overdue });
   } else {
     const text = `TaskFlow: ${count} to do or in progress (excluding overdue), ${overdue} overdue (Ctrl+Alt+T)`;
     button.setAttribute('tooltiptext', text);
@@ -35,12 +35,12 @@ export function updateToolbarBadge(host: any, doc: Document, data: any): void {
   }
 }
 
-export function updateAllToolbarBadges(host: any): void {
+export function updateAllToolbarBadges(host: TaskFlowHostLike): void {
   try {
     if (typeof Services !== 'undefined' && Services.wm?.getEnumerator) {
       const windows = Services.wm.getEnumerator('navigator:browser');
       while (windows.hasMoreElements()) {
-        const win = windows.getNext();
+        const win = windows.getNext() as Window;
         if (win?.document && !win.closed) {
           updateToolbarBadge(host, win.document, host._cachedData);
         }
@@ -50,13 +50,14 @@ export function updateAllToolbarBadges(host: any): void {
 }
 
 export function injectToolbarButton(
-  host: any,
-  window: any,
-  windowElements: any[],
-  retryCount = 0,
-  retryState: { cancelled: boolean; timers: Set<any> } = { cancelled: false, timers: new Set() }
+  host: TaskFlowHostLike,
+  window: Window,
+  windowElements: Array<{ remove?: () => void }>,
+  retryCount: number = 0,
+  retryState: ToolbarRetryState = { cancelled: false, timers: new Set() },
+  signal?: AbortSignal
 ): void {
-  if (retryState.cancelled) return;
+  if (retryState.cancelled || signal?.aborted) return;
   if (!window || !window.document) return;
   const doc = window.document;
 
@@ -76,21 +77,27 @@ export function injectToolbarButton(
 
   if (!toolbar) {
     if (retryCount < 10) {
-      const timer = window.setTimeout(() => {
-        retryState.timers.delete(timer);
-        if (!retryState.cancelled) injectToolbarButton(host, window, windowElements, retryCount + 1, retryState);
-      }, 300);
-      retryState.timers.add(timer);
+      setAbortableTimeout(
+        () => {
+          if (!retryState.cancelled && !signal?.aborted) {
+            injectToolbarButton(host, window, windowElements, retryCount + 1, retryState, signal);
+          }
+        },
+        300,
+        signal,
+        window,
+        retryState.timers
+      );
     }
     return;
   }
 
   const existingButtons = Array.from(toolbar.querySelectorAll('toolbarbutton')).filter(isTodolistButton);
-  let btn: any = existingButtons[0] || null;
+  let btn: Element | null = existingButtons[0] || null;
   if (existingButtons.length > 1) {
     for (let i = 1; i < existingButtons.length; i++) {
       try {
-        (existingButtons[i] as any).remove();
+        existingButtons[i].remove();
       } catch (_) {}
     }
   }
@@ -107,16 +114,14 @@ export function injectToolbarButton(
       'cursor: pointer; margin: 0 3px; display: inline-flex; align-items: center; justify-content: center;'
     );
 
-    const trigger = (e: any) => {
-      if (e) {
-        e.preventDefault?.();
-        e.stopPropagation?.();
-      }
+    const trigger = (e: Event): void => {
+      e.preventDefault?.();
+      e.stopPropagation?.();
       host.triggerTaskFlowOpen(window);
     };
 
-    btn.addEventListener('command', trigger);
-    btn.addEventListener('mouseenter', () => updateToolbarBadge(host, doc, host._cachedData));
+    addAbortableListener(btn, 'command', trigger, undefined, signal);
+    addAbortableListener(btn, 'mouseenter', () => updateToolbarBadge(host, doc, host._cachedData), undefined, signal);
   }
   btn.setAttribute('image', `${CHROME_ROOT}icons/taskflow.svg`);
   if (!doc.getElementById('taskflow-toolbar-style')) {
@@ -143,7 +148,7 @@ export function injectToolbarButton(
     windowElements.push(style);
   }
 
-  const toolbarChildren: any[] = Array.from(toolbar.children || []);
+  const toolbarChildren: Element[] = Array.from(toolbar.children || []);
   const flexibleSpacerIndex = toolbarChildren.findIndex((child) => {
     const tag = String(child.localName || child.tagName || '').toLowerCase();
     return (
@@ -159,17 +164,19 @@ export function injectToolbarButton(
   const leadingActionItems =
     flexibleSpacerIndex >= 0 ? toolbarChildren.slice(0, flexibleSpacerIndex) : toolbarChildren;
 
-  const toolbarButtons = leadingActionItems.filter(
-    (child) =>
+  const toolbarButtons = leadingActionItems.filter((child) => {
+    const hiddenProp = (child as Element & { hidden?: boolean }).hidden;
+    return (
       String(child.localName || child.tagName || '').toLowerCase() === 'toolbarbutton' &&
       !isTodolistButton(child) &&
-      !child.hidden &&
+      !hiddenProp &&
       child.getAttribute('hidden') !== 'true' &&
       child.getAttribute('collapsed') !== 'true'
-  );
+    );
+  });
 
-  const anchor: any =
-    (toolbarButtons.reverse() as any[]).find((child: any) => {
+  const anchor: Element | null =
+    toolbarButtons.reverse().find((child) => {
       try {
         const style = window.getComputedStyle(child);
         return style.display !== 'none' && style.visibility !== 'collapse';
@@ -200,32 +207,37 @@ export function injectToolbarButton(
     windowElements.push(btn);
   }
   updateToolbarBadge(host, doc, host._cachedData);
+  const currentBtn = btn;
   if (!host._cachedData) {
     host
       .loadData()
-      .then((data: any) => {
-        if (!retryState.cancelled && !window.closed && doc.getElementById(btn.id) === btn) {
+      .then((data: TaskFlowData) => {
+        if (!retryState.cancelled && !signal?.aborted && !window.closed && doc.getElementById(currentBtn.id) === currentBtn) {
           updateToolbarBadge(host, doc, host._cachedData || data);
         }
       })
-      .catch((error: any) => Zotero.logError?.('[TaskFlow] Toolbar task count failed: ' + error));
+      .catch((error: unknown) => Zotero.logError?.('[TaskFlow] Toolbar task count failed: ' + error));
   }
 
   if (retryCount === 0) {
     const delays = [400, 1200, 2500];
     delays.forEach((d) => {
-      const timer = window.setTimeout(() => {
-        retryState.timers.delete(timer);
-        if (!retryState.cancelled) {
-          repositionToolbarButton(host, window);
-        }
-      }, d);
-      retryState.timers.add(timer);
+      setAbortableTimeout(
+        () => {
+          if (!retryState.cancelled && !signal?.aborted) {
+            repositionToolbarButton(host, window);
+          }
+        },
+        d,
+        signal,
+        window,
+        retryState.timers
+      );
     });
   }
 }
 
-export function repositionToolbarButton(host: any, window: any): void {
+export function repositionToolbarButton(host: TaskFlowHostLike, window: Window): void {
   if (!window || !window.document) return;
   if (!host.isMainWindow(window)) {
     try {
@@ -238,7 +250,7 @@ export function repositionToolbarButton(host: any, window: any): void {
   if (!btn) return;
 
   const toolbar =
-    btn.parentNode ||
+    (btn.parentNode as Element | null) ||
     doc.getElementById('zotero-items-toolbar') ||
     doc.getElementById('zotero-item-toolbar') ||
     doc.getElementById('zotero-tb') ||
@@ -246,8 +258,8 @@ export function repositionToolbarButton(host: any, window: any): void {
     (doc.getElementById('zotero-pane')?.querySelector('toolbar') || null);
   if (!toolbar) return;
 
-  const isBtn = (b: any) => b.id === 'todolist-toolbar-button';
-  const toolbarChildren: any[] = Array.from(toolbar.children || []);
+  const isBtn = (b: Element): boolean => b.id === 'todolist-toolbar-button';
+  const toolbarChildren: Element[] = Array.from(toolbar.children || []);
   const flexibleSpacerIndex = toolbarChildren.findIndex((child) => {
     const tag = String(child.localName || child.tagName || '').toLowerCase();
     return (
@@ -262,16 +274,18 @@ export function repositionToolbarButton(host: any, window: any): void {
   const leadingActionItems =
     flexibleSpacerIndex >= 0 ? toolbarChildren.slice(0, flexibleSpacerIndex) : toolbarChildren;
 
-  const toolbarButtons = leadingActionItems.filter(
-    (child) =>
+  const toolbarButtons = leadingActionItems.filter((child) => {
+    const hiddenProp = (child as Element & { hidden?: boolean }).hidden;
+    return (
       String(child.localName || child.tagName || '').toLowerCase() === 'toolbarbutton' &&
       !isBtn(child) &&
-      !child.hidden &&
+      !hiddenProp &&
       child.getAttribute('hidden') !== 'true' &&
       child.getAttribute('collapsed') !== 'true'
-  );
+    );
+  });
 
-  const anchor: any = (toolbarButtons.reverse() as any[]).find((child: any) => {
+  const anchor: Element | undefined = toolbarButtons.reverse().find((child) => {
     try {
       const style = window.getComputedStyle(child);
       return style.display !== 'none' && style.visibility !== 'collapse';

@@ -2,11 +2,9 @@
  * Zotero TaskFlow - Preferences Model & Configuration Schema
  */
 
-declare let Zotero: any;
-
 export const PREFIX = 'extensions.taskflow.';
 
-export const DEFAULTS: Record<string, any> = {
+export const DEFAULTS: Record<string, unknown> = {
   // Window Modes
   windowMode: 'tab',
   subwindowAlwaysOnTop: false,
@@ -165,7 +163,7 @@ export const FIELDS: Record<string, FieldItem[]> = {
   ]
 };
 
-export function getPref(key: string): any {
+export function getPref(key: string): unknown {
   if (typeof Zotero === 'undefined' || !Zotero.Prefs) return DEFAULTS[key];
   try {
     const fullKey = PREFIX + key;
@@ -185,8 +183,8 @@ export function getPref(key: string): any {
 
 let preferenceQueue: Promise<void> = Promise.resolve();
 
-export function setPrefs(values: Record<string, any>): Promise<void> {
-  const run = async () => {
+export function setPrefs(values: Record<string, unknown>): Promise<void> {
+  const run = async (): Promise<void> => {
     if (typeof Zotero === 'undefined' || !Zotero.Prefs) throw new Error('Zotero 设置服务尚未就绪');
     const previous = Object.fromEntries(Object.keys(values).map((key) => [key, getPref(key)]));
     const changed: string[] = [];
@@ -195,30 +193,30 @@ export function setPrefs(values: Record<string, any>): Promise<void> {
         Zotero.Prefs.set(PREFIX + key, val, true);
         changed.push(key);
       }
-      const saveSettings = Zotero.TaskFlow?.saveData || Zotero.Todolist?.saveData;
-      if (typeof saveSettings !== 'function') throw new Error('待办数据服务尚未就绪');
       const host = Zotero.TaskFlow || Zotero.Todolist;
+      const saveSettings = host?.saveData;
+      if (typeof saveSettings !== 'function') throw new Error('待办数据服务尚未就绪');
       await saveSettings.call(host, { settings: values });
       if (Object.hasOwn(values, 'itemContextMenuCreate') || Object.hasOwn(values, 'itemContextMenuBatch')) {
-        try { host?.refreshContextMenuVisibility?.(); } catch (_) { }
+        try { host?.refreshContextMenuVisibility?.(); } catch (_) {}
       }
       if (Object.hasOwn(values, 'toolbarShowBadge')) {
-        try { host?.updateAllToolbarBadges?.(); } catch (_) { }
+        try { host?.updateAllToolbarBadges?.(); } catch (_) {}
       }
     } catch (error) {
       for (const key of changed) {
         try {
-          if (Zotero.Prefs.get(PREFIX + key, true) === values[key]) Zotero.Prefs.set(PREFIX + key, previous[key], true);
+          if (Zotero.Prefs?.get(PREFIX + key, true) === values[key]) Zotero.Prefs.set(PREFIX + key, previous[key], true);
         } catch (rollbackError) { Zotero.logError?.('[TaskFlow] Failed to restore preference: ' + rollbackError); }
       }
       throw error;
     }
   };
   const result = preferenceQueue.then(run);
-  preferenceQueue = result.catch(() => { });
+  preferenceQueue = result.catch(() => {});
   return result;
 }
 
-export function setPref(key: string, val: any): Promise<void> {
+export function setPref(key: string, val: unknown): Promise<void> {
   return setPrefs({ [key]: val });
 }

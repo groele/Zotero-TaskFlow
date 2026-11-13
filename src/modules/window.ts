@@ -1,190 +1,194 @@
-import { TaskFlowWindowToolbar, injectedElements, pendingWindowLoads } from './windowToolbar';
-import { ADDON_ID, CHROME_ROOT } from '../config';
-import { resolveItemReference, serializeLiteratureItem, getLiteratureItem } from '../utils';
+import { TaskFlowWindowToolbar, injectedElements, pendingWindowLoads, windowControllers } from './windowToolbar';
+import { CHROME_ROOT } from '../config';
+import { serializeLiteratureItem, getLiteratureItem } from '../utils';
+import { addAbortableListener, createScopedController, linkParentSignal, setAbortableTimeout } from '../lifecycle';
+import type { ZoteroItemLike } from '../types/models';
 
-declare let Zotero: any;
-declare let Services: any;
-
-export { injectedElements, pendingWindowLoads };
+export { injectedElements, pendingWindowLoads, windowControllers };
 
 export class TaskFlowWindow extends TaskFlowWindowToolbar {
-
-
-
-    getSelectedRegularItems(window) {
-      const pane =
-        window?.ZoteroPane ||
-        (Zotero.getActiveZoteroPane ? Zotero.getActiveZoteroPane() : null) ||
-        (Zotero.getMainWindow ? Zotero.getMainWindow().ZoteroPane : null);
-      let rawSelection = [];
-      if (pane && typeof pane.getSelectedItems === 'function') {
-        try {
-          rawSelection = pane.getSelectedItems() || [];
-        } catch (_) {}
-      }
-      if ((!rawSelection || rawSelection.length === 0) && pane?.itemsView?.getSelectedItems) {
-        try {
-          rawSelection = pane.itemsView.getSelectedItems() || [];
-        } catch (_) {}
-      }
-      const result = [];
-      const seen = new Set();
-      for (const item of rawSelection) {
-        const lit = getLiteratureItem(item);
-        if (lit && !seen.has(lit.id)) {
-          seen.add(lit.id);
-          result.push(lit);
-        }
-      }
-      return result;
-    }
-
-
-    getCurrentActiveItem(window) {
-      const tabs = window?.Zotero_Tabs || (typeof Zotero_Tabs !== 'undefined' ? Zotero_Tabs : null);
-      if (tabs && tabs.selectedTab && tabs.selectedTab.type === 'reader') {
-        const reader = Zotero.Reader?.getByTabID?.(tabs.selectedTab.id);
-        const itemID = reader?.itemID || tabs.selectedTab.data?.itemID;
-        if (itemID) {
-          const item = Zotero.Items.get(itemID);
-          return getLiteratureItem(item);
-        }
-      }
-      const selected = this.getSelectedRegularItems(window);
-      return selected[0] || null;
-    }
-
-
-    createTaskFromSelection(window = null, doc = null, itemMenu = null, items = null) {
-      const win = window || (Zotero.getMainWindow ? Zotero.getMainWindow() : null);
-      let targetItem = null;
-
-      if (Array.isArray(items) && items.length > 0) {
-        targetItem = getLiteratureItem(items[0]);
-      }
-
-      // 1. Try getSelectedRegularItems
-      if (!targetItem) {
-        const selected = this.getSelectedRegularItems(win);
-        if (selected.length > 0) {
-          targetItem = selected[0];
-        }
-      }
-
-      // 2. Fallback to triggerNode / popupNode from context menu
-      if (!targetItem) {
-        const documentObj = doc || win?.document;
-        const trigger = (itemMenu && itemMenu.triggerNode) || (documentObj && documentObj.popupNode);
-        const pane = win?.ZoteroPane || (Zotero.getActiveZoteroPane ? Zotero.getActiveZoteroPane() : null);
-        if (trigger && pane && typeof pane.getRowForNode === 'function') {
-          try {
-            const row = pane.getRowForNode(trigger);
-            if (row && row.ref) {
-              const rawItem = Zotero.Items.get(row.ref.id || row.ref);
-              targetItem = getLiteratureItem(rawItem);
-            }
-          } catch (_) {}
-        }
-      }
-
-      // 3. Fallback to getCurrentActiveItem (e.g. reader or active tab)
-      if (!targetItem) {
-        targetItem = this.getCurrentActiveItem(win);
-      }
-
-      if (targetItem) {
-        const serialized = serializeLiteratureItem(targetItem);
-        this.showNotice('已选取文献', `正在为《${serialized.title.slice(0, 22)}...》创建研读待办`);
-        this.openTaskFlow({ mode: 'create_from_item', item: serialized }, win);
-      } else {
-        this.showNotice('创建待办', '正在打开任务面板...');
-        this.openTaskFlow({ mode: 'open_modal_prefill', prefill: { category: '论文研读' } }, win);
-      }
-    }
-
-
-    triggerTaskFlowOpen(window = null) {
-      const win = window || (Zotero.getMainWindow ? Zotero.getMainWindow() : null);
-      return this.openTaskFlow({ mode: 'open' }, win);
-    }
-
-
-    triggerTodolistOpen(window = null) {
-      return this.triggerTaskFlowOpen(window);
-    }
-
-
-    openTaskFlow(options = {}, targetWindow = null) {
-      if (typeof this.openTodolist === 'function' && this.openTodolist !== TaskFlowWindow.prototype.openTodolist) {
-        return this.openTodolist(options, targetWindow);
-      }
+  getSelectedRegularItems(window: Window | null = null): ZoteroItemLike[] {
+    const pane =
+      window?.ZoteroPane ||
+      Zotero.getActiveZoteroPane?.() ||
+      Zotero.getMainWindow?.()?.ZoteroPane ||
+      null;
+    let rawSelection: unknown[] = [];
+    if (pane && typeof pane.getSelectedItems === 'function') {
       try {
-        const mainWin = (targetWindow && targetWindow.Zotero_Tabs)
-          ? targetWindow
-          : (Zotero.getMainWindow ? Zotero.getMainWindow() : Services.wm.getMostRecentWindow('navigator:browser'));
+        rawSelection = pane.getSelectedItems() || [];
+      } catch (_) {}
+    }
+    if ((!rawSelection || rawSelection.length === 0) && pane?.itemsView?.getSelectedItems) {
+      try {
+        rawSelection = pane.itemsView.getSelectedItems() || [];
+      } catch (_) {}
+    }
+    const result: ZoteroItemLike[] = [];
+    const seen = new Set<number | string>();
+    for (const item of rawSelection) {
+      const lit = getLiteratureItem(item as ZoteroItemLike);
+      if (lit && !lit.deleted && !seen.has(lit.id)) {
+        seen.add(lit.id);
+        result.push(lit);
+      }
+    }
+    return result;
+  }
 
-        let preferredWindowMode = 'tab';
+  getCurrentActiveItem(window: Window | null = null): ZoteroItemLike | null {
+    const tabs = window?.Zotero_Tabs || (typeof Zotero_Tabs !== 'undefined' ? Zotero_Tabs : null);
+    if (tabs && tabs.selectedTab && tabs.selectedTab.type === 'reader') {
+      const reader = Zotero.Reader?.getByTabID?.(tabs.selectedTab.id);
+      const itemID = reader?.itemID || tabs.selectedTab.data?.itemID;
+      if (itemID) {
+        const item = Zotero.Items?.get?.(itemID);
+        return getLiteratureItem(item);
+      }
+    }
+    const selected = this.getSelectedRegularItems(window);
+    return selected[0] || null;
+  }
+
+  createTaskFromSelection(
+    window: Window | null = null,
+    doc: Document | null = null,
+    itemMenu: Element | null = null,
+    items: unknown[] | null = null
+  ): void {
+    const win = window || Zotero.getMainWindow?.() || null;
+    let targetItem: ZoteroItemLike | null = null;
+
+    if (Array.isArray(items) && items.length > 0) {
+      targetItem = getLiteratureItem(items[0] as ZoteroItemLike);
+    }
+
+    if (!targetItem) {
+      const selected = this.getSelectedRegularItems(win);
+      if (selected.length > 0) {
+        targetItem = selected[0];
+      }
+    }
+
+    if (!targetItem) {
+      const documentObj = (doc || win?.document) as (Document & { popupNode?: unknown }) | undefined;
+      const trigger = (itemMenu as (Element & { triggerNode?: unknown }) | null)?.triggerNode || documentObj?.popupNode;
+      const pane = win?.ZoteroPane || Zotero.getActiveZoteroPane?.() || null;
+      if (trigger && pane && typeof pane.getRowForNode === 'function') {
         try {
-          if (Zotero.Prefs) {
-            preferredWindowMode = Zotero.Prefs.get('extensions.taskflow.windowMode', true) || 'tab';
+          const row = pane.getRowForNode(trigger);
+          if (row && row.ref) {
+            const refId = typeof row.ref === 'object' ? row.ref.id : row.ref;
+            const rawItem = Zotero.Items?.get?.(refId);
+            targetItem = getLiteratureItem(rawItem);
           }
         } catch (_) {}
+      }
+    }
 
-        const effectiveMode = (options as any).targetMode || preferredWindowMode;
-        if (effectiveMode === 'window') {
-          this.openStandaloneWindow(options, mainWin, 'window');
-          return;
-        } else if (effectiveMode === 'subwindow') {
-          this.openStandaloneWindow(options, mainWin, 'subwindow');
-          return;
+    if (!targetItem) {
+      targetItem = this.getCurrentActiveItem(win);
+    }
+
+    const serialized = targetItem && !targetItem.deleted ? serializeLiteratureItem(targetItem) : null;
+    if (serialized) {
+      this.showNotice('已选取文献', `正在为《${serialized.title.slice(0, 22)}...》创建研读待办`);
+      this.openTaskFlow({ mode: 'create_from_item', item: serialized }, win);
+    } else {
+      this.showNotice('创建待办', '正在打开任务面板...');
+      this.openTaskFlow({ mode: 'open_modal_prefill', prefill: { category: '论文研读' } }, win);
+    }
+  }
+
+  triggerTaskFlowOpen(window: Window | null = null): void {
+    const win = window || Zotero.getMainWindow?.() || null;
+    this.openTaskFlow({ mode: 'open' }, win);
+  }
+
+  triggerTodolistOpen(window: Window | null = null): void {
+    this.triggerTaskFlowOpen(window);
+  }
+
+  openTaskFlow(options: Record<string, unknown> = {}, targetWindow: Window | null = null): void {
+    if (typeof this.openTodolist === 'function' && this.openTodolist !== TaskFlowWindow.prototype.openTodolist) {
+      this.openTodolist(options, targetWindow);
+      return;
+    }
+    try {
+      const mainWin =
+        targetWindow && targetWindow.Zotero_Tabs
+          ? targetWindow
+          : Zotero.getMainWindow?.() || Services.wm?.getMostRecentWindow?.('navigator:browser') || null;
+
+      let preferredWindowMode = 'tab';
+      try {
+        if (Zotero.Prefs) {
+          preferredWindowMode = String(Zotero.Prefs.get('extensions.taskflow.windowMode', true) || 'tab');
+        }
+      } catch (_) {}
+
+      const effectiveMode = typeof options.targetMode === 'string' ? options.targetMode : preferredWindowMode;
+      if (effectiveMode === 'window') {
+        this.openStandaloneWindow(options, mainWin, 'window');
+        return;
+      } else if (effectiveMode === 'subwindow') {
+        this.openStandaloneWindow(options, mainWin, 'subwindow');
+        return;
+      }
+
+      const tabs = mainWin?.Zotero_Tabs || Zotero.getMainWindow?.()?.Zotero_Tabs;
+      if (tabs && typeof tabs.add === 'function') {
+        if (Array.isArray(tabs._tabs)) {
+          const existingTab = tabs._tabs.find((t) => Boolean(t && t.type === 'todolist'));
+          if (existingTab) {
+            tabs.select?.(existingTab.id);
+            if (mainWin && mainWin.focus) mainWin.focus();
+
+            const iframe = (mainWin?.document.getElementById('todolist-tab-iframe') ||
+              existingTab.container?.querySelector('iframe') ||
+              null) as (HTMLIFrameElement & { _todolistPending?: unknown }) | null;
+            if (iframe) {
+              iframe._todolistPending = options;
+              try {
+                const cw = iframe.contentWindow as (Window & { ZoteroBridge?: { handleHostNavigation?: (opts: unknown) => void } }) | null;
+                cw?.ZoteroBridge?.handleHostNavigation?.(options);
+              } catch (_) {}
+              try {
+                iframe.contentWindow?.postMessage({ type: 'TODOLIST_NAVIGATE', options }, '*');
+              } catch (_) {}
+            }
+            return;
+          }
         }
 
-        const tabs = mainWin?.Zotero_Tabs || (Zotero.getMainWindow && Zotero.getMainWindow().Zotero_Tabs);
-        if (tabs && typeof tabs.add === 'function') {
-          // Check if TaskFlow tab is already open
-          if (Array.isArray(tabs._tabs)) {
-            const existingTab = tabs._tabs.find((t) => t && t.type === 'todolist');
-            if (existingTab) {
-              tabs.select(existingTab.id);
-              if (mainWin && mainWin.focus) mainWin.focus();
+        const tabController = createScopedController(mainWin);
+        linkParentSignal(tabController, this.getHostSignal());
+        linkParentSignal(tabController, mainWin ? windowControllers.get(mainWin)?.signal : undefined);
 
-              const iframe = mainWin.document.getElementById('todolist-tab-iframe') ||
-                (existingTab.container && existingTab.container.querySelector('iframe'));
-              if (iframe) {
-                iframe._todolistPending = options;
-                try {
-                  if (iframe.contentWindow?.ZoteroBridge?.handleHostNavigation) {
-                    iframe.contentWindow.ZoteroBridge.handleHostNavigation(options);
-                  }
-                } catch (_) {}
-                try {
-                  if (iframe.contentWindow?.postMessage) {
-                    iframe.contentWindow.postMessage({ type: 'TODOLIST_NAVIGATE', options }, '*');
-                  }
-                } catch (_) {}
-              }
-              return;
-            }
+        const tabResult = tabs.add({
+          type: 'todolist',
+          title: 'Zotero TaskFlow待办事项',
+          select: true,
+          data: options,
+          onClose: () => {
+            tabController.abort();
+            Zotero.log?.('[TaskFlow] Tab closed');
           }
+        });
 
-          // Open as internal Tab
-          const tabResult = tabs.add({
-            type: 'todolist',
-            title: 'Zotero TaskFlow待办事项',
-            select: true,
-            data: options,
-            onClose: () => {
-              Zotero.log?.('[TaskFlow] Tab closed');
-            }
-          });
+        const tabId = typeof tabResult === 'string' ? tabResult : tabResult?.id;
+        const container =
+          (typeof tabResult === 'object' && tabResult?.container) ||
+          (tabId ? tabs.getTabContainer?.(tabId) : null) ||
+          (tabId ? tabs.getTab?.(tabId)?.container : null);
 
-          const container = (tabResult && tabResult.container) ||
-            (tabs.getTabContainer && tabs.getTabContainer(tabResult.id || tabResult)) ||
-            (tabs.getTab && tabs.getTab(tabResult?.id)?.container);
-
-          if (container) {
-            const doc = container.ownerDocument || mainWin.document;
-            const iframe = doc.createElement('iframe');
+        if (container) {
+          const doc = container.ownerDocument || mainWin?.document;
+          if (doc) {
+            const iframe = doc.createElement('iframe') as HTMLIFrameElement & {
+              _todolistReady?: boolean;
+              _todolistPending?: unknown;
+            };
             iframe.id = 'todolist-tab-iframe';
             iframe.setAttribute('src', `${CHROME_ROOT}index.html`);
             iframe.setAttribute('style', 'width: 100%; height: 100%; border: none; flex: 1; display: block;');
@@ -198,128 +202,155 @@ export class TaskFlowWindow extends TaskFlowWindowToolbar {
             container.style.height = '100%';
             container.style.overflow = 'hidden';
 
-            iframe.addEventListener('load', () => {
-              try {
-                if (iframe.contentWindow) {
-                  iframe.contentWindow.Zotero = Zotero;
-                  iframe.contentWindow._todolistPending = options;
-                  if (iframe.contentWindow.ZoteroBridge?.handleHostNavigation) {
-                    iframe.contentWindow.ZoteroBridge.handleHostNavigation(options);
+            addAbortableListener(
+              iframe,
+              'load',
+              () => {
+                try {
+                  const cw = iframe.contentWindow as (Window & {
+                    Zotero?: unknown;
+                    _todolistPending?: unknown;
+                    ZoteroBridge?: { handleHostNavigation?: (opts: unknown) => void };
+                  }) | null;
+                  if (cw) {
+                    cw.Zotero = Zotero;
+                    cw._todolistPending = options;
+                    cw.ZoteroBridge?.handleHostNavigation?.(options);
                   }
-                }
-              } catch (_) {}
-            });
+                } catch (_) {}
+              },
+              undefined,
+              tabController.signal
+            );
 
             container.appendChild(iframe);
           }
-
-          if (mainWin && mainWin.focus) mainWin.focus();
-          return;
         }
-      } catch (e) {
-        Zotero.logError?.('[TaskFlow] openTaskFlow error: ' + e);
+
+        if (mainWin && mainWin.focus) mainWin.focus();
+        return;
+      }
+    } catch (e) {
+      Zotero.logError?.('[TaskFlow] openTaskFlow error: ' + e);
+    }
+
+    this.openStandaloneWindow(options, targetWindow, 'window');
+  }
+
+  openTodolist(options: Record<string, unknown> = {}, targetWindow: Window | null = null): void {
+    this.openTaskFlow(options, targetWindow);
+  }
+
+  openStandaloneWindow(
+    options: Record<string, unknown> = {},
+    targetWindow: Window | null = null,
+    windowType: string = 'window'
+  ): void {
+    try {
+      const ww = Services.ww;
+      if (!ww) return;
+      let features = '';
+      let windowName = '';
+      const url = `${CHROME_ROOT}index.html?mode=${encodeURIComponent(windowType)}`;
+      if (windowType === 'subwindow') {
+        const alwaysRaised = this.getPref('subwindowAlwaysOnTop', false) ? ',alwaysRaised=yes' : '';
+        features = `chrome,dialog=no,all,resizable=yes,minimizable=yes,width=460,height=760,top=80,left=80${alwaysRaised}`;
+        windowName = 'Todolist_SubWindow';
+      } else {
+        features = 'chrome,dialog=no,all,resizable=yes,minimizable=yes,width=1120,height=760,centerscreen';
+        windowName = 'Todolist_Window';
       }
 
-      this.openStandaloneWindow(options, targetWindow, 'window');
-    }
-
-
-    openTodolist(options = {}, targetWindow = null) {
-      return this.openTaskFlow(options, targetWindow);
-    }
-
-
-    openStandaloneWindow(options = {}, targetWindow = null, windowType = 'window') {
+      const otherWindowName = windowType === 'subwindow' ? 'Todolist_Window' : 'Todolist_SubWindow';
       try {
-        const ww = Services.ww;
-        let features = '';
-        let windowName = '';
-        const url = `${CHROME_ROOT}index.html?mode=${encodeURIComponent(windowType)}`;
-        if (windowType === 'subwindow') {
-          // Compact companion subwindow: ideal for side-by-side reading with PDF reader
-          const alwaysRaised = this.getPref('subwindowAlwaysOnTop', false) ? ',alwaysRaised=yes' : '';
-          features = `chrome,dialog=no,all,resizable=yes,minimizable=yes,width=460,height=760,top=80,left=80${alwaysRaised}`;
-          windowName = 'Todolist_SubWindow';
-        } else {
-          // Full standalone desktop window
-          features = 'chrome,dialog=no,all,resizable=yes,minimizable=yes,width=1120,height=760,centerscreen';
-          windowName = 'Todolist_Window';
-        }
-
-        // Close the other standalone window type if open (switching between subwindow and window)
-        const otherWindowName = windowType === 'subwindow' ? 'Todolist_Window' : 'Todolist_SubWindow';
-        try {
-          const windows = Services.wm.getEnumerator(null);
-          while (windows.hasMoreElements()) {
-            const w = windows.getNext();
-            if (w && w.name === otherWindowName) {
-              try { w.close(); } catch (_) {}
-            }
-          }
-        } catch (_) {}
-
-        const mainWin = (targetWindow && targetWindow.Zotero_Tabs)
-          ? targetWindow
-          : (Zotero.getMainWindow ? Zotero.getMainWindow() : Services.wm.getMostRecentWindow('navigator:browser'));
-
-        const win = ww.openWindow(
-          mainWin,
-          url,
-          windowName,
-          features,
-          { Zotero, options: { ...options, currentWindowType: windowType } }
-        );
-        if (win && win.focus) win.focus();
-
-        if (options && (options as any).mode && (options as any).mode !== 'open') {
-          if (!this._standaloneTimers) this._standaloneTimers = new Set();
-          let winClosed = false;
-          if (win && typeof win.addEventListener === 'function') {
-            win.addEventListener('unload', () => {
-              winClosed = true;
-            }, { once: true });
-          }
-          const scheduleDeliver = (attempt) => {
-            if (this._shuttingDown || winClosed || !win || win.closed) return;
-            const timerId = mainWin.setTimeout(() => {
-              this._standaloneTimers?.delete(timerId);
-              tryDeliver(attempt);
-            }, attempt === 0 ? 300 : 200);
-            this._standaloneTimers.add(timerId);
-          };
-          const tryDeliver = (attempts = 0) => {
-            if (this._shuttingDown || winClosed || !win || win.closed) return;
+        const windows = Services.wm?.getEnumerator?.(null);
+        while (windows?.hasMoreElements()) {
+          const w = windows.getNext() as Window & { name?: string };
+          if (w && w.name === otherWindowName) {
             try {
-              if (win.ZoteroBridge?.handleHostNavigation) {
-                win.ZoteroBridge.handleHostNavigation(options);
-                return;
-              }
-              win.postMessage?.({ type: 'TODOLIST_NAVIGATE', options }, '*');
+              w.close();
             } catch (_) {}
-            if (attempts < 10) {
-              scheduleDeliver(attempts + 1);
+          }
+        }
+      } catch (_) {}
+
+      const mainWin =
+        targetWindow && targetWindow.Zotero_Tabs
+          ? targetWindow
+          : Zotero.getMainWindow?.() || Services.wm?.getMostRecentWindow?.('navigator:browser') || null;
+
+      const win = ww.openWindow(
+        mainWin,
+        url,
+        windowName,
+        features,
+        { Zotero, options: { ...options, currentWindowType: windowType } }
+      ) as (Window & {
+        ZoteroBridge?: { handleHostNavigation?: (opts: unknown) => void };
+        focus?: () => void;
+      }) | null;
+      if (win && win.focus) win.focus();
+
+      if (options && options.mode && options.mode !== 'open') {
+        if (!this._standaloneTimers) this._standaloneTimers = new Set();
+        const deliveryController = createScopedController(mainWin);
+        linkParentSignal(deliveryController, this.getHostSignal());
+        if (win) {
+          addAbortableListener(
+            win,
+            'unload',
+            () => deliveryController.abort(),
+            { once: true },
+            deliveryController.signal
+          );
+        }
+        const tryDeliver = (attempts: number = 0): void => {
+          if (this._shuttingDown || deliveryController.signal.aborted || !win || win.closed) return;
+          try {
+            if (win.ZoteroBridge?.handleHostNavigation) {
+              win.ZoteroBridge.handleHostNavigation(options);
+              deliveryController.abort();
+              return;
             }
-          };
-          scheduleDeliver(0);
-        }
-      } catch (err) {
-        Zotero.logError?.('[TaskFlow] openStandaloneWindow error: ' + err);
+            win.postMessage?.({ type: 'TODOLIST_NAVIGATE', options }, '*');
+          } catch (_) {}
+          if (attempts < 10) {
+            scheduleDeliver(attempts + 1);
+          }
+        };
+        const scheduleDeliver = (attempt: number): void => {
+          if (this._shuttingDown || deliveryController.signal.aborted || !win || win.closed) return;
+          setAbortableTimeout(
+            () => tryDeliver(attempt),
+            attempt === 0 ? 300 : 200,
+            deliveryController.signal,
+            mainWin,
+            this._standaloneTimers
+          );
+        };
+        scheduleDeliver(0);
       }
+    } catch (err) {
+      Zotero.logError?.('[TaskFlow] openStandaloneWindow error: ' + err);
     }
+  }
 
-
-    openPreferencesPane(window) {
-      try {
-        const win = window || Zotero.getMainWindow?.();
-        if (Zotero.Utilities?.Internal?.openPreferences) {
-          Zotero.Utilities.Internal.openPreferences('todolist-preferences-pane');
-        } else if (win?.openPreferences) {
-          win.openPreferences('todolist-preferences-pane');
-        } else {
-          win?.openDialog?.('chrome://zotero/content/preferences/preferences.xhtml', 'Preferences', 'chrome,titlebar,toolbar,centerscreen,dialog=yes');
-        }
-      } catch (e) {
-        Zotero.logError?.('[TaskFlow] Could not open preferences: ' + e);
+  openPreferencesPane(window: Window | null = null): void {
+    try {
+      const win = (window || Zotero.getMainWindow?.()) as (Window & { openDialog?: (...args: unknown[]) => void }) | null;
+      if (Zotero.Utilities?.Internal?.openPreferences) {
+        Zotero.Utilities.Internal.openPreferences('todolist-preferences-pane');
+      } else if (win?.openPreferences) {
+        win.openPreferences('todolist-preferences-pane');
+      } else {
+        win?.openDialog?.(
+          'chrome://zotero/content/preferences/preferences.xhtml',
+          'Preferences',
+          'chrome,titlebar,toolbar,centerscreen,dialog=yes'
+        );
       }
+    } catch (e) {
+      Zotero.logError?.('[TaskFlow] Could not open preferences: ' + e);
     }
+  }
 }

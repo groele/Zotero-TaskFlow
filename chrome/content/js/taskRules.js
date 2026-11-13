@@ -37,6 +37,10 @@ var TaskRules = {
   },
   reminderIsDue(task, now) {
     if (!task || task.completed || !task.reminder?.enabled || task.reminder.notified || !task.dueDate) return false;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(task.dueDate)) return false;
+    const [y, m, d] = task.dueDate.split('-').map(Number);
+    const parsed = new Date(y, m - 1, d);
+    if (parsed.getFullYear() !== y || parsed.getMonth() !== m - 1 || parsed.getDate() !== d) return false;
     const due = new Date(task.dueDate + 'T' + (task.dueTime || '23:59')).getTime();
     const before = Number(task.reminder.before ?? 15);
     return Number.isFinite(due) && Number.isFinite(before) && before >= 0 &&
@@ -141,6 +145,7 @@ var TaskRules = {
     }
   },
   prepareImport(current, payload, mode) {
+    mode = mode === 'overwrite' ? 'replace' : mode;
     if (!['merge', 'replace'].includes(mode)) throw new Error('导入模式无效');
     const source = Array.isArray(payload) ? { tasks: payload } : payload;
     if (!source || !Array.isArray(source.tasks)) throw new Error('无效的数据格式：缺少任务数组');
@@ -246,7 +251,7 @@ var TaskRules = {
       t.dueDate === dueDate && t.zoteroItemKey === task.zoteroItemKey && t.zoteroLibraryID === task.zoteroLibraryID))) return null;
     task.recurringGenerated = true;
     return { ...JSON.parse(JSON.stringify(task)), id: generateId(), dueDate, completed: false,
-      completedAt: null, createdAt: new Date().toISOString(), status: 'todo', order: Math.max(-1, ...tasks.map(t => t.order || 0)) + 1,
+      completedAt: null, createdAt: new Date().toISOString(), status: 'todo', order: tasks.reduce((max, t) => Math.max(max, t.order || 0), -1) + 1,
       timeEntries: [], recurringFrom: task.id, recurringGenerated: false,
       reminder: { ...task.reminder, notified: false },
       subtasks: (task.subtasks || []).map(st => ({ ...st, id: generateId(), completed: false })) };

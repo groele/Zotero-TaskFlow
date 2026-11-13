@@ -3,7 +3,9 @@
  * Composed from Button Group, Shortcuts Group, and Message Bridge submodules.
  */
 
-import { TaskFlowWindowMenus, injectedElements, pendingWindowLoads } from './windowMenus';
+import { TaskFlowWindowMenus, injectedElements, pendingWindowLoads, windowControllers } from './windowMenus';
+import { addAbortableListener, createScopedController, linkParentSignal } from '../lifecycle';
+import type { TaskFlowData, ToolbarRetryState } from '../types/models';
 import {
   injectToolbarButton,
   repositionToolbarButton,
@@ -17,11 +19,11 @@ import {
 } from './toolbar/shortcutsGroup';
 import { setupHostMessageBridge } from './toolbar/messageBridgeGroup';
 
-export { injectedElements, pendingWindowLoads };
+export { injectedElements, pendingWindowLoads, windowControllers };
 
 export class TaskFlowWindowToolbar extends TaskFlowWindowMenus {
-  addToWindow(window: any): void {
-    if (!window || !window.document) return;
+  addToWindow(window: Window): void {
+    if (!window || !window.document || this._shuttingDown) return;
     const doc = window.document;
 
     const isMain = this.isMainWindow(window);
@@ -63,31 +65,38 @@ export class TaskFlowWindowToolbar extends TaskFlowWindowMenus {
 
     if (injectedElements.has(window)) return;
 
-    const windowElements: any[] = [];
+    const windowElements: Array<{ remove?: () => void }> = [];
+    const windowController = createScopedController(window);
+    linkParentSignal(windowController, this.getHostSignal());
+    const { signal } = windowController;
+    windowControllers.set(window, windowController);
+
+    addAbortableListener(window, 'unload', () => this.removeFromWindow(window), { once: true }, signal);
     this.ensureLocalization(doc);
 
     // 1. Context Menu
-    injectItemContextMenu(this, window, doc, windowElements);
+    injectItemContextMenu(this, window, doc, windowElements, signal);
 
     // 2. Tab Icon Style
     injectTabIconStyle(doc, windowElements);
 
     // 3. Global Keyboard Shortcuts
-    setupGlobalShortcuts(this, window, windowElements);
+    setupGlobalShortcuts(this, window, windowElements, signal);
 
     // 4. Host-level Message Bridge
-    setupHostMessageBridge(this, window, windowElements);
+    setupHostMessageBridge(this, window, windowElements, signal);
 
     // 5. Inject Toolbar Button with retry
-    const toolbarRetryState = { cancelled: false, timers: new Set() };
+    const toolbarRetryState: ToolbarRetryState = { cancelled: false, timers: new Set() };
     windowElements.push({
       remove: () => {
         toolbarRetryState.cancelled = true;
         for (const timer of toolbarRetryState.timers) window.clearTimeout(timer);
         toolbarRetryState.timers.clear();
+        windowController.abort();
       }
     });
-    this.injectToolbarButton(window, windowElements, 0, toolbarRetryState);
+    this.injectToolbarButton(window, windowElements, 0, toolbarRetryState, signal);
 
     injectedElements.set(window, windowElements);
   }
@@ -96,26 +105,34 @@ export class TaskFlowWindowToolbar extends TaskFlowWindowMenus {
     updateAllToolbarBadges(this);
   }
 
-  updateToolbarBadge(doc: Document, data: any): void {
+  updateToolbarBadge(doc: Document, data?: TaskFlowData | null): void {
     updateToolbarBadge(this, doc, data);
   }
 
   injectToolbarButton(
-    window: any,
-    windowElements: any[],
-    retryCount = 0,
-    retryState = { cancelled: false, timers: new Set() }
+    window: Window,
+    windowElements: Array<{ remove?: () => void }>,
+    retryCount: number = 0,
+    retryState: ToolbarRetryState = { cancelled: false, timers: new Set() },
+    signal?: AbortSignal
   ): void {
-    injectToolbarButton(this, window, windowElements, retryCount, retryState);
+    const resolvedSignal = signal || windowControllers.get(window)?.signal;
+    injectToolbarButton(this, window, windowElements, retryCount, retryState, resolvedSignal);
   }
 
-  repositionToolbarButton(window: any): void {
+  repositionToolbarButton(window: Window): void {
     repositionToolbarButton(this, window);
   }
 
-  removeFromWindow(window: any): void {
+  removeFromWindow(window: Window): void {
     if (!window || !window.document) return;
     const doc = window.document;
+
+    const controller = windowControllers.get(window);
+    if (controller) {
+      controller.abort();
+      windowControllers.delete(window);
+    }
 
     const elements = injectedElements.get(window);
     if (elements) {
@@ -123,8 +140,9 @@ export class TaskFlowWindowToolbar extends TaskFlowWindowMenus {
         try {
           if (typeof el.remove === 'function') {
             el.remove();
-          } else if (el.parentNode) {
-            el.parentNode.removeChild(el);
+          } else {
+            const node = el as unknown as Node;
+            if (node.parentNode) node.parentNode.removeChild(node);
           }
         } catch (_) {}
       }

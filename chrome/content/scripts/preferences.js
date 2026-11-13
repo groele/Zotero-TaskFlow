@@ -1,4 +1,115 @@
+"use strict";
 (() => {
+  // src/lifecycle.ts
+  function createFallbackController() {
+    const listeners = /* @__PURE__ */ new Set();
+    let aborted = false;
+    const signal = {
+      get aborted() {
+        return aborted;
+      },
+      reason: void 0,
+      onabort: null,
+      throwIfAborted() {
+      },
+      addEventListener(_type, listener) {
+        listeners.add(listener);
+      },
+      removeEventListener(_type, listener) {
+        listeners.delete(listener);
+      },
+      dispatchEvent() {
+        return true;
+      }
+    };
+    return {
+      signal,
+      abort(reason) {
+        if (aborted) return;
+        aborted = true;
+        signal.reason = reason;
+        const evt = { type: "abort", target: signal };
+        for (const listener of [...listeners]) {
+          listeners.delete(listener);
+          if (typeof listener === "function") listener(evt);
+          else listener.handleEvent(evt);
+        }
+      }
+    };
+  }
+  function createScopedController(win) {
+    const Ctor = win?.AbortController || (typeof AbortController !== "undefined" ? AbortController : null);
+    return Ctor ? new Ctor() : createFallbackController();
+  }
+  function linkParentSignal(child, parent) {
+    if (!parent) return;
+    if (parent.aborted) {
+      child.abort();
+      return;
+    }
+    parent.addEventListener("abort", () => child.abort(), { once: true });
+  }
+  function addAbortableListener(target, type, listener, options, signal) {
+    if (!target?.addEventListener) return;
+    if (signal?.aborted) return;
+    const opts = typeof options === "boolean" ? { capture: options } : { ...options || {} };
+    if (!signal) {
+      target.addEventListener(type, listener, opts);
+      return;
+    }
+    const ownerDoc = target.ownerDocument || target.document;
+    const targetWin = ownerDoc?.defaultView || target;
+    const TargetAbortSignal = targetWin?.AbortSignal;
+    if (TargetAbortSignal && signal instanceof TargetAbortSignal) {
+      target.addEventListener(type, listener, { ...opts, signal });
+      return;
+    }
+    if (!TargetAbortSignal) {
+      try {
+        target.addEventListener(type, listener, { ...opts, signal });
+        return;
+      } catch (_) {
+      }
+    }
+    target.addEventListener(type, listener, opts);
+    signal.addEventListener(
+      "abort",
+      () => {
+        try {
+          target.removeEventListener?.(type, listener, Boolean(opts.capture));
+        } catch (_) {
+        }
+      },
+      { once: true }
+    );
+  }
+  function setAbortableTimeout(callback, delayMs, signal, timerHost, tracker) {
+    if (signal?.aborted) return null;
+    const schedule = timerHost?.setTimeout ? timerHost.setTimeout.bind(timerHost) : setTimeout;
+    const cancel = timerHost?.clearTimeout ? timerHost.clearTimeout.bind(timerHost) : clearTimeout;
+    let cleared = false;
+    let timerId;
+    const onAbort = () => {
+      if (cleared) return;
+      cleared = true;
+      tracker?.delete(timerId);
+      try {
+        cancel(timerId);
+      } catch (_) {
+      }
+    };
+    timerId = schedule(() => {
+      if (cleared || signal?.aborted) return;
+      cleared = true;
+      tracker?.delete(timerId);
+      signal?.removeEventListener("abort", onAbort);
+      callback();
+    }, delayMs);
+    tracker?.add(timerId);
+    signal?.addEventListener("abort", onAbort, { once: true });
+    return timerId;
+  }
+
   // src/preferences/model.ts
   var PREFIX = "extensions.taskflow.";
   var DEFAULTS = {
@@ -172,9 +283,9 @@
           Zotero.Prefs.set(PREFIX + key, val, true);
           changed.push(key);
         }
-        const saveSettings = Zotero.TaskFlow?.saveData || Zotero.Todolist?.saveData;
-        if (typeof saveSettings !== "function") throw new Error("待办数据服务尚未就绪");
         const host = Zotero.TaskFlow || Zotero.Todolist;
+        const saveSettings = host?.saveData;
+        if (typeof saveSettings !== "function") throw new Error("待办数据服务尚未就绪");
         await saveSettings.call(host, { settings: values });
         if (Object.hasOwn(values, "itemContextMenuCreate") || Object.hasOwn(values, "itemContextMenuBatch")) {
           try {
@@ -191,7 +302,7 @@
       } catch (error) {
         for (const key of changed) {
           try {
-            if (Zotero.Prefs.get(PREFIX + key, true) === values[key]) Zotero.Prefs.set(PREFIX + key, previous[key], true);
+            if (Zotero.Prefs?.get(PREFIX + key, true) === values[key]) Zotero.Prefs.set(PREFIX + key, previous[key], true);
           } catch (rollbackError) {
             Zotero.logError?.("[TaskFlow] Failed to restore preference: " + rollbackError);
           }
@@ -260,17 +371,17 @@
         const ctrl = doc.getElementById(`pref-${key}`);
         if (!ctrl) continue;
         const val = getPref(key);
-        if (type === "check") ctrl.checked = Boolean(val);
+        if (type === "check" && "checked" in ctrl) ctrl.checked = Boolean(val);
         else ctrl.value = String(val ?? "");
       }
     }
     updateDependencies(doc);
   }
-  function registerPreferenceObserver(doc, win) {
-    const zot = win?.Zotero || doc.defaultView?.Zotero;
-    if (typeof zot?.Prefs?.registerObserver !== "function") return;
+  function registerPreferenceObserver(doc, win, signal) {
     const hostWin = win || doc.defaultView;
-    if (hostWin?.__taskflowPrefObserverToken != null) return;
+    const zot = hostWin?.Zotero || (typeof Zotero !== "undefined" ? Zotero : null);
+    if (typeof zot?.Prefs?.registerObserver !== "function") return;
+    if (hostWin?.__taskflowPrefObserverToken != null || signal?.aborted) return;
     try {
       const token = zot.Prefs.registerObserver(
         PREFIX,
@@ -281,134 +392,41 @@
       );
       if (hostWin && token !== void 0) {
         hostWin.__taskflowPrefObserverToken = token;
-        hostWin.addEventListener?.(
-          "unload",
-          () => {
-            try {
-              zot.Prefs.unregisterObserver?.(token);
-            } catch (_) {
-            }
-            if (hostWin) hostWin.__taskflowPrefObserverToken = void 0;
-          },
-          { once: true }
-        );
+        const cleanup = () => {
+          try {
+            zot.Prefs?.unregisterObserver?.(token);
+          } catch (_) {
+          }
+          if (hostWin.__taskflowPrefObserverToken === token) {
+            hostWin.__taskflowPrefObserverToken = void 0;
+          }
+        };
+        if (signal) {
+          signal.addEventListener("abort", cleanup, { once: true });
+        }
+        addAbortableListener(hostWin, "unload", cleanup, { once: true }, signal);
       }
     } catch (_) {
     }
   }
 
-  // src/preferences/uiBinding.ts
-  var HTML = "http://www.w3.org/1999/xhtml";
-  function getEl(doc, id) {
-    return doc.getElementById(id) || doc.getElementById(id.replace("taskflow-", "todolist-")) || doc.getElementById(id.replace("todolist-", "taskflow-"));
+  // src/preferences/tagsBinding.ts
+  var tagListControllers = /* @__PURE__ */ new WeakMap();
+  function resetTagListSignal(container, doc, parentSignal) {
+    tagListControllers.get(container)?.abort();
+    const next = createScopedController(doc.defaultView);
+    linkParentSignal(next, parentSignal);
+    tagListControllers.set(container, next);
+    return next.signal;
   }
-  function reportOperationError(zot, doc, action, error) {
-    zot?.logError?.("[TaskFlow] " + action + ": " + error);
-    const host = zot?.TaskFlow || zot?.Todolist;
-    Promise.resolve(host?.recordDiagnostic?.({ action, message: String(error?.message || error), stack: error?.stack })).catch(() => {
-    });
-    const status = getEl(doc, "taskflow-pref-status");
-    const message = String(error?.message || error);
-    setStatusL10n(status, "taskflow-pref-status-op-error", `${action}失败：${message}`, { action, message });
-  }
-  async function saveControl(doc, key, control, value) {
-    control.disabled = true;
-    updateDependencies(doc);
-    try {
-      await setPref(key, value);
-      const status = getEl(doc, "taskflow-pref-status");
-      setStatusL10n(status, "taskflow-pref-status-saved", "设置已保存。");
-    } catch (error) {
-      reportOperationError(doc.defaultView?.Zotero, doc, "保存设置", error);
-    } finally {
-      control.disabled = false;
-      if (control.type === "checkbox") control.checked = Boolean(getPref(key));
-      else control.value = String(getPref(key));
-      updateDependencies(doc);
-    }
-  }
-  function renderGroup(doc, containerId, items) {
-    const container = doc.getElementById(containerId);
-    if (!container) return;
-    container.replaceChildren();
-    for (const [key, labelText, type, options] of items) {
-      const currentVal = getPref(key);
-      const visibleLabel = labelText;
-      if (type === "check") {
-        const row = doc.createElementNS(HTML, "label");
-        row.className = "todolist-check-row";
-        const input = doc.createElementNS(HTML, "input");
-        input.type = "checkbox";
-        input.id = `pref-${key}`;
-        input.className = "todolist-control";
-        input.checked = Boolean(currentVal);
-        input.addEventListener("change", () => {
-          saveControl(doc, key, input, input.checked);
-        });
-        const span = doc.createElementNS(HTML, "span");
-        span.className = "todolist-control-label";
-        span.textContent = visibleLabel;
-        span.setAttribute("data-l10n-id", `taskflow-pref-field-${key}`);
-        row.appendChild(input);
-        row.appendChild(span);
-        container.appendChild(row);
-      } else if (type === "select") {
-        const row = doc.createElementNS(HTML, "div");
-        row.className = "todolist-control-row";
-        const label = doc.createElementNS(HTML, "label");
-        label.className = "todolist-control-label";
-        label.textContent = visibleLabel;
-        label.htmlFor = `pref-${key}`;
-        label.setAttribute("data-l10n-id", `taskflow-pref-field-${key}`);
-        const select = doc.createElementNS(HTML, "select");
-        select.className = "todolist-control";
-        select.id = `pref-${key}`;
-        for (const [optVal, optLabel] of options || []) {
-          const option = doc.createElementNS(HTML, "option");
-          option.value = optVal;
-          option.textContent = optLabel;
-          option.setAttribute("data-l10n-id", `taskflow-pref-opt-${key}-${optVal}`);
-          if (String(currentVal) === String(optVal)) {
-            option.selected = true;
-          }
-          select.appendChild(option);
-        }
-        select.addEventListener("change", () => {
-          const typedVal = typeof DEFAULTS[key] === "number" ? Number(select.value) : select.value;
-          saveControl(doc, key, select, typedVal);
-        });
-        row.appendChild(label);
-        row.appendChild(select);
-        container.appendChild(row);
-      } else if (type === "text" || type === "time") {
-        const row = doc.createElementNS(HTML, "div");
-        row.className = "todolist-control-row";
-        const label = doc.createElementNS(HTML, "label");
-        label.className = "todolist-control-label";
-        label.textContent = visibleLabel;
-        label.htmlFor = `pref-${key}`;
-        label.setAttribute("data-l10n-id", `taskflow-pref-field-${key}`);
-        const input = doc.createElementNS(HTML, "input");
-        input.type = type;
-        input.id = `pref-${key}`;
-        input.className = "todolist-control";
-        input.value = String(currentVal ?? "");
-        input.addEventListener("change", () => {
-          saveControl(doc, key, input, input.value.trim());
-        });
-        row.appendChild(label);
-        row.appendChild(input);
-        container.appendChild(row);
-      }
-    }
-    updateDependencies(doc);
-  }
-  async function renderCustomTagsManager(doc, win) {
+  async function renderCustomTagsManager(doc, win, parentSignal) {
     const listEl = getEl(doc, "taskflow-pref-tags-list");
     if (!listEl) return;
+    const signal = resetTagListSignal(listEl, doc, parentSignal);
     listEl.replaceChildren();
-    const zot = win?.Zotero || doc.defaultView?.Zotero || (typeof Zotero !== "undefined" ? Zotero : null);
-    if (!zot?.TaskFlow?.loadData) {
+    const zot = getZoteroInstance(win, doc);
+    const host = zot?.TaskFlow || zot?.Todolist;
+    if (!host?.loadData) {
       const emptySpan = doc.createElementNS(HTML, "span");
       emptySpan.textContent = "暂无自定义标签 (Zotero 就绪后即可管理)";
       emptySpan.style.color = "var(--flow-pref-muted)";
@@ -417,7 +435,8 @@
       return;
     }
     try {
-      const data = await zot.TaskFlow.loadData();
+      const data = await host.loadData();
+      if (signal.aborted) return;
       const tags = data.customTags || [];
       if (tags.length === 0) {
         const emptySpan = doc.createElementNS(HTML, "span");
@@ -441,19 +460,25 @@
         delBtn.className = "todolist-pref-tag-delete";
         delBtn.textContent = "×";
         delBtn.title = `删除标签 "${tag.name}"`;
-        delBtn.addEventListener("click", async (e) => {
-          e.stopPropagation();
-          if (delBtn.disabled) return;
-          delBtn.disabled = true;
-          try {
-            await zot.TaskFlow.saveData({ customTagChanges: { deleted: [tag.id] } });
-            await renderCustomTagsManager(doc, win);
-          } catch (error) {
-            reportOperationError(zot, doc, "删除自定义标签", error);
-          } finally {
-            delBtn.disabled = false;
-          }
-        });
+        addAbortableListener(
+          delBtn,
+          "click",
+          async (e) => {
+            e.stopPropagation();
+            if (delBtn.disabled) return;
+            delBtn.disabled = true;
+            try {
+              await host.saveData({ customTagChanges: { deleted: [tag.id] } });
+              await renderCustomTagsManager(doc, win, parentSignal);
+            } catch (error) {
+              reportOperationError(zot, doc, "删除自定义标签", error);
+            } finally {
+              delBtn.disabled = false;
+            }
+          },
+          void 0,
+          signal
+        );
         badge.appendChild(delBtn);
         listEl.appendChild(badge);
       }
@@ -461,21 +486,27 @@
       reportOperationError(zot, doc, "刷新自定义标签", err);
     }
   }
-  function bindTagPaletteAndCreator(doc, win) {
+  function bindTagPaletteAndCreator(doc, win, signal) {
     let activeTagColor = "#ef4444";
     const palette = getEl(doc, "taskflow-tag-color-palette");
     if (palette) {
       const dots = palette.querySelectorAll(".todolist-pref-color-dot");
       dots.forEach((dot) => {
-        dot.addEventListener("click", () => {
-          dots.forEach((d) => {
-            d.classList.remove("active");
-            d.setAttribute("aria-pressed", "false");
-          });
-          dot.classList.add("active");
-          dot.setAttribute("aria-pressed", "true");
-          activeTagColor = dot.getAttribute("data-color") || "#ef4444";
-        });
+        addAbortableListener(
+          dot,
+          "click",
+          () => {
+            dots.forEach((d) => {
+              d.classList.remove("active");
+              d.setAttribute("aria-pressed", "false");
+            });
+            dot.classList.add("active");
+            dot.setAttribute("aria-pressed", "true");
+            activeTagColor = dot.getAttribute("data-color") || "#ef4444";
+          },
+          void 0,
+          signal
+        );
       });
     }
     const addTagBtn = getEl(doc, "taskflow-btn-add-tag");
@@ -485,8 +516,9 @@
       if (addingTag) return;
       const name = tagInput?.value?.trim();
       if (!name) return;
-      const zot = win?.Zotero || doc.defaultView?.Zotero || (typeof Zotero !== "undefined" ? Zotero : null);
-      if (!zot?.TaskFlow && !zot?.Todolist) return;
+      const zot = getZoteroInstance(win, doc);
+      const host = zot?.TaskFlow || zot?.Todolist;
+      if (!host?.saveData) return;
       addingTag = true;
       if (addTagBtn) addTagBtn.disabled = true;
       if (tagInput) tagInput.disabled = true;
@@ -497,9 +529,9 @@
           color: activeTagColor || "#3b82f6",
           icon: "🏷️"
         };
-        await zot.TaskFlow.saveData({ customTagChanges: { added: [tag] } });
+        await host.saveData({ customTagChanges: { added: [tag] } });
         if (tagInput) tagInput.value = "";
-        await renderCustomTagsManager(doc, win);
+        await renderCustomTagsManager(doc, win, signal);
       } catch (error) {
         reportOperationError(zot, doc, "添加自定义标签", error);
       } finally {
@@ -508,151 +540,339 @@
         if (tagInput) tagInput.disabled = false;
       }
     };
-    addTagBtn?.addEventListener("click", handleAddTag);
-    tagInput?.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        handleAddTag();
-      }
-    });
+    addAbortableListener(addTagBtn, "click", () => void handleAddTag(), void 0, signal);
+    addAbortableListener(
+      tagInput,
+      "keydown",
+      (e) => {
+        const ke = e;
+        if (ke.key === "Enter") {
+          ke.preventDefault();
+          void handleAddTag();
+        }
+      },
+      void 0,
+      signal
+    );
   }
-  function bindMaintenanceActions(doc, win, runOperation) {
+
+  // src/preferences/uiBinding.ts
+  var HTML = "http://www.w3.org/1999/xhtml";
+  var containerControllers = /* @__PURE__ */ new WeakMap();
+  function resetContainerSignal(container, doc, parentSignal) {
+    containerControllers.get(container)?.abort();
+    const next = createScopedController(doc.defaultView);
+    linkParentSignal(next, parentSignal);
+    containerControllers.set(container, next);
+    return next.signal;
+  }
+  function getZoteroInstance(win, doc) {
+    return win?.Zotero || doc.defaultView?.Zotero || (typeof Zotero !== "undefined" ? Zotero : null);
+  }
+  function getEl(doc, id) {
+    return doc.getElementById(id) || doc.getElementById(id.replace("taskflow-", "todolist-")) || doc.getElementById(id.replace("todolist-", "taskflow-"));
+  }
+  function reportOperationError(zot, doc, action, error) {
+    zot?.logError?.("[TaskFlow] " + action + ": " + error);
+    const host = zot?.TaskFlow || zot?.Todolist;
+    const message = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack : void 0;
+    Promise.resolve(host?.recordDiagnostic?.({ action, message, stack })).catch(() => {
+    });
+    const status = getEl(doc, "taskflow-pref-status");
+    setStatusL10n(status, "taskflow-pref-status-op-error", `${action}失败：${message}`, { action, message });
+  }
+  async function saveControl(doc, key, control, value) {
+    control.disabled = true;
+    updateDependencies(doc);
+    try {
+      await setPref(key, value);
+      const status = getEl(doc, "taskflow-pref-status");
+      setStatusL10n(status, "taskflow-pref-status-saved", "设置已保存。");
+    } catch (error) {
+      reportOperationError(doc.defaultView?.Zotero, doc, "保存设置", error);
+    } finally {
+      control.disabled = false;
+      if (control instanceof HTMLInputElement && control.type === "checkbox") {
+        control.checked = Boolean(getPref(key));
+      } else {
+        control.value = String(getPref(key));
+      }
+      updateDependencies(doc);
+    }
+  }
+  function renderGroup(doc, containerId, items, parentSignal) {
+    const container = doc.getElementById(containerId);
+    if (!container) return;
+    const signal = resetContainerSignal(container, doc, parentSignal);
+    container.replaceChildren();
+    for (const [key, labelText, type, options] of items) {
+      const currentVal = getPref(key);
+      if (type === "check") {
+        const row = doc.createElementNS(HTML, "label");
+        row.className = "todolist-check-row";
+        const input = doc.createElementNS(HTML, "input");
+        input.type = "checkbox";
+        input.id = `pref-${key}`;
+        input.className = "todolist-control";
+        input.checked = Boolean(currentVal);
+        addAbortableListener(
+          input,
+          "change",
+          () => {
+            void saveControl(doc, key, input, input.checked);
+          },
+          void 0,
+          signal
+        );
+        const span = doc.createElementNS(HTML, "span");
+        span.className = "todolist-control-label";
+        span.textContent = labelText;
+        span.setAttribute("data-l10n-id", `taskflow-pref-field-${key}`);
+        row.appendChild(input);
+        row.appendChild(span);
+        container.appendChild(row);
+      } else if (type === "select") {
+        const row = doc.createElementNS(HTML, "div");
+        row.className = "todolist-control-row";
+        const label = doc.createElementNS(HTML, "label");
+        label.className = "todolist-control-label";
+        label.textContent = labelText;
+        label.htmlFor = `pref-${key}`;
+        label.setAttribute("data-l10n-id", `taskflow-pref-field-${key}`);
+        const select = doc.createElementNS(HTML, "select");
+        select.className = "todolist-control";
+        select.id = `pref-${key}`;
+        for (const [optVal, optLabel] of options || []) {
+          const option = doc.createElementNS(HTML, "option");
+          option.value = optVal;
+          option.textContent = optLabel;
+          option.setAttribute("data-l10n-id", `taskflow-pref-opt-${key}-${optVal}`);
+          if (String(currentVal) === String(optVal)) option.selected = true;
+          select.appendChild(option);
+        }
+        addAbortableListener(
+          select,
+          "change",
+          () => {
+            const typedVal = typeof DEFAULTS[key] === "number" ? Number(select.value) : select.value;
+            void saveControl(doc, key, select, typedVal);
+          },
+          void 0,
+          signal
+        );
+        row.appendChild(label);
+        row.appendChild(select);
+        container.appendChild(row);
+      } else if (type === "text" || type === "time") {
+        const row = doc.createElementNS(HTML, "div");
+        row.className = "todolist-control-row";
+        const label = doc.createElementNS(HTML, "label");
+        label.className = "todolist-control-label";
+        label.textContent = labelText;
+        label.htmlFor = `pref-${key}`;
+        label.setAttribute("data-l10n-id", `taskflow-pref-field-${key}`);
+        const input = doc.createElementNS(HTML, "input");
+        input.type = type;
+        input.id = `pref-${key}`;
+        input.className = "todolist-control";
+        input.value = String(currentVal ?? "");
+        addAbortableListener(
+          input,
+          "change",
+          () => {
+            void saveControl(doc, key, input, input.value.trim());
+          },
+          void 0,
+          signal
+        );
+        row.appendChild(label);
+        row.appendChild(input);
+        container.appendChild(row);
+      }
+    }
+    updateDependencies(doc);
+  }
+  function bindMaintenanceActions(doc, win, runOperation, signal) {
     const statusEl = getEl(doc, "taskflow-pref-status");
-    const zot = win?.Zotero || doc.defaultView?.Zotero || (typeof Zotero !== "undefined" ? Zotero : null);
-    getEl(doc, "taskflow-btn-export-json")?.addEventListener("click", () => {
-      runOperation("导出 JSON", () => zot?.TaskFlow?.exportData?.("json"));
-    });
-    getEl(doc, "taskflow-btn-export-csv")?.addEventListener("click", () => {
-      runOperation("导出 CSV", () => zot?.TaskFlow?.exportData?.("csv"));
-    });
-    getEl(doc, "taskflow-btn-export-markdown")?.addEventListener("click", () => {
-      runOperation("导出 Markdown", () => zot?.TaskFlow?.exportData?.("markdown"));
-    });
-    getEl(doc, "taskflow-btn-export-txt")?.addEventListener("click", () => {
-      runOperation("导出 TXT", () => zot?.TaskFlow?.exportData?.("txt"));
-    });
-    getEl(doc, "taskflow-btn-import-file")?.addEventListener(
-      "click",
-      () => runOperation("导入数据", async () => {
-        const mode = getEl(doc, "taskflow-import-mode")?.value || "merge";
+    const zot = getZoteroInstance(win, doc);
+    const host = zot?.TaskFlow || zot?.Todolist;
+    const confirmHost = win || doc.defaultView;
+    const bindClick = (id, handler) => {
+      addAbortableListener(getEl(doc, id), "click", handler, void 0, signal);
+    };
+    bindClick("taskflow-btn-export-json", () => void runOperation("导出 JSON", () => host?.exportData?.("json")));
+    bindClick("taskflow-btn-export-csv", () => void runOperation("导出 CSV", () => host?.exportData?.("csv")));
+    bindClick("taskflow-btn-export-markdown", () => void runOperation("导出 Markdown", () => host?.exportData?.("markdown")));
+    bindClick("taskflow-btn-export-txt", () => void runOperation("导出 TXT", () => host?.exportData?.("txt")));
+    bindClick("taskflow-btn-import-file", () => {
+      void runOperation("导入数据", async () => {
+        const modeSelect = getEl(doc, "taskflow-import-mode");
+        const rawMode = modeSelect?.value || "merge";
+        const mode = rawMode === "overwrite" ? "replace" : rawMode;
         const status = getEl(doc, "taskflow-import-status");
         if (status) {
           status.textContent = "正在准备导入…";
           status.style.color = "var(--flow-pref-muted)";
         }
-        const res = await zot?.TaskFlow?.importDataFile?.(mode, win);
+        const res = await host?.importDataFile?.(mode, win);
         if (res?.success) {
           if (status) status.textContent = `✅ 成功导入 ${res.count} 个任务与标签数据！`;
-          renderCustomTagsManager(doc, win);
+          await renderCustomTagsManager(doc, win, signal);
         } else if (res?.error) {
           if (status) {
             status.textContent = `❌ 导入失败：${res.error}`;
             status.style.color = "var(--flow-pref-danger)";
           }
-        } else {
-          if (status) status.textContent = "";
+        } else if (status) {
+          status.textContent = "";
         }
-      })
-    );
-    getEl(doc, "taskflow-btn-print")?.addEventListener("click", () => {
-      runOperation("打印任务", () => zot?.TaskFlow?.printTasks?.(win));
+      });
     });
-    getEl(doc, "taskflow-btn-copy-summary")?.addEventListener("click", () => {
-      runOperation("复制任务摘要", () => zot?.TaskFlow?.copyTasksSummary?.(win));
-    });
-    getEl(doc, "taskflow-btn-clear-all")?.addEventListener(
-      "click",
-      () => runOperation("清空数据", async () => {
-        if (!win.confirm("⚠️ 警告：确定要清空所有待办任务、历史记录与自定义标签吗？此操作无法撤销！")) {
+    bindClick("taskflow-btn-print", () => void runOperation("打印任务", () => host?.printTasks?.(win)));
+    bindClick("taskflow-btn-copy-summary", () => void runOperation("复制任务摘要", () => host?.copyTasksSummary?.(win)));
+    bindClick("taskflow-btn-clear-all", () => {
+      void runOperation("清空数据", async () => {
+        if (!confirmHost?.confirm?.("⚠️ 警告：确定要清空所有待办任务、历史记录与自定义标签吗？此操作无法撤销！")) {
           setStatusL10n(statusEl, "taskflow-pref-status-unchanged", "数据未清空。");
           return;
         }
-        const cleared = await zot?.TaskFlow?.clearAllData?.(win);
+        const cleared = await host?.clearAllData?.(win);
         if (cleared) {
-          await renderCustomTagsManager(doc, win);
+          await renderCustomTagsManager(doc, win, signal);
           setStatusL10n(statusEl, "taskflow-pref-status-cleared", "所有数据已清空。");
         } else {
           setStatusL10n(statusEl, "taskflow-pref-status-unchanged", "数据未清空。");
         }
-      })
-    );
+      });
+    });
     const resetBtn = getEl(doc, "taskflow-btn-reset-defaults");
     if (resetBtn) {
-      resetBtn.addEventListener(
+      addAbortableListener(
+        resetBtn,
         "click",
-        () => runOperation("恢复默认设置", async () => {
-          if (resetBtn.disabled || !win.confirm("确定要恢复 TaskFlow 默认设置吗？")) return;
-          resetBtn.disabled = true;
-          try {
-            await setPrefs(DEFAULTS);
-            for (const [group, fields] of Object.entries(FIELDS)) {
-              renderGroup(doc, `todolist-pref-${group}`, fields);
+        () => {
+          void runOperation("恢复默认设置", async () => {
+            if (resetBtn.disabled || !confirmHost?.confirm?.("确定要恢复 TaskFlow 默认设置吗？")) return;
+            resetBtn.disabled = true;
+            try {
+              await setPrefs(DEFAULTS);
+              for (const [group, fields] of Object.entries(FIELDS)) {
+                renderGroup(doc, `todolist-pref-${group}`, fields, signal);
+              }
+              updateDependencies(doc);
+              setStatusL10n(statusEl, "taskflow-pref-status-reset", "默认设置已恢复。");
+            } finally {
+              resetBtn.disabled = false;
             }
-            updateDependencies(doc);
-            setStatusL10n(statusEl, "taskflow-pref-status-reset", "默认设置已恢复。");
-          } finally {
-            resetBtn.disabled = false;
-          }
-        })
+          });
+        },
+        void 0,
+        signal
       );
     }
   }
 
   // src/preferences.ts
-  window.TaskFlow_Preferences = /* @__PURE__ */ (() => {
-    return {
-      init(win) {
-        const doc = win?.document || window.document;
-        const pane = getEl(doc, "taskflow-preferences-pane");
-        if (pane) {
-          if (pane._todolistInited) return;
-          pane._todolistInited = true;
-        }
-        const statusEl = getEl(doc, "taskflow-pref-status");
-        const runOperation = async (action, callback) => {
-          try {
-            return await callback();
-          } catch (error) {
-            reportOperationError(win?.Zotero || window.Zotero, doc, action, error);
-          }
-        };
+  var fallbackController = null;
+  function getPane(doc) {
+    if (!doc) return null;
+    return doc.getElementById("todolist-preferences-pane") || doc.getElementById("taskflow-preferences-pane");
+  }
+  var TaskFlow_Preferences = {
+    init(win) {
+      const targetWin = win || (typeof window !== "undefined" ? window : null);
+      const doc = targetWin?.document || (typeof document !== "undefined" ? document : null);
+      if (!doc) return;
+      const pane = getPane(doc);
+      if (pane) {
+        if (pane._todolistInited || pane._taskflowInited) return;
+        pane._todolistInited = true;
+        pane._taskflowInited = true;
+      }
+      fallbackController?.abort();
+      fallbackController = null;
+      if (targetWin) {
+        targetWin.__taskflowPrefController?.abort();
+        const prefController = createScopedController(targetWin);
+        targetWin.__taskflowPrefController = prefController;
+        addAbortableListener(
+          targetWin,
+          "unload",
+          () => {
+            prefController.abort();
+            if (targetWin.__taskflowPrefController === prefController) {
+              targetWin.__taskflowPrefController = void 0;
+            }
+          },
+          { once: true }
+        );
+      }
+      const signal = targetWin?.__taskflowPrefController?.signal;
+      const statusEl = getEl(doc, "taskflow-pref-status");
+      const runOperation = async (action, callback) => {
         try {
-          renderGroup(doc, "todolist-pref-window", FIELDS.window);
-          renderGroup(doc, "todolist-pref-view", FIELDS.view);
-          renderGroup(doc, "todolist-pref-academic", FIELDS.academic);
-          renderGroup(doc, "todolist-pref-literature", FIELDS.literature);
-          renderGroup(doc, "todolist-pref-reader", FIELDS.reader);
-          renderGroup(doc, "todolist-pref-sync", FIELDS.sync);
-          renderGroup(doc, "todolist-pref-tags", FIELDS.tags);
-          renderGroup(doc, "todolist-pref-reminders", FIELDS.reminders);
-          renderCustomTagsManager(doc, win);
-          bindTagPaletteAndCreator(doc, win);
-          bindMaintenanceActions(doc, win, runOperation);
-          updateDependencies(doc);
-          registerPreferenceObserver(doc, win);
-          setStatusL10n(statusEl, "taskflow-pref-status-loaded", "设置已加载；修改会自动保存。");
-        } catch (err) {
-          if (statusEl) {
-            setStatusL10n(statusEl, "taskflow-pref-status-load-error", "加载设置时发生异常: " + err.message, {
-              message: String(err?.message || err)
-            });
-            statusEl.className = "todolist-pref-status todolist-pref-error";
-          }
+          return await callback();
+        } catch (error) {
+          reportOperationError(targetWin?.Zotero || (typeof Zotero !== "undefined" ? Zotero : null), doc, action, error);
+          return void 0;
+        }
+      };
+      try {
+        renderGroup(doc, "todolist-pref-window", FIELDS.window, signal);
+        renderGroup(doc, "todolist-pref-view", FIELDS.view, signal);
+        renderGroup(doc, "todolist-pref-academic", FIELDS.academic, signal);
+        renderGroup(doc, "todolist-pref-literature", FIELDS.literature, signal);
+        renderGroup(doc, "todolist-pref-reader", FIELDS.reader, signal);
+        renderGroup(doc, "todolist-pref-sync", FIELDS.sync, signal);
+        renderGroup(doc, "todolist-pref-tags", FIELDS.tags, signal);
+        renderGroup(doc, "todolist-pref-reminders", FIELDS.reminders, signal);
+        void renderCustomTagsManager(doc, targetWin, signal);
+        bindTagPaletteAndCreator(doc, targetWin, signal);
+        bindMaintenanceActions(doc, targetWin, runOperation, signal);
+        updateDependencies(doc);
+        registerPreferenceObserver(doc, targetWin, signal);
+        setStatusL10n(statusEl, "taskflow-pref-status-loaded", "设置已加载；修改会自动保存。");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (statusEl) {
+          setStatusL10n(statusEl, "taskflow-pref-status-load-error", `加载设置时发生异常: ${msg}`, {
+            message: msg
+          });
+          statusEl.className = "todolist-pref-status todolist-pref-error";
         }
       }
-    };
-  })();
-  window.Todolist_Preferences = window.TaskFlow_Preferences;
-  if (typeof window !== "undefined" && window.document) {
-    if (window.document.readyState === "complete" || window.document.readyState === "interactive") {
-      setTimeout(() => {
-        const pane = window.document.getElementById("todolist-preferences-pane") || window.document.getElementById("taskflow-preferences-pane");
-        if (pane && !pane._todolistInited && !pane._taskflowInited) {
-          pane._todolistInited = true;
-          pane._taskflowInited = true;
-          window.TaskFlow_Preferences?.init?.(window);
-        }
-      }, 50);
+    }
+  };
+  if (typeof window !== "undefined") {
+    window.TaskFlow_Preferences = TaskFlow_Preferences;
+    window.Todolist_Preferences = TaskFlow_Preferences;
+    if (window.document) {
+      if (window.document.readyState === "complete" || window.document.readyState === "interactive") {
+        const localWin = window;
+        fallbackController = createScopedController(localWin);
+        addAbortableListener(
+          localWin,
+          "unload",
+          () => {
+            fallbackController?.abort();
+            fallbackController = null;
+          },
+          { once: true },
+          fallbackController.signal
+        );
+        setAbortableTimeout(
+          () => {
+            const pane = getPane(localWin.document);
+            if (pane && !pane._todolistInited && !pane._taskflowInited) {
+              localWin.TaskFlow_Preferences?.init?.(localWin);
+            }
+          },
+          50,
+          fallbackController.signal,
+          localWin
+        );
+      }
     }
   }
 })();

@@ -1,5 +1,13 @@
 # Changelog
 
+## 17.0.0 - 2026-11-13
+
+### Engineering, Type Safety & Lifecycle Reliability
+- Enabled strict TypeScript compiler checks (`strict`, `noImplicitAny`, `strictNullChecks`, `isolatedModules`, `verbatimModuleSyntax`, `ES2023`, `bundler`) across all modules in `src/` with zero exemptions (`@ts-ignore` / `@ts-nocheck`).
+- Replaced ad-hoc listener and timer tracking with declarative `AbortController` (`src/lifecycle.ts`) across host windows, toolbar/menus/message bridge, ItemPane sections & item renders, Preferences controller, and `ZoteroBridge`.
+- Fixed concurrent `updateTaskState` atomic updates inside `_saveQueue`, cross-realm `Error` message extraction, strict calendar date parsing in `TaskRules.reminderIsDue`, `overwrite` import mode normalization, `Preferences` auto-init fallback flag ordering, and `literature/` edge cases (deleted attachments, empty selections, trashed item status sync).
+- Extracted `src/types/host.ts`, `src/itemPane/fallbackView.ts`, and `src/preferences/tagsBinding.ts` so every `src/**/*.ts` module remains <= 360 lines.
+
 ## 16.0.2 - 2026-11-12
 
 ### Bug Fixes & Reliability

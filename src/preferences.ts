@@ -1,89 +1,133 @@
 // Zotero TaskFlow - Preferences Controller (TypeScript Source)
 // Single Source of Truth for preferences.xhtml settings pane
 
+import { addAbortableListener, createScopedController, setAbortableTimeout } from './lifecycle';
 import { DEFAULTS, FIELDS, getPref, setPref, setPrefs, PREFIX } from './preferences/model';
 import {
   getEl,
   renderGroup,
-  renderCustomTagsManager,
-  bindTagPaletteAndCreator,
   bindMaintenanceActions,
   reportOperationError
 } from './preferences/uiBinding';
+import { renderCustomTagsManager, bindTagPaletteAndCreator } from './preferences/tagsBinding';
 import { registerPreferenceObserver, setStatusL10n, updateDependencies } from './preferences/dependencies';
 
 export { DEFAULTS, FIELDS, getPref, setPref, setPrefs, PREFIX };
 
-declare let window: any;
+type PaneElement = Element & { _todolistInited?: boolean; _taskflowInited?: boolean };
 
-/* Zotero TaskFlow settings pane script for Zotero 10+ */
-window.TaskFlow_Preferences = (() => {
-  return {
-    init(win: any) {
-      const doc = win?.document || window.document;
-      const pane = getEl(doc, 'taskflow-preferences-pane');
-      if (pane) {
-        if (pane._todolistInited) return;
-        pane._todolistInited = true;
-      }
-      const statusEl = getEl(doc, 'taskflow-pref-status');
-      const runOperation = async (action: string, callback: () => any) => {
-        try {
-          return await callback();
-        } catch (error) {
-          reportOperationError(win?.Zotero || window.Zotero, doc, action, error);
-        }
-      };
+let fallbackController: AbortController | null = null;
 
+function getPane(doc: Document | null | undefined): PaneElement | null {
+  if (!doc) return null;
+  return (doc.getElementById('todolist-preferences-pane') ||
+    doc.getElementById('taskflow-preferences-pane')) as PaneElement | null;
+}
+
+export const TaskFlow_Preferences = {
+  init(win?: Window | null): void {
+    const targetWin = win || (typeof window !== 'undefined' ? window : null);
+    const doc = targetWin?.document || (typeof document !== 'undefined' ? document : null);
+    if (!doc) return;
+
+    const pane = getPane(doc);
+    if (pane) {
+      if (pane._todolistInited || pane._taskflowInited) return;
+      pane._todolistInited = true;
+      pane._taskflowInited = true;
+    }
+
+    fallbackController?.abort();
+    fallbackController = null;
+
+    if (targetWin) {
+      targetWin.__taskflowPrefController?.abort();
+      const prefController = createScopedController(targetWin);
+      targetWin.__taskflowPrefController = prefController;
+      addAbortableListener(
+        targetWin,
+        'unload',
+        () => {
+          prefController.abort();
+          if (targetWin.__taskflowPrefController === prefController) {
+            targetWin.__taskflowPrefController = undefined;
+          }
+        },
+        { once: true }
+      );
+    }
+    const signal = targetWin?.__taskflowPrefController?.signal;
+
+    const statusEl = getEl(doc, 'taskflow-pref-status');
+    const runOperation = async (action: string, callback: () => unknown): Promise<unknown> => {
       try {
-        renderGroup(doc, 'todolist-pref-window', FIELDS.window);
-        renderGroup(doc, 'todolist-pref-view', FIELDS.view);
-        renderGroup(doc, 'todolist-pref-academic', FIELDS.academic);
-        renderGroup(doc, 'todolist-pref-literature', FIELDS.literature);
-        renderGroup(doc, 'todolist-pref-reader', FIELDS.reader);
-        renderGroup(doc, 'todolist-pref-sync', FIELDS.sync);
-        renderGroup(doc, 'todolist-pref-tags', FIELDS.tags);
-        renderGroup(doc, 'todolist-pref-reminders', FIELDS.reminders);
+        return await callback();
+      } catch (error) {
+        reportOperationError(targetWin?.Zotero || (typeof Zotero !== 'undefined' ? Zotero : null), doc, action, error);
+        return undefined;
+      }
+    };
 
-        // Render Custom Tags Manager
-        renderCustomTagsManager(doc, win);
+    try {
+      renderGroup(doc, 'todolist-pref-window', FIELDS.window, signal);
+      renderGroup(doc, 'todolist-pref-view', FIELDS.view, signal);
+      renderGroup(doc, 'todolist-pref-academic', FIELDS.academic, signal);
+      renderGroup(doc, 'todolist-pref-literature', FIELDS.literature, signal);
+      renderGroup(doc, 'todolist-pref-reader', FIELDS.reader, signal);
+      renderGroup(doc, 'todolist-pref-sync', FIELDS.sync, signal);
+      renderGroup(doc, 'todolist-pref-tags', FIELDS.tags, signal);
+      renderGroup(doc, 'todolist-pref-reminders', FIELDS.reminders, signal);
 
-        // Bind Palette & Add Tag Actions
-        bindTagPaletteAndCreator(doc, win);
+      void renderCustomTagsManager(doc, targetWin, signal);
+      bindTagPaletteAndCreator(doc, targetWin, signal);
+      bindMaintenanceActions(doc, targetWin, runOperation, signal);
 
-        // Bind Maintenance Actions (export, import, print, copy, clear, reset)
-        bindMaintenanceActions(doc, win, runOperation);
+      updateDependencies(doc);
+      registerPreferenceObserver(doc, targetWin, signal);
 
-        updateDependencies(doc);
-        registerPreferenceObserver(doc, win);
-
-        setStatusL10n(statusEl, 'taskflow-pref-status-loaded', '设置已加载；修改会自动保存。');
-      } catch (err: any) {
-        if (statusEl) {
-          setStatusL10n(statusEl, 'taskflow-pref-status-load-error', '加载设置时发生异常: ' + err.message, {
-            message: String(err?.message || err)
-          });
-          statusEl.className = 'todolist-pref-status todolist-pref-error';
-        }
+      setStatusL10n(statusEl, 'taskflow-pref-status-loaded', '设置已加载；修改会自动保存。');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (statusEl) {
+        setStatusL10n(statusEl, 'taskflow-pref-status-load-error', `加载设置时发生异常: ${msg}`, {
+          message: msg
+        });
+        statusEl.className = 'todolist-pref-status todolist-pref-error';
       }
     }
-  };
-})();
+  }
+};
 
-window.Todolist_Preferences = window.TaskFlow_Preferences;
+if (typeof window !== 'undefined') {
+  window.TaskFlow_Preferences = TaskFlow_Preferences;
+  (window as Window & { Todolist_Preferences?: typeof TaskFlow_Preferences }).Todolist_Preferences =
+    TaskFlow_Preferences;
 
-// Auto-init fallback if onload already fired in modern Gecko / Zotero 10+
-if (typeof window !== 'undefined' && window.document) {
-  if (window.document.readyState === 'complete' || window.document.readyState === 'interactive') {
-    setTimeout(() => {
-      const pane =
-        window.document.getElementById('todolist-preferences-pane') ||
-        window.document.getElementById('taskflow-preferences-pane');
-      if (pane && !pane._todolistInited && !pane._taskflowInited) {
-        pane._todolistInited = true;
-        pane._taskflowInited = true;
-        window.TaskFlow_Preferences?.init?.(window);
-      }
-    }, 50);
+  if (window.document) {
+    if (window.document.readyState === 'complete' || window.document.readyState === 'interactive') {
+      const localWin = window;
+      fallbackController = createScopedController(localWin);
+      addAbortableListener(
+        localWin,
+        'unload',
+        () => {
+          fallbackController?.abort();
+          fallbackController = null;
+        },
+        { once: true },
+        fallbackController.signal
+      );
+      setAbortableTimeout(
+        () => {
+          const pane = getPane(localWin.document);
+          if (pane && !pane._todolistInited && !pane._taskflowInited) {
+            localWin.TaskFlow_Preferences?.init?.(localWin);
+          }
+        },
+        50,
+        fallbackController.signal,
+        localWin
+      );
+    }
   }
 }

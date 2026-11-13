@@ -2,6 +2,7 @@
  * Zotero TaskFlow - Preferences Dependency Rules, Prefs Observer & L10n Status Helper
  */
 
+import { addAbortableListener } from '../lifecycle';
 import { FIELDS, PREFIX, getPref } from './model';
 
 export const DEPENDENCY_RULES: Record<string, string[]> = {
@@ -18,7 +19,7 @@ export const DEPENDENCY_RULES: Record<string, string[]> = {
 };
 
 export function setStatusL10n(
-  statusEl: any,
+  statusEl: Element | null | undefined,
   l10nId: string | null,
   fallbackText: string,
   l10nArgs?: Record<string, unknown>
@@ -44,7 +45,7 @@ export function updateDependencies(doc: Document): void {
     const parentCtrl = doc.getElementById(`pref-${parentKey}`) as HTMLInputElement | null;
     const enabled = parentCtrl ? Boolean(parentCtrl.checked) : Boolean(getPref(parentKey));
     for (const childKey of children) {
-      const childCtrl = doc.getElementById(`pref-${childKey}`) as HTMLInputElement | null;
+      const childCtrl = doc.getElementById(`pref-${childKey}`) as (HTMLInputElement | HTMLSelectElement) | null;
       if (!childCtrl) continue;
       childCtrl.disabled = !enabled;
       const row = childCtrl.closest('.todolist-check-row, .todolist-control-row');
@@ -60,21 +61,25 @@ export function syncControlsFromPrefs(doc: Document): void {
   if (!doc) return;
   for (const fields of Object.values(FIELDS)) {
     for (const [key, , type] of fields) {
-      const ctrl = doc.getElementById(`pref-${key}`) as any;
+      const ctrl = doc.getElementById(`pref-${key}`) as (HTMLInputElement | HTMLSelectElement) | null;
       if (!ctrl) continue;
       const val = getPref(key);
-      if (type === 'check') ctrl.checked = Boolean(val);
+      if (type === 'check' && 'checked' in ctrl) ctrl.checked = Boolean(val);
       else ctrl.value = String(val ?? '');
     }
   }
   updateDependencies(doc);
 }
 
-export function registerPreferenceObserver(doc: Document, win: any): void {
-  const zot = win?.Zotero || (doc.defaultView as any)?.Zotero;
-  if (typeof zot?.Prefs?.registerObserver !== 'function') return;
+export function registerPreferenceObserver(
+  doc: Document,
+  win?: Window | null,
+  signal?: AbortSignal
+): void {
   const hostWin = win || doc.defaultView;
-  if (hostWin?.__taskflowPrefObserverToken != null) return;
+  const zot = hostWin?.Zotero || (typeof Zotero !== 'undefined' ? Zotero : null);
+  if (typeof zot?.Prefs?.registerObserver !== 'function') return;
+  if (hostWin?.__taskflowPrefObserverToken != null || signal?.aborted) return;
 
   try {
     const token = zot.Prefs.registerObserver(
@@ -86,16 +91,18 @@ export function registerPreferenceObserver(doc: Document, win: any): void {
     );
     if (hostWin && token !== undefined) {
       hostWin.__taskflowPrefObserverToken = token;
-      hostWin.addEventListener?.(
-        'unload',
-        () => {
-          try {
-            zot.Prefs.unregisterObserver?.(token);
-          } catch (_) {}
-          if (hostWin) hostWin.__taskflowPrefObserverToken = undefined;
-        },
-        { once: true }
-      );
+      const cleanup = (): void => {
+        try {
+          zot.Prefs?.unregisterObserver?.(token);
+        } catch (_) {}
+        if (hostWin.__taskflowPrefObserverToken === token) {
+          hostWin.__taskflowPrefObserverToken = undefined;
+        }
+      };
+      if (signal) {
+        signal.addEventListener('abort', cleanup, { once: true });
+      }
+      addAbortableListener(hostWin, 'unload', cleanup, { once: true }, signal);
     }
   } catch (_) {}
 }

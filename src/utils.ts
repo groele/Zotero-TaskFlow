@@ -2,9 +2,9 @@
  * Zotero TaskFlow - Host Utilities & Literature Serializers
  */
 
-declare let Zotero: any;
+import type { SerializedLiteratureItem, ZoteroItemCreator, ZoteroItemLike, ZoteroTagEntry } from './types/models';
 
-export const escapeHtml = (value: any): string =>
+export const escapeHtml = (value: unknown): string =>
   String(value ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -12,18 +12,19 @@ export const escapeHtml = (value: any): string =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
-export const itemSelectUri = (item: any): string => {
+export const itemSelectUri = (item: ZoteroItemLike | null | undefined): string => {
   if (!item) return '';
   const key = item.key || item.id;
+  if (key == null || key === '') return '';
   const groupID = Zotero.Libraries?.get?.(item.libraryID)?.groupID;
   return groupID
     ? `zotero://select/groups/${groupID}/items/${key}`
     : `zotero://select/library/items/${key}`;
 };
 
-export const getLiteratureItem = (item: any): any => {
+export const getLiteratureItem = (item: ZoteroItemLike | number | string | null | undefined): ZoteroItemLike | null => {
   if (!item) return null;
-  let target =
+  let target: ZoteroItemLike | null =
     typeof item === 'number' || typeof item === 'string'
       ? Zotero.Items?.get?.(item) || null
       : item;
@@ -39,14 +40,15 @@ export const getLiteratureItem = (item: any): any => {
   } catch (_) {}
   if (typeof target.isAttachment === 'function' && target.isAttachment()) {
     if (target.parentItemID) {
-      target = Zotero.Items.get(target.parentItemID) || target;
+      target = Zotero.Items?.get?.(target.parentItemID) || target;
     }
   }
-  if (typeof target.isNote === 'function' && target.isNote()) {
+  if (target && typeof target.isNote === 'function' && target.isNote()) {
     if (target.parentItemID) {
-      target = Zotero.Items.get(target.parentItemID) || target;
+      target = Zotero.Items?.get?.(target.parentItemID) || target;
     }
   }
+  if (!target) return null;
   try {
     if (
       target.topLevelItem &&
@@ -56,16 +58,14 @@ export const getLiteratureItem = (item: any): any => {
       return target.topLevelItem;
     }
   } catch (_) {}
-  return target &&
-    typeof target.isRegularItem === 'function' &&
-    target.isRegularItem()
-    ? target
-    : null;
+  return typeof target.isRegularItem === 'function' && target.isRegularItem() ? target : null;
 };
 
-export const serializeLiteratureItem = (item: any): any => {
+export const serializeLiteratureItem = (
+  item: ZoteroItemLike | number | string | null | undefined
+): SerializedLiteratureItem | null => {
   const target = getLiteratureItem(item);
-  if (!target) return null;
+  if (!target || target.deleted) return null;
 
   const title =
     (typeof target.getField === 'function'
@@ -85,7 +85,7 @@ export const serializeLiteratureItem = (item: any): any => {
       authors = target
         .getCreators()
         .map(
-          (c: any) =>
+          (c: ZoteroItemCreator) =>
             c.lastName ||
             c.name ||
             `${c.firstName || ''} ${c.lastName || ''}`.trim()
@@ -107,20 +107,21 @@ export const serializeLiteratureItem = (item: any): any => {
     if (typeof target.getTags === 'function') {
       tags = target
         .getTags()
-        .map((t: any) => t.tag || String(t))
+        .map((t: ZoteroTagEntry | string) => (typeof t === 'string' ? t : t.tag || ''))
         .filter(Boolean);
     }
   } catch (_) {}
 
   // Find main PDF attachment
-  let pdfUri = null;
+  let pdfUri: string | null = null;
   try {
     if (typeof target.getAttachments === 'function') {
       const attIds = target.getAttachments();
       for (const attId of attIds) {
-        const att = Zotero.Items.get(attId);
+        const att = Zotero.Items?.get?.(attId);
         if (
           att &&
+          !att.deleted &&
           ((typeof att.isPDFAttachment === 'function' &&
             att.isPDFAttachment()) ||
             att.contentType === 'application/pdf')
@@ -150,7 +151,7 @@ export const serializeLiteratureItem = (item: any): any => {
   };
 };
 
-export const resolveItemReference = (reference: any, libraryID?: any): any => {
+export const resolveItemReference = (reference: unknown, libraryID?: unknown): ZoteroItemLike | null => {
   if (!reference) return null;
   const raw = String(reference).trim();
   const groupMatch = raw.match(
@@ -162,7 +163,7 @@ export const resolveItemReference = (reference: any, libraryID?: any): any => {
     raw;
   if (!/^[A-Za-z0-9_]+$/.test(key)) return null;
   if (!raw.includes('/items/') && /^\d+$/.test(key))
-    return Zotero.Items.get(Number(key));
+    return Zotero.Items?.get?.(Number(key)) || null;
 
   let targetLibraryID =
     Number.isInteger(Number(libraryID)) && Number(libraryID) > 0
@@ -173,5 +174,5 @@ export const resolveItemReference = (reference: any, libraryID?: any): any => {
       Zotero.Groups?.getLibraryIDFromGroupID?.(Number(groupMatch[1])) ||
       targetLibraryID;
   }
-  return Zotero.Items.getByLibraryAndKey?.(targetLibraryID, key) || null;
+  return Zotero.Items?.getByLibraryAndKey?.(targetLibraryID, key) || null;
 };

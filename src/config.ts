@@ -4,7 +4,7 @@
 export const ADDON_ID = 'taskflow@groele.org';
 export const CHROME_ROOT = 'chrome://taskflow/content/';
 
-export const DEFAULT_PREFS: Record<string, any> = {
+export const DEFAULT_PREFS: Record<string, unknown> = {
   windowMode: 'tab',
   subwindowAlwaysOnTop: false,
   subwindowCompactMode: true,

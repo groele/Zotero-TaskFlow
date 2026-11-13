@@ -5,13 +5,12 @@
 
 import { TaskFlowItemPane } from './itemPane/index';
 
-declare let Zotero: any;
-
 if (typeof Zotero !== 'undefined') {
   Zotero.TaskFlowItemPane = TaskFlowItemPane;
 }
-if (typeof globalThis !== 'undefined') {
-  (globalThis as any).TaskFlowItemPane = TaskFlowItemPane;
+const g = globalThis as Record<string, unknown>;
+if (typeof g !== 'undefined') {
+  g.TaskFlowItemPane = TaskFlowItemPane;
 }
 
 export { TaskFlowItemPane };

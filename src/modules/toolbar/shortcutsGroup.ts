@@ -4,10 +4,10 @@
  */
 
 import { CHROME_ROOT } from '../../config';
+import { addAbortableListener } from '../../lifecycle';
+import type { TaskFlowHostLike } from '../../types/models';
 
-declare let Zotero: any;
-
-export function injectTabIconStyle(doc: Document, windowElements: any[]): void {
+export function injectTabIconStyle(doc: Document, windowElements: Array<{ remove?: () => void }>): void {
   try {
     if (!doc.getElementById('todolist-tab-style')) {
       const style = doc.createElement('style');
@@ -26,8 +26,14 @@ export function injectTabIconStyle(doc: Document, windowElements: any[]): void {
   } catch (_) {}
 }
 
-export function setupGlobalShortcuts(host: any, window: any, windowElements: any[]): void {
-  const handleGlobalKeyDown = (e: KeyboardEvent) => {
+export function setupGlobalShortcuts(
+  host: TaskFlowHostLike,
+  window: Window,
+  _windowElements: Array<{ remove?: () => void }>,
+  signal?: AbortSignal
+): void {
+  const handleGlobalKeyDown = (event: Event): void => {
+    const e = event as KeyboardEvent;
     if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === 't' || e.key === 'T')) {
       e.preventDefault?.();
       e.stopPropagation?.();
@@ -35,16 +41,19 @@ export function setupGlobalShortcuts(host: any, window: any, windowElements: any
     } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 't' || e.key === 'T')) {
       e.preventDefault?.();
       e.stopPropagation?.();
-      host.createTaskFromReader(window);
+      void host.createTaskFromReader(window);
     }
   };
-  window.addEventListener('keydown', handleGlobalKeyDown, true);
-  windowElements.push({
-    remove: () => window.removeEventListener('keydown', handleGlobalKeyDown, true)
-  });
+  addAbortableListener(window, 'keydown', handleGlobalKeyDown, { capture: true }, signal);
 }
 
-export function injectItemContextMenu(host: any, window: any, doc: Document, windowElements: any[]): void {
+export function injectItemContextMenu(
+  host: TaskFlowHostLike,
+  window: Window,
+  doc: Document,
+  windowElements: Array<{ remove?: () => void }>,
+  signal?: AbortSignal
+): void {
   if (host._menuManagerId) return;
 
   const itemMenu = doc.getElementById('zotero-itemmenu');
@@ -59,13 +68,19 @@ export function injectItemContextMenu(host: any, window: any, doc: Document, win
   createFromItem.id = 'todolist-itemmenu-create';
   createFromItem.setAttribute('label', '添加为待办');
 
-  createFromItem.addEventListener('command', () => {
-    try {
-      host.createTaskFromSelection(window, doc, itemMenu);
-    } catch (err) {
-      Zotero.logError?.('[TaskFlow] Failed to create task from item context menu: ' + err);
-    }
-  });
+  addAbortableListener(
+    createFromItem,
+    'command',
+    () => {
+      try {
+        host.createTaskFromSelection(window, doc, itemMenu);
+      } catch (err) {
+        Zotero.logError?.('[TaskFlow] Failed to create task from item context menu: ' + err);
+      }
+    },
+    undefined,
+    signal
+  );
 
   itemMenu.appendChild(createFromItem);
   windowElements.push(createFromItem);
@@ -73,13 +88,19 @@ export function injectItemContextMenu(host: any, window: any, doc: Document, win
   const batchFromItems = host.createXULElement(doc, 'menuitem');
   batchFromItems.id = 'todolist-itemmenu-batch';
   batchFromItems.setAttribute('label', '批量加入研读待办');
-  batchFromItems.addEventListener('command', () => {
-    host.addSelectedLiteratureTasks(window).catch((error: any) => host.showNotice('批量加入失败', String(error)));
-  });
+  addAbortableListener(
+    batchFromItems,
+    'command',
+    () => {
+      host.addSelectedLiteratureTasks(window).catch((error: unknown) => host.showNotice('批量加入失败', String(error)));
+    },
+    undefined,
+    signal
+  );
   itemMenu.appendChild(batchFromItems);
   windowElements.push(batchFromItems);
 
-  const updateItemMenuVisibility = () => {
+  const updateItemMenuVisibility = (): void => {
     const showCreate = Boolean(host.getPref('itemContextMenuCreate', false));
     const showBatch = Boolean(host.getPref('itemContextMenuBatch', false));
     host.setElementVisibility(createFromItem, showCreate);
@@ -87,9 +108,6 @@ export function injectItemContextMenu(host: any, window: any, doc: Document, win
     host.setElementVisibility(separator, showCreate || showBatch);
   };
 
-  itemMenu.addEventListener('popupshowing', updateItemMenuVisibility);
-  windowElements.push({
-    remove: () => itemMenu.removeEventListener('popupshowing', updateItemMenuVisibility)
-  });
+  addAbortableListener(itemMenu, 'popupshowing', updateItemMenuVisibility, undefined, signal);
   updateItemMenuVisibility();
 }

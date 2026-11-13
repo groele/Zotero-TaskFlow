@@ -5,6 +5,8 @@
 
 import { LiteratureWorkflow } from '../literatureWorkflow';
 import { serializeLiteratureItem } from '../utils';
+import { addAbortableListener } from '../lifecycle';
+import type { ItemPaneState, TaskFlowHostLike, ZoteroItemLike } from '../types/models';
 
 declare let Zotero: any;
 
@@ -173,33 +175,46 @@ export function renderHeaderCard(
 
 export function renderActionGrid(
   doc: Document,
-  target: any,
+  target: ZoteroItemLike,
   total: number,
-  host: any,
-  state: any,
-  profileSelect: any
-): any {
+  host: TaskFlowHostLike,
+  state: ItemPaneState | undefined,
+  profileSelect: HTMLSelectElement,
+  signal?: AbortSignal
+): HTMLElement {
   const actionGrid = createEl(doc, 'div', 'td-action-grid');
 
-  const btnOpenBoard = createEl(doc, 'button', 'td-action-btn td-action-workspace', '待办看板');
+  const btnOpenBoard = createEl(doc, 'button', 'td-action-btn td-action-workspace', '待办看板') as HTMLButtonElement;
   btnOpenBoard.type = 'button';
   btnOpenBoard.title = '在主标签页中打开 TaskFlow 任务看板';
   btnOpenBoard.setAttribute('data-l10n-id', 'taskflow-item-pane-btn-board');
-  btnOpenBoard.addEventListener('click', () => {
-    host.openTaskFlow({ mode: 'filter_item', itemKey: target.key }, Zotero.getMainWindow?.());
-  });
+  addAbortableListener(
+    btnOpenBoard,
+    'click',
+    () => {
+      host.openTaskFlow({ mode: 'filter_item', itemKey: target.key }, Zotero.getMainWindow?.() || null);
+    },
+    undefined,
+    signal
+  );
   actionGrid.appendChild(btnOpenBoard);
 
-  const btnSubwin = createEl(doc, 'button', 'td-action-btn td-action-workspace', '伴读窗口');
+  const btnSubwin = createEl(doc, 'button', 'td-action-btn td-action-workspace', '伴读窗口') as HTMLButtonElement;
   btnSubwin.type = 'button';
   btnSubwin.title = '打开轻量伴读窗口，适合与 PDF 左右分屏对照';
   btnSubwin.setAttribute('data-l10n-id', 'taskflow-item-pane-btn-subwindow');
-  btnSubwin.addEventListener('click', () => {
-    host.openStandaloneWindow({ mode: 'filter_item', itemKey: target.key }, Zotero.getMainWindow?.(), 'subwindow');
-  });
+  addAbortableListener(
+    btnSubwin,
+    'click',
+    () => {
+      host.openStandaloneWindow({ mode: 'filter_item', itemKey: target.key }, Zotero.getMainWindow?.() || null, 'subwindow');
+    },
+    undefined,
+    signal
+  );
   actionGrid.appendChild(btnSubwin);
 
-  const btnSyncNote = createEl(doc, 'button', 'td-action-btn td-action-notes', '同步子笔记');
+  const btnSyncNote = createEl(doc, 'button', 'td-action-btn td-action-notes', '同步子笔记') as HTMLButtonElement;
   btnSyncNote.type = 'button';
   btnSyncNote.title = '将本文献的所有研读待办同步导出为文献子笔记 (云端)';
   btnSyncNote.setAttribute('data-l10n-id', 'taskflow-item-pane-btn-sync-note');
@@ -208,26 +223,38 @@ export function renderActionGrid(
     btnSyncNote.disabled = true;
     btnSyncNote.title = '只读文献无法同步子笔记';
   }
-  btnSyncNote.addEventListener('click', async () => {
-    if (btnSyncNote.disabled) return;
-    const note = await host.syncTasksToChildNote(target.id || target);
-    if (note) {
-      host.showNotice('同步成功', '已更新文献子笔记研读清单');
-    } else {
-      host.showNotice('跳过同步', '只读条目或未找到任务清单，跳过同步');
-    }
-  });
+  addAbortableListener(
+    btnSyncNote,
+    'click',
+    async () => {
+      if (btnSyncNote.disabled) return;
+      const note = await host.syncTasksToChildNote(target.id || target);
+      if (note) {
+        host.showNotice('同步成功', '已更新文献子笔记研读清单');
+      } else {
+        host.showNotice('跳过同步', '只读条目或未找到任务清单，跳过同步');
+      }
+    },
+    undefined,
+    signal
+  );
   actionGrid.appendChild(btnSyncNote);
 
   const meta = serializeLiteratureItem(target);
   if (meta?.pdfUri) {
-    const btnPdf = createEl(doc, 'button', 'td-action-btn td-action-btn-pdf', '打开 PDF');
+    const btnPdf = createEl(doc, 'button', 'td-action-btn td-action-btn-pdf', '打开 PDF') as HTMLButtonElement;
     btnPdf.type = 'button';
     btnPdf.title = '在 Zotero 内置阅读器中打开该文献的 PDF 全文';
     btnPdf.setAttribute('data-l10n-id', 'taskflow-item-pane-btn-open-pdf');
-    btnPdf.addEventListener('click', () => {
-      host.openPdfAttachment(target);
-    });
+    addAbortableListener(
+      btnPdf,
+      'click',
+      () => {
+        void host.openPdfAttachment(target);
+      },
+      undefined,
+      signal
+    );
     actionGrid.appendChild(btnPdf);
   }
 
@@ -237,14 +264,26 @@ export function renderActionGrid(
       'button',
       'td-action-btn td-action-reading td-action-btn-milestones-row',
       '追加精读清单'
-    );
+    ) as HTMLButtonElement;
     btnMilestones.type = 'button';
     btnMilestones.title = '按当前研读模板为本文献追加生成 5 项精读里程碑待办';
     btnMilestones.setAttribute('data-l10n-id', 'taskflow-item-pane-btn-milestones');
-    btnMilestones.addEventListener('click', async () => {
-      await host.createReadingMilestones(target, Zotero.getMainWindow?.(), profileSelect.value);
-      state?.refresh?.();
-    });
+    addAbortableListener(
+      btnMilestones,
+      'click',
+      async () => {
+        if (btnMilestones.disabled) return;
+        btnMilestones.disabled = true;
+        try {
+          await host.createReadingMilestones(target, Zotero.getMainWindow?.() || null, profileSelect.value);
+          state?.refresh?.();
+        } finally {
+          btnMilestones.disabled = false;
+        }
+      },
+      undefined,
+      signal
+    );
     actionGrid.appendChild(btnMilestones);
   }
 

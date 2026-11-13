@@ -5,8 +5,69 @@ const ZoteroBridge = {
   _activeItem: null,
   _pendingRequestId: 0,
   _requestCallbacks: new Map(),
+  _activeTimers: new Set(),
+  _controller: null,
+
+  _getSignal() {
+    return this._controller?.signal || null;
+  },
+
+  _addAbortable(target, type, fn, opts) {
+    const signal = this._getSignal();
+    if (!target?.addEventListener || signal?.aborted) return;
+    const baseOpts = typeof opts === 'boolean' ? { capture: opts } : { ...(opts || {}) };
+    if (!signal) {
+      target.addEventListener(type, fn, baseOpts);
+      return;
+    }
+    const SignalCtor = window.AbortSignal || globalThis.AbortSignal;
+    if (SignalCtor && signal instanceof SignalCtor) {
+      target.addEventListener(type, fn, { ...baseOpts, signal });
+      return;
+    }
+    target.addEventListener(type, fn, baseOpts);
+    signal.addEventListener('abort', () => target.removeEventListener?.(type, fn, Boolean(baseOpts.capture)), { once: true });
+  },
+
+  _scheduleTimeout(fn, ms) {
+    if (this._getSignal()?.aborted) return null;
+    const id = setTimeout(() => {
+      this._activeTimers.delete(id);
+      if (!this._getSignal()?.aborted) fn();
+    }, ms);
+    this._activeTimers.add(id);
+    return id;
+  },
+
+  _clearScheduledTimeout(id) {
+    if (id == null) return;
+    clearTimeout(id);
+    this._activeTimers.delete(id);
+  },
+
+  destroy() {
+    this._controller?.abort();
+    this._controller = null;
+    this._clearScheduledTimeout(this._readyTimer);
+    this._readyTimer = null;
+    for (const timer of this._activeTimers) clearTimeout(timer);
+    this._activeTimers.clear();
+    const pending = [...this._requestCallbacks.values()];
+    this._requestCallbacks.clear();
+    for (const cb of pending) {
+      try { cb({ success: false, error: '窗口已关闭' }); } catch (_) {}
+    }
+    this._rejectReady?.(new Error('窗口已关闭'));
+    this._rejectReady = null;
+    this._resolveReady = null;
+  },
 
   init() {
+    this._controller?.abort();
+    const Ctor = (typeof window !== 'undefined' && window.AbortController) || AbortController;
+    this._controller = new Ctor();
+    this._addAbortable(window, 'unload', () => this.destroy(), { once: true });
+
     this.detectEnvironment();
     this.applyWindowLayout();
     this.setupMessageListener();
@@ -15,19 +76,22 @@ const ZoteroBridge = {
       this._readyPromise = new Promise((resolve, reject) => {
         this._resolveReady = resolve;
         this._rejectReady = reject;
-        this._readyTimer = setTimeout(() => reject(new Error('无法连接 Zotero 数据，请重新打开待办窗口')), 5000);
+        this._readyTimer = this._scheduleTimeout(
+          () => reject(new Error('无法连接 Zotero 数据，请重新打开待办窗口')),
+          5000
+        );
       });
       this._readyPromise.catch(() => {});
       const host = Storage.getZoteroInstance()?.TaskFlow || Storage.getZoteroInstance()?.Todolist;
       if (host?.registerThemeListener) {
         const unsubscribe = host.registerThemeListener(theme => this.setHostTheme(theme));
-        window.addEventListener('unload', () => unsubscribe?.(), { once: true });
+        this._getSignal()?.addEventListener('abort', () => unsubscribe?.(), { once: true });
       }
       if (host?.registerDataListener) {
         this._hasDirectDataListener = true;
         this._dataListener = data => Storage.acceptData(data);
         host.registerDataListener(this._dataListener);
-        window.addEventListener('unload', () => host.unregisterDataListener(this._dataListener), { once: true });
+        this._getSignal()?.addEventListener('abort', () => host.unregisterDataListener(this._dataListener), { once: true });
       }
       document.documentElement.classList.add('zotero-env');
       this.sendToHost({ type: 'TASKFLOW_READY' });
@@ -63,7 +127,7 @@ const ZoteroBridge = {
   },
 
   setupMessageListener() {
-    window.addEventListener('message', (event) => {
+    this._addAbortable(window, 'message', (event) => {
       if (event.source && event.source !== window && event.source !== window.parent && event.source !== window.opener) return;
       const data = event.data;
       if (!data || typeof data !== 'object') return;
@@ -75,14 +139,14 @@ const ZoteroBridge = {
         return;
       }
       if (data.type === 'TASKFLOW_INIT_ERROR' || data.type === 'TODOLIST_INIT_ERROR') {
-        clearTimeout(this._readyTimer);
+        this._clearScheduledTimeout(this._readyTimer);
         this._rejectReady?.(new Error(data.error || 'Zotero 数据初始化失败'));
       }
       if (data.type === 'TASKFLOW_INIT_DATA' || data.type === 'TODOLIST_INIT_DATA') {
         if (data.hostTheme) this.setHostTheme(data.hostTheme);
         if (data.data && typeof Storage !== 'undefined') {
           Storage.acceptData(data.data);
-          clearTimeout(this._readyTimer);
+          this._clearScheduledTimeout(this._readyTimer);
           this._resolveReady?.();
         }
         if (data.pending) this.handleHostNavigation(data.pending);
@@ -178,7 +242,7 @@ const ZoteroBridge = {
 
   failHostAction(msg, error) {
     if (msg.type === 'TASKFLOW_READY' || msg.type === 'TODOLIST_READY') {
-      clearTimeout(this._readyTimer);
+      this._clearScheduledTimeout(this._readyTimer);
       this._rejectReady?.(error);
     }
     const callback = this._requestCallbacks.get(msg.requestId);
@@ -196,8 +260,8 @@ const ZoteroBridge = {
     if (!this.isZotero) return Promise.resolve(false);
     return new Promise((resolve, reject) => {
       const requestId = 'notify_' + (++this._pendingRequestId) + '_' + Date.now();
-      const timer = setTimeout(() => { this._requestCallbacks.delete(requestId); reject(new Error('提醒未能发送')); }, 5000);
-      this._requestCallbacks.set(requestId, data => { clearTimeout(timer); if (data.success) resolve(true); else reject(new Error(data.error || '提醒未能发送')); });
+      const timer = this._scheduleTimeout(() => { this._requestCallbacks.delete(requestId); reject(new Error('提醒未能发送')); }, 5000);
+      this._requestCallbacks.set(requestId, data => { this._clearScheduledTimeout(timer); if (data.success) resolve(true); else reject(new Error(data.error || '提醒未能发送')); });
       this.sendToHost({ type: 'TASKFLOW_NOTIFY', title, body, requestId });
     });
   },
@@ -205,9 +269,9 @@ const ZoteroBridge = {
   saveStorage(payload) {
     return new Promise((resolve, reject) => {
       const requestId = 'save_' + (++this._pendingRequestId) + '_' + Date.now();
-      const timer = setTimeout(() => { this._requestCallbacks.delete(requestId); reject(new Error('Zotero 保存确认超时，请重新打开窗口检查数据')); }, 5000);
+      const timer = this._scheduleTimeout(() => { this._requestCallbacks.delete(requestId); reject(new Error('Zotero 保存确认超时，请重新打开窗口检查数据')); }, 5000);
       this._requestCallbacks.set(requestId, data => {
-        clearTimeout(timer);
+        this._clearScheduledTimeout(timer);
         if (data.success && data.data) resolve(data.data);
         else reject(new Error(data.error || 'Zotero 保存失败'));
       });
@@ -217,15 +281,16 @@ const ZoteroBridge = {
 
   executeWhenReady(fn) {
     const tryRun = (attempt = 0) => {
+      if (this._getSignal()?.aborted) return;
       const hasModal = typeof Modal !== 'undefined';
       const hasDialog = hasModal && (Modal.dialog || document.getElementById('task-modal'));
       if (document.readyState !== 'loading' && hasModal && hasDialog) {
         try { if (!Modal.dialog) Modal.ensureInitialized?.(); fn(); } catch (err) { console.error('[ZoteroBridge] Navigation action execution error:', err); }
       } else if (attempt < 40) {
-        setTimeout(() => tryRun(attempt + 1), 80);
+        this._scheduleTimeout(() => tryRun(attempt + 1), 80);
       }
     };
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => tryRun(0), { once: true });
+    if (document.readyState === 'loading') this._addAbortable(document, 'DOMContentLoaded', () => tryRun(0), { once: true });
     else tryRun(0);
   },
 
@@ -257,7 +322,7 @@ const ZoteroBridge = {
         if (card) {
           card.scrollIntoView({ behavior: 'smooth', block: 'center' });
           card.style.outline = '2px solid var(--primary, #059669)';
-          setTimeout(() => { card.style.outline = ''; }, 2500);
+          this._scheduleTimeout(() => { card.style.outline = ''; }, 2500);
         }
       });
     }
@@ -273,8 +338,8 @@ const ZoteroBridge = {
     if (!this.isZotero) return Promise.reject(new Error('请在 Zotero 中拖入文献'));
     return new Promise((resolve, reject) => {
       const requestId = 'drop_' + (++this._pendingRequestId) + '_' + Date.now();
-      const timer = setTimeout(() => { this._requestCallbacks.delete(requestId); reject(new Error('创建研读待办确认超时，请检查任务列表后重试')); }, 10000);
-      this._requestCallbacks.set(requestId, data => { clearTimeout(timer); if (data.success) resolve(data.result); else reject(new Error(data.error || '创建研读待办失败')); });
+      const timer = this._scheduleTimeout(() => { this._requestCallbacks.delete(requestId); reject(new Error('创建研读待办确认超时，请检查任务列表后重试')); }, 10000);
+      this._requestCallbacks.set(requestId, data => { this._clearScheduledTimeout(timer); if (data.success) resolve(data.result); else reject(new Error(data.error || '创建研读待办失败')); });
       this.sendToHost({ type: 'TASKFLOW_ADD_DROPPED_ITEMS', itemIDs, requestId });
     });
   },
@@ -291,8 +356,8 @@ const ZoteroBridge = {
     if (!this.isZotero) return { success: false };
     return new Promise((resolve) => {
       const requestId = 'sync_' + (++this._pendingRequestId) + '_' + Date.now();
-      const timer = setTimeout(() => { this._requestCallbacks.delete(requestId); resolve({ success: false }); }, 3000);
-      this._requestCallbacks.set(requestId, data => { clearTimeout(timer); resolve(data); });
+      const timer = this._scheduleTimeout(() => { this._requestCallbacks.delete(requestId); resolve({ success: false }); }, 3000);
+      this._requestCallbacks.set(requestId, data => { this._clearScheduledTimeout(timer); resolve(data); });
       this.sendToHost({ type: 'TASKFLOW_SYNC_NOTE', key, libraryID, requestId });
     });
   },
@@ -300,8 +365,8 @@ const ZoteroBridge = {
     if (!this.isZotero) return [];
     return new Promise((resolve) => {
       const requestId = 'col_' + (++this._pendingRequestId) + '_' + Date.now();
-      const timer = setTimeout(() => { this._requestCallbacks.delete(requestId); resolve([]); }, 3000);
-      this._requestCallbacks.set(requestId, data => { clearTimeout(timer); resolve(data.collections || []); });
+      const timer = this._scheduleTimeout(() => { this._requestCallbacks.delete(requestId); resolve([]); }, 3000);
+      this._requestCallbacks.set(requestId, data => { this._clearScheduledTimeout(timer); resolve(data.collections || []); });
       this.sendToHost({ type: 'TASKFLOW_GET_COLLECTIONS', libraryID, requestId });
     });
   },
@@ -310,8 +375,8 @@ const ZoteroBridge = {
     if (!this.isZotero) return null;
     return new Promise((resolve) => {
       const requestId = 'req_' + (++this._pendingRequestId) + '_' + Date.now();
-      const timer = setTimeout(() => { this._requestCallbacks.delete(requestId); resolve(null); }, 2000);
-      this._requestCallbacks.set(requestId, data => { clearTimeout(timer); resolve(data.item || null); });
+      const timer = this._scheduleTimeout(() => { this._requestCallbacks.delete(requestId); resolve(null); }, 2000);
+      this._requestCallbacks.set(requestId, data => { this._clearScheduledTimeout(timer); resolve(data.item || null); });
       this.sendToHost({ type: 'TASKFLOW_GET_ACTIVE_ITEM', requestId });
     });
   }

@@ -4,12 +4,20 @@
 
 import { LiteratureWorkflow } from '../../literatureWorkflow';
 import { getLiteratureItem, serializeLiteratureItem } from '../../utils';
+import type { TaskFlowHostLike, TaskRecord, ZoteroItemLike } from '../../types/models';
 
-declare let Zotero: any;
+export interface BuildLiteratureTaskOptions {
+  title?: string;
+  priority?: string | null;
+  academicType?: string;
+  profileID?: string | null;
+  dueDate?: string | null;
+  workflowId?: string | null;
+}
 
 export function buildLiteratureTask(
-  host: any,
-  item: any,
+  host: TaskFlowHostLike,
+  item: ZoteroItemLike | number | string | null | undefined,
   {
     title = '',
     priority = null,
@@ -17,10 +25,10 @@ export function buildLiteratureTask(
     profileID = null,
     dueDate = null,
     workflowId = null
-  }: any = {}
-): any {
+  }: BuildLiteratureTaskOptions = {}
+): TaskRecord {
   const meta = serializeLiteratureItem(item);
-  if (!meta || item.deleted) throw new Error('请先选中文献条目，回收站中的文献无法加入待办');
+  if (!meta) throw new Error('请先选中文献条目，回收站中的文献无法加入待办');
   const customTitle = String(title).trim();
   const taskTitle = customTitle || `研读：${meta.title}`;
   const generateId = () => 'task_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
@@ -57,66 +65,83 @@ export function buildLiteratureTask(
   };
 }
 
-export function addLiteratureReadingTask(host: any, item: any, options: any = {}): Promise<any> {
-  let task: any;
+type LiteratureHostWithCache = TaskFlowHostLike & {
+  _literatureTaskAdds?: Map<string, Promise<{ task: TaskRecord | undefined; created: boolean }>>;
+};
+
+export function addLiteratureReadingTask(
+  host: LiteratureHostWithCache,
+  item: unknown,
+  options: BuildLiteratureTaskOptions = {}
+): Promise<{ task: TaskRecord | undefined; created: boolean }> {
+  let task: TaskRecord;
   try {
-    task = buildLiteratureTask(host, item, options);
+    task = buildLiteratureTask(host, item as ZoteroItemLike, options);
   } catch (error) {
     return Promise.reject(error);
   }
   const requestKey = JSON.stringify([task.zoteroLibraryID, task.zoteroItemKey, task.title, task.literatureWorkflowId]);
   host._literatureTaskAdds ||= new Map();
-  if (host._literatureTaskAdds.has(requestKey)) return host._literatureTaskAdds.get(requestKey);
+  const inflight = host._literatureTaskAdds.get(requestKey);
+  if (inflight) return inflight;
 
-  const run = async () => {
+  const run = async (): Promise<{ task: TaskRecord | undefined; created: boolean }> => {
     const data = await host.loadData();
-    task.order = Math.max(-1, ...(data.tasks || []).map((t: any) => t.order || 0)) + 1;
+    task.order = (data.tasks || []).reduce((max: number, t: TaskRecord) => Math.max(max, Number(t.order) || 0), -1) + 1;
     const saved = await host.saveData({
       taskChanges: { added: [task] },
       deduplicateLiterature: Boolean(task.literatureWorkflowId),
       syncLinkedItems: true
     });
+    const userLib = Zotero.Libraries?.userLibraryID || 1;
     const actual =
-      saved.tasks.find((t: any) => t.id === task.id) ||
-      saved.tasks.find((t: any) => LiteratureWorkflow.samePending(t, task, Zotero.Libraries.userLibraryID));
+      saved.tasks.find((t: TaskRecord) => t.id === task.id) ||
+      saved.tasks.find((t: TaskRecord) => LiteratureWorkflow.samePending(t, task, userLib));
     return { task: actual, created: actual?.id === task.id };
   };
-  const result = run().finally(() => host._literatureTaskAdds.delete(requestKey));
+  const result = run().finally(() => host._literatureTaskAdds?.delete(requestKey));
   host._literatureTaskAdds.set(requestKey, result);
   return result;
 }
 
-export async function addLiteratureTasks(host: any, selected: any[]): Promise<{ added: number; skipped: number }> {
+export async function addLiteratureTasks(
+  host: TaskFlowHostLike,
+  selected: unknown[]
+): Promise<{ added: number; skipped: number }> {
+  if (!Array.isArray(selected) || selected.length === 0) {
+    return { added: 0, skipped: 0 };
+  }
   const data = await host.loadData();
-  const candidates = selected.map((item: any, index: number) => ({
-    ...buildLiteratureTask(host, item),
-    order: Math.max(-1, ...(data.tasks || []).map((task: any) => task.order || 0)) + 1 + index
+  const baseOrder = (data.tasks || []).reduce((max: number, task: TaskRecord) => Math.max(max, Number(task.order) || 0), -1) + 1;
+  const candidates = selected.map((item: unknown, index: number) => ({
+    ...buildLiteratureTask(host, item as ZoteroItemLike),
+    order: baseOrder + index
   }));
   const saved = await host.saveData({
     taskChanges: { added: candidates },
     deduplicateLiterature: 'item',
     syncLinkedItems: true
   });
-  const ids = new Set(saved.tasks.map((task: any) => task.id));
-  const added = candidates.filter((task: any) => ids.has(task.id)).length;
+  const ids = new Set(saved.tasks.map((task: TaskRecord) => task.id));
+  const added = candidates.filter((task: TaskRecord) => ids.has(task.id)).length;
   const skipped = selected.length - added;
-  host.showNotice('批量加入完成', `新增 ${added} 篇，跳过已有待办 ${skipped} 篇；新任务截止 ${candidates[0].dueDate}。`);
+  host.showNotice('批量加入完成', `新增 ${added} 篇，跳过已有待办 ${skipped} 篇；新任务截止 ${candidates[0]?.dueDate || '未设置'}。`);
   return { added, skipped };
 }
 
 export async function addSelectedLiteratureTasks(
-  host: any,
-  window: any = null,
-  items: any = null
+  host: TaskFlowHostLike,
+  window: Window | null = null,
+  items: unknown[] | null = null
 ): Promise<{ added: number; skipped: number }> {
-  let selected: any[] = [];
+  let selected: ZoteroItemLike[] = [];
   if (Array.isArray(items) && items.length) {
-    const seen = new Set();
+    const seen = new Set<number | string>();
     selected = items
-      .map((item: any) => getLiteratureItem(item))
-      .filter((item: any) => item && !item.deleted && !seen.has(item.id) && seen.add(item.id));
+      .map((item: unknown) => getLiteratureItem(item as ZoteroItemLike))
+      .filter((item): item is ZoteroItemLike => Boolean(item && !item.deleted && !seen.has(item.id) && seen.add(item.id)));
   } else {
-    selected = host.getSelectedRegularItems(window || Zotero.getMainWindow?.()).filter((item: any) => !item.deleted);
+    selected = host.getSelectedRegularItems(window || Zotero.getMainWindow?.() || null).filter((item) => !item.deleted);
   }
   if (!selected.length) {
     host.showNotice('请先选中文献', '可在文献列表中多选后批量加入。');
@@ -126,36 +151,36 @@ export async function addSelectedLiteratureTasks(
 }
 
 export async function addDroppedLiteratureTasks(
-  host: any,
-  itemIDs: any
+  host: TaskFlowHostLike,
+  itemIDs: unknown
 ): Promise<{ added: number; skipped: number; ignored: number }> {
   if (!host.getPref('dragDropFromLibrary', true)) throw new Error('已关闭从文献库拖入待办');
   if (
     !Array.isArray(itemIDs) ||
     !itemIDs.length ||
     itemIDs.length > 1000 ||
-    itemIDs.some((id: any) => !Number.isSafeInteger(id) || id <= 0)
+    itemIDs.some((id: unknown) => typeof id !== 'number' || !Number.isSafeInteger(id) || id <= 0)
   ) {
     throw new Error('无效的 Zotero 拖拽条目');
   }
-  const seen = new Set();
-  const selected = itemIDs
-    .map((id: number) => Zotero.Items.get(id))
-    .filter((item: any) => item && !item.deleted)
-    .map((item: any) => getLiteratureItem(item))
-    .filter((item: any) => item && !item.deleted && !seen.has(item.id) && seen.add(item.id));
+  const seen = new Set<number | string>();
+  const selected = (itemIDs as number[])
+    .map((id: number) => Zotero.Items?.get?.(id) || null)
+    .filter((item): item is ZoteroItemLike => Boolean(item && !item.deleted))
+    .map((item: ZoteroItemLike) => getLiteratureItem(item))
+    .filter((item): item is ZoteroItemLike => Boolean(item && !item.deleted && !seen.has(item.id) && seen.add(item.id)));
   if (!selected.length) throw new Error('拖入的文献已删除或不包含可研读的文献条目');
   const result = await addLiteratureTasks(host, selected);
   return { ...result, ignored: itemIDs.length - selected.length };
 }
 
 export async function rescheduleLiteratureTask(
-  host: any,
+  host: TaskFlowHostLike,
   taskID: string,
   days: number,
   fromDeadline: boolean = false
-): Promise<any> {
+): Promise<TaskRecord | undefined> {
   if (![0, 3, 7].includes(days)) throw new Error('不支持的改期选项');
   const data = await host.saveData({ rescheduleTask: { taskID, days, fromDeadline }, syncLinkedItems: true });
-  return data.tasks.find((task: any) => task.id === taskID);
+  return data.tasks.find((task: TaskRecord) => task.id === taskID);
 }

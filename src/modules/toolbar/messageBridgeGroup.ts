@@ -4,11 +4,34 @@
  */
 
 import { resolveItemReference, serializeLiteratureItem } from '../../utils';
+import { addAbortableListener, getErrorInfo } from '../../lifecycle';
+import type { DiagnosticRecord, SaveDataPatch, TaskFlowData, TaskFlowHostLike } from '../../types/models';
 
-declare let Zotero: any;
+interface BridgePayload {
+  type: string;
+  requestId?: string;
+  record?: DiagnosticRecord;
+  payload?: SaveDataPatch;
+  title?: string;
+  body?: string;
+  key?: string;
+  libraryID?: unknown;
+  page?: number | string | null;
+  annotationKey?: string | null;
+  itemIDs?: unknown;
+  collectionID?: unknown;
+  mode?: string;
+  format?: string;
+}
 
-export function setupHostMessageBridge(host: any, window: any, windowElements: any[]): void {
-  const handleHostMessage = async (event: MessageEvent) => {
+export function setupHostMessageBridge(
+  host: TaskFlowHostLike,
+  window: Window,
+  _windowElements: Array<{ remove?: () => void }>,
+  signal?: AbortSignal
+): void {
+  const handleHostMessage = async (rawEvent: Event): Promise<void> => {
+    const event = rawEvent as MessageEvent<BridgePayload>;
     try {
       const data = event.data;
       if (!data || typeof data !== 'object') return;
@@ -16,8 +39,11 @@ export function setupHostMessageBridge(host: any, window: any, windowElements: a
         return;
       }
 
-      const sourceWin = event.source as any;
-      const iframe = window.document.getElementById('todolist-tab-iframe');
+      const sourceWin = event.source as (Window & { postMessage: (msg: unknown, target: string) => void; location?: Location }) | null;
+      const iframe = window.document.getElementById('todolist-tab-iframe') as (HTMLIFrameElement & {
+        _todolistReady?: boolean;
+        _todolistPending?: unknown;
+      }) | null;
       if (sourceWin && sourceWin !== iframe?.contentWindow) {
         let sourceURL: string;
         try {
@@ -30,7 +56,7 @@ export function setupHostMessageBridge(host: any, window: any, windowElements: a
       if (!sourceWin && !iframe?.contentWindow) return;
 
       if ((data.type === 'TASKFLOW_DIAGNOSTIC' || data.type === 'TODOLIST_DIAGNOSTIC') && data.record) {
-        host.recordDiagnostic(data.record);
+        await host.recordDiagnostic(data.record);
         return;
       }
 
@@ -38,7 +64,7 @@ export function setupHostMessageBridge(host: any, window: any, windowElements: a
         iframe._todolistReady = true;
       }
 
-      const replyResult = (msgObj: any) => {
+      const replyResult = (msgObj: unknown): void => {
         try {
           if (sourceWin && typeof sourceWin.postMessage === 'function') {
             sourceWin.postMessage(msgObj, '*');
@@ -55,7 +81,7 @@ export function setupHostMessageBridge(host: any, window: any, windowElements: a
         if (iframe) iframe._todolistReady = true;
         host
           .loadData()
-          .then((storedData: any) => {
+          .then((storedData: TaskFlowData) => {
             const pendingNav = iframe?._todolistPending || null;
             if (iframe) iframe._todolistPending = null;
             replyResult({
@@ -65,9 +91,10 @@ export function setupHostMessageBridge(host: any, window: any, windowElements: a
               pending: pendingNav
             });
           })
-          .catch((error: any) => {
-            host.recordDiagnostic({ action: '初始化 Zotero 数据', message: String(error), stack: error?.stack });
-            replyResult({ type: 'TODOLIST_INIT_ERROR', error: String(error?.message || error) });
+          .catch((error: unknown) => {
+            const { message, stack } = getErrorInfo(error);
+            void host.recordDiagnostic({ action: '初始化 Zotero 数据', message: String(error), stack });
+            replyResult({ type: 'TODOLIST_INIT_ERROR', error: message });
           });
         return;
       }
@@ -76,7 +103,7 @@ export function setupHostMessageBridge(host: any, window: any, windowElements: a
       if ((data.type === 'TASKFLOW_STORAGE_SET' || data.type === 'TODOLIST_STORAGE_SET') && data.payload) {
         host
           .saveData(data.payload)
-          .then((saved: any) => {
+          .then((saved: TaskFlowData) => {
             if (data.requestId) {
               replyResult({
                 type: 'TODOLIST_STORAGE_SET_RESULT',
@@ -86,19 +113,19 @@ export function setupHostMessageBridge(host: any, window: any, windowElements: a
               });
             }
           })
-          .catch((error: any) =>
+          .catch((error: unknown) =>
             replyResult({
               type: 'TODOLIST_STORAGE_SET_RESULT',
               requestId: data.requestId,
               success: false,
-              error: String(error)
+              error: getErrorInfo(error).message
             })
           );
         return;
       }
 
       if (data.type === 'TASKFLOW_NOTIFY' || data.type === 'TODOLIST_NOTIFY') {
-        const success = (await host.showNotice(data.title || '任务提醒', data.body || '')) !== false;
+        const success = host.showNotice(data.title || '任务提醒', data.body || '') !== false;
         replyResult({ type: 'TODOLIST_NOTIFY_RESULT', requestId: data.requestId, success });
         return;
       }
@@ -113,8 +140,8 @@ export function setupHostMessageBridge(host: any, window: any, windowElements: a
       if ((data.type === 'TASKFLOW_OPEN_PDF' || data.type === 'TODOLIST_OPEN_PDF') && data.key) {
         await host.openTaskPdf({
           zoteroPdfUri: data.key,
-          zoteroLibraryID: data.libraryID,
-          zoteroPage: data.page,
+          zoteroLibraryID: typeof data.libraryID === 'number' ? data.libraryID : undefined,
+          zoteroPage: typeof data.page === 'number' ? data.page : undefined,
           zoteroAnnotationKey: data.annotationKey
         });
         return;
@@ -122,7 +149,7 @@ export function setupHostMessageBridge(host: any, window: any, windowElements: a
 
       // E. Open Zotero Preferences pane
       if (data.type === 'TASKFLOW_OPEN_PREFERENCES' || data.type === 'TODOLIST_OPEN_PREFERENCES') {
-        await host.openPreferencesPane(window);
+        host.openPreferencesPane(window);
         return;
       }
 
@@ -141,12 +168,12 @@ export function setupHostMessageBridge(host: any, window: any, windowElements: a
         try {
           const result = await host.addDroppedLiteratureTasks(data.itemIDs);
           replyResult({ type: 'TODOLIST_ADD_DROPPED_ITEMS_RESULT', requestId: data.requestId, success: true, result });
-        } catch (error: any) {
+        } catch (error) {
           replyResult({
             type: 'TODOLIST_ADD_DROPPED_ITEMS_RESULT',
             requestId: data.requestId,
             success: false,
-            error: String(error?.message || error)
+            error: getErrorInfo(error).message
           });
         }
         return;
@@ -171,7 +198,9 @@ export function setupHostMessageBridge(host: any, window: any, windowElements: a
 
       // H. Get Zotero Collections
       if (data.type === 'TASKFLOW_GET_COLLECTIONS' || data.type === 'TODOLIST_GET_COLLECTIONS') {
-        const collections = host.getZoteroCollections(data.libraryID);
+        const collections = host.getZoteroCollections(
+          typeof data.libraryID === 'number' || typeof data.libraryID === 'string' ? data.libraryID : null
+        );
         if (data.requestId) {
           replyResult({
             type: 'TODOLIST_GET_COLLECTIONS_RESULT',
@@ -199,7 +228,7 @@ export function setupHostMessageBridge(host: any, window: any, windowElements: a
         (data.type === 'TASKFLOW_SWITCH_WINDOW_MODE' || data.type === 'TODOLIST_SWITCH_WINDOW_MODE') &&
         data.mode
       ) {
-        await host.switchWindowMode(data.mode, window);
+        host.switchWindowMode(data.mode, window);
         return;
       }
 
@@ -232,24 +261,22 @@ export function setupHostMessageBridge(host: any, window: any, windowElements: a
         await host.printTasks(window);
         return;
       }
-    } catch (e: any) {
+    } catch (e) {
+      const { message, stack } = getErrorInfo(e);
       Zotero.logError?.('[TaskFlow] Host message processing error: ' + e);
-      host.recordDiagnostic({
+      void host.recordDiagnostic({
         action: 'Zotero 主窗口 ' + event.data?.type,
-        message: String(e?.message || e),
-        stack: e?.stack
+        message,
+        stack
       });
       try {
-        (event.source as any)?.postMessage(
-          { requestId: event.data?.requestId, success: false, error: String(e?.message || e) },
+        (event.source as Window | null)?.postMessage(
+          { requestId: event.data?.requestId, success: false, error: message },
           '*'
         );
       } catch (_) {}
     }
   };
 
-  window.addEventListener('message', handleHostMessage);
-  windowElements.push({
-    remove: () => window.removeEventListener('message', handleHostMessage)
-  });
+  addAbortableListener(window, 'message', handleHostMessage as EventListener, undefined, signal);
 }

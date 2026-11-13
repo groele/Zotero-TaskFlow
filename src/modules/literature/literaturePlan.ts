@@ -5,33 +5,43 @@
 import { LiteratureWorkflow } from '../../literatureWorkflow';
 import { getLiteratureItem, serializeLiteratureItem } from '../../utils';
 import { addLiteratureReadingTask } from './literatureMapping';
+import type { TaskFlowHostLike, TaskRecord, ZoteroCollectionLike, ZoteroItemLike } from '../../types/models';
 
-declare let Zotero: any;
-
-export async function createCollectionReadingPlan(host: any, collection: any, window: any = null): Promise<void> {
+export async function createCollectionReadingPlan(
+  host: TaskFlowHostLike,
+  collection: ZoteroCollectionLike | null | undefined,
+  window: Window | null = null
+): Promise<void> {
   if (!collection) return;
   try {
     const items = collection.getChildItems ? collection.getChildItems(false) : [];
-    const regularItems = items.map((it: any) => getLiteratureItem(it)).filter(Boolean);
+    const seenIds = new Set<number | string>();
+    const regularItems = items
+      .map((it: ZoteroItemLike) => getLiteratureItem(it))
+      .filter((item): item is ZoteroItemLike => Boolean(item && !item.deleted && !seenIds.has(item.id) && seenIds.add(item.id)));
     if (regularItems.length === 0) {
       host.showNotice('未找到文献', `分类【${collection.name}】中暂无有效文献`);
       return;
     }
 
     const data = await host.loadData();
+    const userLib = Zotero.Libraries?.userLibraryID || 1;
     const existingKeys = new Set(
       (data.tasks || [])
-        .filter((t: any) => t.zoteroItemKey)
-        .map((t: any) => (t.zoteroLibraryID || Zotero.Libraries.userLibraryID) + ':' + t.zoteroItemKey)
+        .filter((t: TaskRecord) => t.zoteroItemKey)
+        .map((t: TaskRecord) => (t.zoteroLibraryID || userLib) + ':' + t.zoteroItemKey)
     );
     let addedCount = 0;
-    const addedTasks: any[] = [];
+    const addedTasks: TaskRecord[] = [];
+    let nextOrder = (data.tasks || []).reduce((max: number, t: TaskRecord) => Math.max(max, Number(t.order) || 0), -1) + 1;
 
     for (const item of regularItems) {
       if (existingKeys.has(item.libraryID + ':' + item.key)) continue;
       const meta = serializeLiteratureItem(item);
-      const taskId = 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-      const mainTask = {
+      if (!meta) continue;
+      const taskId = 'task_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+      const profileId = host.getPref('readingProfile', 'general');
+      const mainTask: TaskRecord = {
         id: taskId,
         title: `📖 研读：${meta.title}`,
         description: `分类专题：${collection.name}\n作者：${meta.authors} (${meta.year})\n出版物：${meta.publication}\n文献链接：${meta.zoteroUri}`,
@@ -44,11 +54,11 @@ export async function createCollectionReadingPlan(host: any, collection: any, wi
         completedAt: null,
         tags: [collection.name, '专题研读', '待研读'],
         reminder: { enabled: false, before: 15, notified: false },
-        order: (data.tasks || []).length,
+        order: nextOrder++,
         zoteroItemKey: meta.key,
         zoteroItemID: meta.id,
         zoteroLinkStatus: 'active',
-        readingProfile: host.getPref('readingProfile', 'general'),
+        readingProfile: profileId,
         literatureWorkflowId: 'reading',
         zoteroItemTitle: meta.title,
         zoteroAuthors: meta.authors,
@@ -59,10 +69,9 @@ export async function createCollectionReadingPlan(host: any, collection: any, wi
         zoteroPdfUri: meta.pdfUri,
         academicType: 'literature_reading',
         subtasks: Boolean(host.getPref('academicPresets', true))
-          ? LiteratureWorkflow.steps(host.getPref('readingProfile', 'general'), () => 'sub_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10))
+          ? LiteratureWorkflow.steps(profileId, () => 'sub_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10))
           : []
       };
-      data.tasks.push(mainTask);
       addedTasks.push(mainTask);
       existingKeys.add(item.libraryID + ':' + item.key);
       addedCount++;
@@ -81,14 +90,28 @@ export async function createCollectionReadingPlan(host: any, collection: any, wi
   }
 }
 
+interface ReaderLike {
+  itemID?: number | string;
+  getSelectedText?: () => Promise<string>;
+  _iframeWindow?: Window & { PDFViewerApplication?: { page?: number } };
+  _internalReader?: { _state?: { primaryViewState?: { pageIndex?: number } } };
+  state?: { pageIndex?: number };
+}
+
+interface SelectionLike {
+  text?: string;
+  position?: { pageIndex?: number };
+}
+
 export async function createTaskFromReader(
-  host: any,
-  window: any = null,
-  sourceReader: any = null,
-  selection: any = null
+  host: TaskFlowHostLike,
+  window: Window | null = null,
+  sourceReader: unknown = null,
+  selection: unknown = null
 ): Promise<void> {
-  const win = window || (Zotero.getMainWindow ? Zotero.getMainWindow() : null);
+  const win = window || Zotero.getMainWindow?.() || null;
   const tabs = win?.Zotero_Tabs || (typeof Zotero_Tabs !== 'undefined' ? Zotero_Tabs : null);
+  const sel = (selection as SelectionLike | null) || null;
   if (!sourceReader && (!tabs || !tabs.selectedTab || tabs.selectedTab.type !== 'reader')) {
     const selected = host.getSelectedRegularItems(win);
     if (selected.length > 0) {
@@ -100,24 +123,26 @@ export async function createTaskFromReader(
   }
 
   try {
-    const reader = sourceReader || Zotero.Reader?.getByTabID?.(tabs.selectedTab.id);
+    const reader = (sourceReader as ReaderLike | null) ||
+      (tabs?.selectedTab ? Zotero.Reader?.getByTabID?.(tabs.selectedTab.id) as ReaderLike | null : null);
     const itemID = reader?.itemID || tabs?.selectedTab?.data?.itemID;
     if (!itemID) return;
 
-    const attachmentItem = Zotero.Items.get(itemID);
+    const attachmentItem = Zotero.Items?.get?.(itemID) || null;
     const regularItem = getLiteratureItem(attachmentItem);
-    if (!regularItem) return;
+    if (!regularItem || regularItem.deleted) return;
 
     const meta = serializeLiteratureItem(regularItem);
+    if (!meta) return;
 
-    let selectedText = selection?.text || '';
+    let selectedText = sel?.text || '';
     try {
-      if (!selectedText && typeof reader.getSelectedText === 'function') {
+      if (!selectedText && reader && typeof reader.getSelectedText === 'function') {
         selectedText = await reader.getSelectedText();
       }
     } catch (_) {}
 
-    if (!selectedText && reader._iframeWindow) {
+    if (!selectedText && reader?._iframeWindow) {
       try {
         selectedText = reader._iframeWindow.getSelection?.()?.toString() || '';
       } catch (_) {}
@@ -126,17 +151,20 @@ export async function createTaskFromReader(
 
     let pageIndex = 0;
     try {
-      if (Number.isInteger(selection?.position?.pageIndex)) {
-        pageIndex = selection.position.pageIndex;
-      } else if (Number.isInteger(reader._internalReader?._state?.primaryViewState?.pageIndex)) {
+      if (typeof sel?.position?.pageIndex === 'number' && Number.isInteger(sel.position.pageIndex)) {
+        pageIndex = sel.position.pageIndex;
+      } else if (
+        typeof reader?._internalReader?._state?.primaryViewState?.pageIndex === 'number' &&
+        Number.isInteger(reader._internalReader._state.primaryViewState.pageIndex)
+      ) {
         pageIndex = reader._internalReader._state.primaryViewState.pageIndex;
-      } else if (reader.state && typeof reader.state.pageIndex === 'number') {
+      } else if (reader?.state && typeof reader.state.pageIndex === 'number') {
         pageIndex = reader.state.pageIndex;
-      } else if (reader._iframeWindow?.PDFViewerApplication?.page) {
+      } else if (reader?._iframeWindow?.PDFViewerApplication?.page) {
         pageIndex = reader._iframeWindow.PDFViewerApplication.page - 1;
       }
     } catch (_) {}
-    const pageNum = pageIndex + 1;
+    const pageNum = Math.max(1, pageIndex + 1);
 
     const pdfKey = attachmentItem?.key || meta.key;
     const groupID = Zotero.Libraries?.get?.(regularItem.libraryID)?.groupID;
@@ -157,9 +185,9 @@ export async function createTaskFromReader(
     description += `文献：《${meta.title}》\nPDF 锚点直达：${pageLink}`;
 
     const data = await host.loadData();
-    const taskId = 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+    const taskId = 'task_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
 
-    const newTask = {
+    const newTask: TaskRecord = {
       id: taskId,
       title: `📌 [P.${pageNum}] ${taskTitle}`,
       description,
@@ -173,7 +201,7 @@ export async function createTaskFromReader(
       subtasks: [],
       tags: [...(meta.tags || []), `P.${pageNum}`, 'PDF摘录'],
       reminder: { enabled: false, before: 15, notified: false },
-      order: (data.tasks || []).length,
+      order: (data.tasks || []).reduce((max: number, t: TaskRecord) => Math.max(max, Number(t.order) || 0), -1) + 1,
       zoteroItemKey: meta.key,
       zoteroItemTitle: meta.title,
       zoteroAuthors: meta.authors,
@@ -182,7 +210,7 @@ export async function createTaskFromReader(
       zoteroYear: meta.year,
       zoteroUri: meta.zoteroUri,
       zoteroPdfUri: pageLink,
-      zoteroAttachmentKey: attachmentItem.key,
+      zoteroAttachmentKey: attachmentItem?.key || '',
       zoteroItemID: regularItem.id,
       zoteroPage: pageNum,
       zoteroQuote: selectedText,
@@ -192,7 +220,7 @@ export async function createTaskFromReader(
 
     const shortcutAction = host.getPref('readerShortcutAction', 'create_instant');
     if (shortcutAction === 'open_modal') {
-      host.openTaskFlow({ mode: 'open_modal_prefill', prefill: newTask }, window);
+      host.openTaskFlow({ mode: 'open_modal_prefill', prefill: newTask }, win);
       return;
     }
 
@@ -205,19 +233,22 @@ export async function createTaskFromReader(
 }
 
 export async function createReadingMilestones(
-  host: any,
-  item: any,
-  window: any = null,
-  profileID: any = null
-): Promise<any> {
-  const selectedProfile = Object.hasOwn(LiteratureWorkflow.profiles, profileID)
-    ? profileID
-    : host.getPref('readingProfile', 'general');
+  host: TaskFlowHostLike,
+  item: unknown,
+  window: Window | null = null,
+  profileID: string | null = null
+): Promise<{ task: TaskRecord | undefined; created: boolean }> {
+  const selectedProfile =
+    profileID && Object.hasOwn(LiteratureWorkflow.profiles, profileID)
+      ? profileID
+      : host.getPref('readingProfile', 'general');
   const result = await addLiteratureReadingTask(host, item, { profileID: selectedProfile });
   host.showNotice(
     result.created ? '精读清单已创建' : '该精读清单已存在',
-    `${LiteratureWorkflow.profile(selectedProfile).label} · 截止 ${result.task.dueDate}`
+    `${LiteratureWorkflow.profile(selectedProfile).label} · 截止 ${result.task?.dueDate || '未设置'}`
   );
-  host.openTaskFlow({ mode: 'view_task', taskId: result.task.id }, window);
+  if (result.task?.id) {
+    host.openTaskFlow({ mode: 'view_task', taskId: result.task.id }, window);
+  }
   return result;
 }

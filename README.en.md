@@ -6,11 +6,11 @@
 
 [简体中文](README.md) · [English](README.en.md)
 
-[![Version](https://img.shields.io/badge/version-16.0.3-245ac7?style=flat-square)](https://github.com/groele/Zotero-TaskFlow/releases/tag/v16.0.3)
+[![Version](https://img.shields.io/badge/version-17.0.0-245ac7?style=flat-square)](https://github.com/groele/Zotero-TaskFlow/releases/tag/v17.0.0)
 [![Zotero Compatibility](https://img.shields.io/badge/Zotero-10.0%20to%2012.*-059669?style=flat-square)](https://github.com/groele/Zotero-TaskFlow)
 [![License](https://img.shields.io/badge/license-MIT-yellow?style=flat-square)](LICENSE)
 [![Local Privacy](https://img.shields.io/badge/storage-100%25%20Local%20Privacy-success?style=flat-square)](https://github.com/groele/Zotero-TaskFlow)
-[![Download XPI](https://img.shields.io/badge/download-XPI%20Release-blue?style=flat-square)](https://github.com/groele/Zotero-TaskFlow/releases/download/v16.0.3/zotero-taskflow-16.0.3.xpi)
+[![Download XPI](https://img.shields.io/badge/download-XPI%20Release-blue?style=flat-square)](https://github.com/groele/Zotero-TaskFlow/releases/download/v17.0.0/zotero-taskflow-17.0.0.xpi)
 
 [Key Highlights](#highlights) · [Keyboard Shortcuts](#shortcuts) · [Quick Start](#quick-start) · [Multi-Dimensional Views](#views) · [Academic Checklists](#academic-templates) · [Zotero Integration](#integration) · [Settings & Preferences](#settings) · [Data & Backup](#data) · [Troubleshooting FAQ](#troubleshooting) · [Installation & Updates](#installation) · [Zotero Flow Series](#series) · [License](#license)
 
@@ -184,7 +184,7 @@ Configure behaviors under **Zotero → Settings → Zotero TaskFlow**:
 ## 📦 Installation & Updates
 
 ### Manual Installation
-1. Download the latest release package [zotero-taskflow-16.0.3.xpi](https://github.com/groele/Zotero-TaskFlow/releases/download/v16.0.3/zotero-taskflow-16.0.3.xpi) from [GitHub Releases](https://github.com/groele/Zotero-TaskFlow/releases/tag/v16.0.3).
+1. Download the latest release package [zotero-taskflow-17.0.0.xpi](https://github.com/groele/Zotero-TaskFlow/releases/download/v17.0.0/zotero-taskflow-17.0.0.xpi) from [GitHub Releases](https://github.com/groele/Zotero-TaskFlow/releases/tag/v17.0.0).
 2. In Zotero, open **Tools → Plugins / Add-ons**.
 3. Click the gear icon ⚙️ in the upper right corner and select **Install Add-on From File...**.
 4. Select the `.xpi` file, confirm the installation, and restart Zotero.
