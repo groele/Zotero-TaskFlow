@@ -251,3 +251,9 @@ Zotero TaskFlow 是 **Zotero Flow 学术工具流家族** 的核心成员：
 
 - **开源协议**：本项目基于 [MIT License](LICENSE) 协议开源。
 - **免责声明**：本插件由开源社区独立维护，并非 Zotero 官方团队官方产品。Zotero 是 Corporation for Digital Scholarship 的注册商标。
+
+---
+
+## 第三方版权与许可证核查 / Third-party rights
+
+本项目的开源许可证并不自动覆盖上游插件、第三方代码、图标、字体、数据集或外部服务内容。各来源的署名、许可证、实际打包内容与待完成的验证事项见 [THIRD_PARTY.md](THIRD_PARTY.md)。仓库改为 Private 不会取消已经适用的第三方许可义务；未完成的检查不能视为已获版权清查证明。
