@@ -248,3 +248,6 @@ Zotero TaskFlow is part of the **Zotero Flow Academic Ecosystem**:
 
 - **License**: Released under the open-source [MIT License](LICENSE).
 - **Disclaimer**: Independently maintained by the open-source community. Not an official product of Corporation for Digital Scholarship or Zotero. Zotero is a registered trademark of Corporation for Digital Scholarship.
+
+
+**Acknowledgements and third-party rights:** See [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md) for upstream authorship and community credits, and [THIRD_PARTY.md](THIRD_PARTY.md) for license provenance and release verification. Credits do not replace the original license, copyright statements or distribution obligations.
